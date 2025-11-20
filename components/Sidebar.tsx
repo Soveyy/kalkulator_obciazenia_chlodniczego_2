@@ -163,7 +163,7 @@ const Sidebar: React.FC = () => {
                 </div>
                 
                 <div className="mt-auto pt-4 text-center text-xs text-slate-400">
-                    Wersja 0.3
+                    Wersja 0.31
                 </div>
                 <style>{`.label-style { display: block; text-sm font-medium mb-1 text-slate-700 dark:text-slate-300; }`}</style>
             </aside>
