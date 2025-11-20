@@ -1,0 +1,5 @@
+{
+  "name": "Advanced Heat Gain Calculator v4",
+  "description": "An advanced calculator for simulating heat gains through transparent partitions (windows) based on ASHRAE methodologies. It allows for detailed configuration of windows, shading, and building thermal mass to calculate typical and design cooling loads.",
+  "requestFramePermissions": []
+}

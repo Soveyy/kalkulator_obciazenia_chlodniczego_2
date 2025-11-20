@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zaawansowany Kalkulator Zysków Ciepła</title>
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#f1f5f9" />
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "chart.js/": "https://aistudiocdn.com/chart.js@^4.5.1/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "chart.js": "https://aistudiocdn.com/chart.js@^4.5.1",
+    "jspdf": "https://aistudiocdn.com/jspdf@^2.5.1",
+    "html2canvas": "https://aistudiocdn.com/html2canvas@^1.4.1",
+    "jspdf-autotable": "https://aistudiocdn.com/jspdf-autotable@^3.8.2"
+  }
+}
+</script>
+<style>
+    @keyframes pulse-glow {
+        0%, 100% {
+            box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+        }
+        50% {
+            box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
+        }
+    }
+    .animate-pulse-glow {
+        animation: pulse-glow 2.5s infinite;
+    }
+
+    .chart-container:fullscreen,
+    .chart-container:-webkit-full-screen {
+        background-color: white;
+        padding: 1rem;
+    }
+    .dark .chart-container:fullscreen,
+    .dark .chart-container:-webkit-full-screen {
+        background-color: #1e293b; /* bg-slate-800 */
+    }
+
+    /* Styles for collapsible section */
+    .collapsible-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-in-out;
+    }
+    .collapsible-content.expanded {
+        max-height: 500px; /* Adjust as needed for table height */
+    }
+</style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-900">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+</body>
+</html>

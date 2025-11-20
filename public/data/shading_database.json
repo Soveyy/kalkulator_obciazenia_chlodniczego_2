@@ -1,0 +1,222 @@
+
+{
+  "modern": {
+    "louvers": {
+      "indoor": {
+        "light": {
+          "open_0":    { "iac0": 0.99, "iac60": 0.83, "iac_diff": 0.91, "fr": 0.62 },
+          "tilted_45": { "iac0": 0.80, "iac60": 0.74, "iac_diff": 0.85, "fr": 0.44 },
+          "closed":    { "iac0": 0.66, "iac60": 0.67, "iac_diff": 0.73, "fr": 0.31 }
+        },
+        "medium": {
+          "open_0":    { "iac0": 1.00, "iac60": 0.91, "iac_diff": 0.95, "fr": 0.58 },
+          "tilted_45": { "iac0": 0.88, "iac60": 0.84, "iac_diff": 0.91, "fr": 0.40 },
+          "closed":    { "iac0": 0.79, "iac60": 0.80, "iac_diff": 0.83, "fr": 0.33 }
+        },
+        "dark": {
+          "open_0":    { "iac0": 1.00, "iac60": 0.96, "iac_diff": 0.98, "fr": 0.56 },
+          "tilted_45": { "iac0": 0.95, "iac60": 0.94, "iac_diff": 0.97, "fr": 0.38 },
+          "closed":    { "iac0": 0.92, "iac60": 0.92, "iac_diff": 0.94, "fr": 0.35 }
+        }
+      },
+      "outdoor": {
+        "light": {
+          "open_0":    { "iac0": 0.95, "iac60": 0.29, "iac_diff": 0.62, "fr": 0.79 },
+          "tilted_45": { "iac0": 0.33, "iac60": 0.13, "iac_diff": 0.48, "fr": 0.77 },
+          "closed":    { "iac0": 0.08, "iac60": 0.04, "iac_diff": 0.22, "fr": 0.74 }
+        },
+        "medium": {
+          "open_0":    { "iac0": 0.94, "iac60": 0.14, "iac_diff": 0.50, "fr": 0.78 },
+          "tilted_45": { "iac0": 0.24, "iac60": 0.06, "iac_diff": 0.36, "fr": 0.74 },
+          "closed":    { "iac0": 0.04, "iac60": 0.02, "iac_diff": 0.14, "fr": 0.61 }
+        },
+        "dark": {
+          "open_0":    { "iac0": 0.93, "iac60": 0.04, "iac_diff": 0.41, "fr": 0.72 },
+          "tilted_45": { "iac0": 0.19, "iac60": 0.02, "iac_diff": 0.29, "fr": 0.63 },
+          "closed":    { "iac0": 0.02, "iac60": 0.02, "iac_diff": 0.09, "fr": 0.35 }
+        }
+      }
+    },
+    "draperies": {
+      "open_light":    { "iac": 0.82, "fr": 0.60 },
+      "open_medium":   { "iac": 0.88, "fr": 0.54 },
+      "open_dark":     { "iac": 0.95, "fr": 0.50 },
+      "semiopen_light":{ "iac": 0.79, "fr": 0.52 },
+      "semiopen_medium":{ "iac": 0.86, "fr": 0.46 },
+      "semiopen_dark": { "iac": 0.94, "fr": 0.43 },
+      "closed_light":  { "iac": 0.73, "fr": 0.40 },
+      "closed_medium": { "iac": 0.84, "fr": 0.39 },
+      "closed_dark":   { "iac": 0.92, "fr": 0.39 },
+      "sheer":         { "iac": 0.87, "fr": 0.65 }
+    },
+    "roller_shades": {
+      "light_translucent": 		{ "iac": 0.71, "fr": 0.46 },
+      "white_opaque": 			{ "iac": 0.67, "fr": 0.30 },
+      "dark_opaque": 			{ "iac": 0.89, "fr": 0.38 },
+      "light_gray_translucent": 	{ "iac": 0.85, "fr": 0.43 },
+      "dark_gray_translucent":  	{ "iac": 0.91, "fr": 0.45 },
+      "reflective_white_opaque":	{ "iac": 0.63, "fr": 0.39 },
+      "reflective_white_translucent": 	{ "iac": 0.59, "fr": 0.26 }
+    },
+    "insect_screens": {
+      "indoor":  { "iac": 0.95, "fr": 0.67 },
+      "outdoor": { "iac": 0.64, "fr": 0.80 }
+    }
+  },
+  "standard": {
+    "louvers": {
+      "indoor": {
+        "light": {
+          "open_0":    { "iac0": 0.98, "iac60": 0.76, "iac_diff": 0.87, "fr": 0.74 },
+          "tilted_45": { "iac0": 0.74, "iac60": 0.64, "iac_diff": 0.79, "fr": 0.56 },
+          "closed":    { "iac0": 0.55, "iac60": 0.55, "iac_diff": 0.63, "fr": 0.42 }
+        },
+        "medium": {
+          "open_0":    { "iac0": 0.98, "iac60": 0.85, "iac_diff": 0.91, "fr": 0.68 },
+          "tilted_45": { "iac0": 0.83, "iac60": 0.76, "iac_diff": 0.86, "fr": 0.48 },
+          "closed":    { "iac0": 0.70, "iac60": 0.70, "iac_diff": 0.75, "fr": 0.40 }
+        },
+        "dark": {
+          "open_0":    { "iac0": 0.99, "iac60": 0.91, "iac_diff": 0.95, "fr": 0.63 },
+          "tilted_45": { "iac0": 0.92, "iac60": 0.89, "iac_diff": 0.93, "fr": 0.44 },
+          "closed":    { "iac0": 0.85, "iac60": 0.86, "iac_diff": 0.88, "fr": 0.40 }
+        }
+},
+
+  "outdoor": {
+        "light": {
+          "open_0":    { "iac0": 0.95, "iac60": 0.29, "iac_diff": 0.62, "fr": 0.93 },
+          "tilted_45": { "iac0": 0.34, "iac60": 0.12, "iac_diff": 0.47, "fr": 0.92 },
+          "closed":    { "iac0": 0.08, "iac60": 0.04, "iac_diff": 0.21, "fr": 0.91 }
+        },
+        "medium": {
+          "open_0":    { "iac0": 0.94, "iac60": 0.14, "iac_diff": 0.50, "fr": 0.92 },
+          "tilted_45": { "iac0": 0.25, "iac60": 0.06, "iac_diff": 0.36, "fr": 0.91 },
+          "closed":    { "iac0": 0.04, "iac60": 0.02, "iac_diff": 0.13, "fr": 0.83 }
+        },
+        "dark": {
+          "open_0":    { "iac0": 0.93, "iac60": 0.04, "iac_diff": 0.41, "fr": 0.89 },
+          "tilted_45": { "iac0": 0.19, "iac60": 0.02, "iac_diff": 0.28, "fr": 0.84 },
+          "closed":    { "iac0": 0.02, "iac60": 0.02, "iac_diff": 0.09, "fr": 0.67 }
+        }
+      }
+    },
+    "draperies": {
+      "open_light":    { "iac": 0.76, "fr": 0.73 },
+      "open_medium":   { "iac": 0.83, "fr": 0.64 },
+      "open_dark":     { "iac": 0.91, "fr": 0.56 },
+      "semiopen_light":{ "iac": 0.71, "fr": 0.64 },
+      "semiopen_medium":{ "iac": 0.80, "fr": 0.54 },
+      "semiopen_dark": { "iac": 0.88, "fr": 0.49 },
+      "closed_light":  { "iac": 0.64, "fr": 0.50 },
+      "closed_medium": { "iac": 0.76, "fr": 0.45 },
+      "closed_dark":   { "iac": 0.86, "fr": 0.44 },
+      "sheer":         { "iac": 0.82, "fr": 0.78 }
+    },
+    "roller_shades": {
+      "light_translucent": 	{ "iac": 0.62, "fr": 0.60 },
+      "white_opaque": 		{ "iac": 0.57, "fr": 0.38 },
+      "dark_opaque": 		{ "iac": 0.82, "fr": 0.42 },
+      "light_gray_translucent": { "iac": 0.78, "fr": 0.50 },
+      "dark_gray_translucent":  { "iac": 0.85, "fr": 0.52 },
+      "reflective_white_opaque":{ "iac": 0.52, "fr": 0.53 },
+      "reflective_white_translucent": { "iac": 0.47, "fr": 0.36 }
+    },
+    "insect_screens": {
+      "indoor":  { "iac": 0.94, "fr": 0.76 },
+      "outdoor": { "iac": 0.64, "fr": 0.94 }
+    }
+  },
+  "older_double": {
+    "louvers": {
+      "indoor": {
+        "light": {
+          "open_0":    { "iac0": 0.98, "iac60": 0.87, "iac_diff": 0.93, "fr": 0.42 },
+          "tilted_45": { "iac0": 0.83, "iac60": 0.78, "iac_diff": 0.87, "fr": 0.48 },
+          "closed":    { "iac0": 0.71, "iac60": 0.72, "iac_diff": 0.77, "fr": 0.39 }
+        },
+        "medium": {
+          "open_0":    { "iac0": 0.98, "iac60": 0.79, "iac_diff": 0.89, "fr": 0.45 },
+          "tilted_45": { "iac0": 0.79, "iac60": 0.79, "iac_diff": 0.83, "fr": 0.47 },
+          "closed":    { "iac0": 0.70, "iac60": 0.70, "iac_diff": 0.75, "fr": 0.41 }
+        },
+        "dark": {
+          "open_0":    { "iac0": 0.98, "iac60": 0.96, "iac_diff": 0.97, "fr": 0.47 },
+          "tilted_45": { "iac0": 0.85, "iac60": 0.83, "iac_diff": 0.87, "fr": 0.44 },
+          "closed":    { "iac0": 0.76, "iac60": 0.75, "iac_diff": 0.78, "fr": 0.40 }
+        }
+      }
+    },
+    "draperies": {
+      "open_light":    { "iac": 0.69, "fr": 0.70 },
+      "open_medium":   { "iac": 0.75, "fr": 0.62 },
+      "open_dark":     { "iac": 0.82, "fr": 0.54 },
+      "semiopen_light":{ "iac": 0.62, "fr": 0.62 },
+      "semiopen_medium":{ "iac": 0.69, "fr": 0.53 },
+      "semiopen_dark": { "iac": 0.76, "fr": 0.48 },
+      "closed_light":  { "iac": 0.52, "fr": 0.48 },
+      "closed_medium": { "iac": 0.64, "fr": 0.45 },
+      "closed_dark":   { "iac": 0.72, "fr": 0.43 },
+      "sheer":         { "iac": 0.87, "fr": 0.65 }
+    },
+    "roller_shades": {
+      "light_translucent": { "iac": 0.58, "fr": 0.62 },
+      "white_opaque": { "iac": 0.52, "fr": 0.39 },
+      "dark_opaque": { "iac": 0.82, "fr": 0.42 },
+      "light_gray_translucent": { "iac": 0.74, "fr": 0.53 },
+      "dark_gray_translucent":  { "iac": 0.81, "fr": 0.54 },
+      "reflective_white_opaque":{ "iac": 0.50, "fr": 0.54 },
+      "reflective_white_translucent": { "iac": 0.47, "fr": 0.38 }
+    },
+    "insect_screens": {
+      "indoor":  { "iac": 0.96, "fr": 0.73 },
+      "outdoor": { "iac": 0.64, "fr": 0.90 }
+    }
+  },
+  "historic": {
+    "louvers": {
+      "indoor": {
+        "light": {
+          "open_0":    { "iac0": 0.98, "iac60": 0.78, "iac_diff": 0.87, "fr": 0.43 },
+          "tilted_45": { "iac0": 0.74, "iac60": 0.79, "iac_diff": 0.87, "fr": 0.47 },
+          "closed":    { "iac0": 0.70, "iac60": 0.70, "iac_diff": 0.74, "fr": 0.44 }
+        },
+        "medium": {
+          "open_0":    { "iac0": 0.97, "iac60": 0.70, "iac_diff": 0.84, "fr": 0.46 },
+          "tilted_45": { "iac0": 0.67, "iac60": 0.75, "iac_diff": 0.86, "fr": 0.48 },
+          "closed":    { "iac0": 0.63, "iac60": 0.63, "iac_diff": 0.69, "fr": 0.44 }
+        },
+        "dark": {
+          "open_0":    { "iac0": 0.97, "iac60": 0.96, "iac_diff": 0.81, "fr": 0.47 },
+          "tilted_45": { "iac0": 0.80, "iac60": 0.75, "iac_diff": 0.83, "fr": 0.45 },
+          "closed":    { "iac0": 0.70, "iac60": 0.70, "iac_diff": 0.73, "fr": 0.44 }
+        }
+      }
+    },
+    "draperies": {
+      "open_light":    { "iac": 0.70, "fr": 0.77 },
+      "open_medium":   { "iac": 0.76, "fr": 0.69 },
+      "open_dark":     { "iac": 0.82, "fr": 0.61 },
+      "semiopen_light":{ "iac": 0.64, "fr": 0.70 },
+      "semiopen_medium":{ "iac": 0.70, "fr": 0.60 },
+      "semiopen_dark": { "iac": 0.77, "fr": 0.54 },
+      "closed_light":  { "iac": 0.55, "fr": 0.57 },
+      "closed_medium": { "iac": 0.66, "fr": 0.50 },
+      "closed_dark":   { "iac": 0.74, "fr": 0.48 },
+      "sheer":         { "iac": 0.87, "fr": 0.65 }
+    },
+    "roller_shades": {
+      "light_translucent": { "iac": 0.45, "fr": 0.72 },
+      "white_opaque": { "iac": 0.35, "fr": 0.44 },
+      "dark_opaque": { "iac": 0.74, "fr": 0.44 },
+      "light_gray_translucent": { "iac": 0.65, "fr": 0.54 },
+      "dark_gray_translucent":  { "iac": 0.74, "fr": 0.51 },
+      "reflective_white_opaque":{ "iac": 0.34, "fr": 0.55 },
+      "reflective_white_translucent": { "iac": 0.31, "fr": 0.38 }
+    },
+    "insect_screens": {
+      "indoor":  { "iac": 0.88, "fr": 0.80 },
+      "outdoor": { "iac": 0.64, "fr": 0.98 }
+    }
+  }
+}
