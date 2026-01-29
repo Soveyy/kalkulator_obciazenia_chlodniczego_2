@@ -4,12 +4,17 @@ import autoTable from 'jspdf-autotable';
 import Chart from 'chart.js/auto';
 import { MONTH_NAMES } from '../constants';
 
-function normalizePolishChars(text: string): string {
-    const polishChars: { [key: string]: string } = {
-        'ą': 'a', 'ć': 'c', 'ę': 'e', 'ł': 'l', 'ń': 'n', 'ó': 'o', 'ś': 's', 'ź': 'z', 'ż': 'z',
-        'Ą': 'A', 'Ć': 'C', 'Ę': 'E', 'Ł': 'L', 'Ń': 'N', 'Ó': 'O', 'Ś': 'S', 'Ź': 'Z', 'Ż': 'Z',
-    };
-    return String(text).replace(/[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/g, char => polishChars[char] || char);
+// Helper to fetch font as base64
+async function fetchFont(url: string): Promise<string> {
+    const response = await fetch(url);
+    const buffer = await response.arrayBuffer();
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return window.btoa(binary);
 }
 
 const reorderDataForLocalTime = (data: number[], offset: number): number[] => {
@@ -17,69 +22,66 @@ const reorderDataForLocalTime = (data: number[], offset: number): number[] => {
     return Array.from({ length: 24 }, (_, i) => data[(i - offset + 24) % 24] || 0);
 };
 
-const outlabelsLinePlugin = {
-  id: 'outlabelsLine',
-  afterDraw: (chart: Chart) => {
-    const { ctx, chartArea: { width, height } } = chart;
-    if ((chart.config as any).type !== 'pie') return;
-
-    const dataset = chart.data.datasets[0];
-    const meta = chart.getDatasetMeta(0);
-    const total = (dataset.data as number[]).reduce((a, b) => a + b, 0);
-    
-    ctx.save();
-    
-    const centerX = (chart.chartArea.left + chart.chartArea.right) / 2;
-    const centerY = (chart.chartArea.top + chart.chartArea.bottom) / 2;
-    const outerRadius = meta.data[0] ? (meta.data[0] as any).outerRadius : width / 3;
-
-    ctx.font = '10px Arial';
-    ctx.textBaseline = 'middle';
-    
-    meta.data.forEach((element, index) => {
-      const dataValue = dataset.data[index] as number;
-      if (dataValue <= 0) return;
-
-      const { startAngle, endAngle } = element as any;
-      const midAngle = startAngle + (endAngle - startAngle) / 2;
-
-      const x = centerX + (outerRadius + 10) * Math.cos(midAngle);
-      const y = centerY + (outerRadius + 10) * Math.sin(midAngle);
-      
-      const x2 = centerX + (outerRadius + 25) * Math.cos(midAngle);
-      const y2 = centerY + (outerRadius + 25) * Math.sin(midAngle);
-      
-      const isLeft = midAngle > Math.PI / 2 && midAngle < 3 * Math.PI / 2;
-      ctx.textAlign = isLeft ? 'right' : 'left';
-      const x3 = x2 + (isLeft ? -5 : 5);
-
-      ctx.strokeStyle = (dataset.backgroundColor as string[])[index];
-      ctx.fillStyle = '#333';
-      ctx.lineWidth = 1;
-      
-      ctx.beginPath();
-      ctx.moveTo(centerX + outerRadius * Math.cos(midAngle), centerY + outerRadius * Math.sin(midAngle));
-      ctx.lineTo(x, y);
-      ctx.lineTo(x3 + (isLeft ? 3 : -3), y2);
-      ctx.stroke();
-
-      const percentage = total > 0 ? ((dataValue / total) * 100).toFixed(1) : '0.0';
-      const label = (chart.data.labels as string[])[index].split(' (')[0];
-      
-      ctx.fillText(`${label} (${percentage}%)`, x3, y2);
-    });
-
-    ctx.restore();
-  }
+// Plugin do rysowania etykiet na wykresie kołowym (bez zewnętrznych bibliotek)
+const pieLabelsPlugin = {
+    id: 'pieLabels',
+    afterDatasetsDraw(chart: any) {
+        const { ctx, data } = chart;
+        chart.data.datasets.forEach((dataset: any, i: number) => {
+            const meta = chart.getDatasetMeta(i);
+            meta.data.forEach((element: any, index: number) => {
+                // Pobieramy wartość procentową z etykiety (zakładamy format "Label (XX%)")
+                const labelText = data.labels[index];
+                const percentMatch = labelText.match(/\((\d+)%\)/);
+                
+                if (percentMatch) {
+                    const percent = parseInt(percentMatch[1], 10);
+                    // Rysuj tylko jeśli wycinek jest wystarczająco duży (> 4%)
+                    if (percent > 4) {
+                        const { x, y } = element.tooltipPosition();
+                        ctx.fillStyle = '#fff';
+                        // Używamy standardowej czcionki systemowej dla Canvas, która obsługuje PL znaki
+                        ctx.font = 'bold 12px Arial, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        // Dodanie cienia dla lepszej czytelności
+                        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                        ctx.shadowBlur = 4;
+                        ctx.fillText(`${percent}%`, x, y);
+                        ctx.shadowBlur = 0;
+                    }
+                }
+            });
+        });
+    }
 };
 
-
-async function createTempChart(config: any, plugins: any[] = []): Promise<string> {
+// Funkcja pomocnicza do tworzenia obrazu wykresu
+async function createTempChart(config: any, width: number, height: number): Promise<string> {
     const offscreenCanvas = document.createElement('canvas');
-    offscreenCanvas.width = 1000;
-    offscreenCanvas.height = 500;
-    const chart = new Chart(offscreenCanvas, { ...config, plugins });
-    await new Promise(resolve => setTimeout(resolve, 500));
+    offscreenCanvas.width = width;
+    offscreenCanvas.height = height;
+    
+    // Ensure font in chart matches PDF look roughly and supports PL chars
+    const defaults = Chart.defaults;
+    defaults.font.family = 'Arial, sans-serif';
+
+    const chartConfig = {
+        ...config,
+        options: {
+            ...config.options,
+            animation: false,
+            animations: { colors: false, x: false, y: false },
+            transitions: { active: { animation: { duration: 0 } } },
+            responsive: false,
+            maintainAspectRatio: false,
+            devicePixelRatio: 2
+        }
+    };
+
+    const chart = new Chart(offscreenCanvas, chartConfig);
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
     const dataUrl = chart.canvas.toDataURL('image/png');
     chart.destroy();
     return dataUrl;
@@ -89,17 +91,42 @@ export const generatePdfReport = async (state: any) => {
     const { input, activeResults, currentMonth } = state;
     if (!activeResults) return;
 
+    // Load Fonts
+    const fontRegular = await fetchFont('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf');
+    const fontBold = await fetchFont('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Medium.ttf');
+
     const doc = new jsPDF('p', 'mm', 'a4');
+    
+    // Register Fonts
+    doc.addFileToVFS('Roboto-Regular.ttf', fontRegular);
+    doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+    
+    doc.addFileToVFS('Roboto-Bold.ttf', fontBold);
+    doc.addFont('Roboto-Bold.ttf', 'Roboto', 'bold');
+
+    // Set Default Font
+    doc.setFont('Roboto', 'normal');
+
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 15;
     let yPos = margin;
 
+    // --- Helpers ---
     const addHeader = (title: string) => {
-        doc.setFontSize(18);
-        doc.setFont('helvetica', 'bold');
-        doc.text(normalizePolishChars(title), pageWidth / 2, yPos, { align: 'center' });
-        yPos += 15;
+        if (yPos > pageHeight - 40) {
+            doc.addPage();
+            yPos = margin;
+        }
+        doc.setFontSize(14);
+        doc.setFont('Roboto', 'bold');
+        doc.setTextColor(26, 86, 219); // Brand Blue
+        doc.text(title, margin, yPos);
+        yPos += 8;
+        doc.setLineWidth(0.5);
+        doc.setDrawColor(200);
+        doc.line(margin, yPos - 5, pageWidth - margin, yPos - 5);
+        yPos += 5;
     };
 
     const addFooter = () => {
@@ -107,18 +134,21 @@ export const generatePdfReport = async (state: any) => {
         for (let i = 1; i <= pageCount; i++) {
             doc.setPage(i);
             doc.setFontSize(8);
+            doc.setFont('Roboto', 'normal');
             doc.setTextColor(150);
-            doc.text(normalizePolishChars(`Strona ${i} z ${pageCount}`), pageWidth - margin, pageHeight - 10, { align: 'right' });
-            doc.text(normalizePolishChars(`Zaawansowany Kalkulator Zyskow Ciepla © ${new Date().getFullYear()}`), margin, pageHeight - 10);
+            doc.text(`Strona ${i} z ${pageCount}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+            doc.text(`Raport wygenerowany: ${new Date().toLocaleDateString('pl-PL')}`, margin, pageHeight - 10);
         }
     };
-    
+
+    // --- Data Preparation ---
     const { finalGains, loadComponents } = activeResults;
     const month = parseInt(currentMonth, 10);
     const isSummerTime = (month >= 4 && month <= 10);
     const offset = isSummerTime ? 2 : 1;
     const timeZoneNotice = isSummerTime ? 'UTC+2' : 'UTC+1';
 
+    // Find peaks
     const maxTotalCS = Math.max(...finalGains.clearSky.total);
     const hourTotalCS_UTC = finalGains.clearSky.total.indexOf(maxTotalCS);
     const hourTotalCS_Local = (hourTotalCS_UTC + offset) % 24;
@@ -126,6 +156,7 @@ export const generatePdfReport = async (state: any) => {
     const sensibleAtPeak = finalGains.clearSky.sensible[hourTotalCS_UTC] || 0;
     const latentAtPeak = finalGains.clearSky.latent[hourTotalCS_UTC] || 0;
     
+    // Components at peak
     const solarLoadPeak = loadComponents.solar[hourTotalCS_UTC] || 0;
     const conductionLoadPeak = loadComponents.conduction[hourTotalCS_UTC] || 0;
     const internalSensibleLoadPeak = loadComponents.internalSensible[hourTotalCS_UTC] || 0;
@@ -134,225 +165,312 @@ export const generatePdfReport = async (state: any) => {
     const internalLatentAtPeak = state.activeResults.components.internalGainsLatent[hourTotalCS_UTC] || 0;
     const ventilationLatentAtPeak = state.activeResults.ventilationLoad.latent[hourTotalCS_UTC] || 0;
     
+    // Daily energy estimation
     const totalKWhCS = finalGains.clearSky.total.reduce((sum: number, val: number) => sum + Math.max(0, val), 0) / 1000;
     const totalKWhGlobal = finalGains.global.total.reduce((sum: number, val: number) => sum + Math.max(0, val), 0) / 1000;
 
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    doc.text(normalizePolishChars('Raport Obciazenia Chlodniczego'), pageWidth / 2, 60, { align: 'center' });
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'normal');
-    doc.text(normalizePolishChars(`Nazwa Projektu: ${input.projectName}`), pageWidth / 2, 80, { align: 'center' });
-    doc.setFontSize(10);
-    doc.text(normalizePolishChars(`Data wygenerowania: ${new Date().toLocaleDateString('pl-PL')}`), pageWidth / 2, 90, { align: 'center' });
-    yPos = 110;
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text(normalizePolishChars('Glowne Parametry Projektowe'), margin, yPos);
-    yPos += 8;
 
+    // --- PAGE 1 ---
+    
+    // Main Title
+    doc.setFontSize(24);
+    doc.setFont('Roboto', 'bold');
+    doc.setTextColor(30);
+    doc.text('Raport Obciążenia Chłodniczego', pageWidth / 2, yPos + 10, { align: 'center' });
+    
+    doc.setFontSize(12);
+    doc.setTextColor(100);
+    doc.setFont('Roboto', 'normal');
+    doc.text(`Projekt: ${input.projectName || 'Bez nazwy'}`, pageWidth / 2, yPos + 22, { align: 'center' });
+    
+    yPos += 40;
+
+    // 1. Parameters Table
+    addHeader('1. Parametry Projektowe');
+    
     const params = [
-        [normalizePolishChars('Miesiac analizy'), normalizePolishChars(MONTH_NAMES[parseInt(currentMonth, 10) - 1])],
-        [normalizePolishChars('Temperatura wewnetrzna'), `${input.tInternal} °C`],
-        [normalizePolishChars('Wilgotnosc wewnetrzna'), `${input.rhInternal} %`],
-        [normalizePolishChars('Temperatura zewnetrzna (projektowa)'), `${input.tExternal} °C`],
-        [normalizePolishChars('Temperatura punktu rosy zewn.'), `${input.tDewPoint} °C`],
-        [normalizePolishChars('Powierzchnia pomieszczenia'), `${input.roomArea} m²`],
+        ['Miesiąc obliczeniowy', MONTH_NAMES[parseInt(currentMonth, 10) - 1]],
+        ['Temperatura wewnętrzna', `${input.tInternal} °C`],
+        ['Wilgotność wewnętrzna', `${input.rhInternal} %`],
+        ['Temperatura zewnętrzna (projektowa)', `${input.tExternal} °C`],
+        ['Powierzchnia pomieszczenia', `${input.roomArea} m²`],
     ];
     
     autoTable(doc, {
         startY: yPos,
-        head: [[normalizePolishChars('Parametr'), normalizePolishChars('Wartosc')]],
+        head: [['Parametr', 'Wartość']],
         body: params,
         theme: 'grid',
-        headStyles: { fillColor: [22, 160, 133] },
+        headStyles: { fillColor: [241, 245, 249], textColor: 50, fontStyle: 'bold', lineColor: 200, font: 'Roboto' },
+        bodyStyles: { textColor: 50, font: 'Roboto' },
+        styles: { fontSize: 10, cellPadding: 3, font: 'Roboto' },
         margin: { left: margin, right: margin }
     });
-    yPos = (doc as any).lastAutoTable.finalY + 10;
+    yPos = (doc as any).lastAutoTable.finalY + 15;
 
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    doc.text(normalizePolishChars('Maksymalne calkowite obciazenie chlodnicze'), pageWidth / 2, yPos, { align: 'center' });
-    yPos += 8;
-
-    doc.setFontSize(28);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(231, 76, 60);
-    doc.text(`${maxTotalCS.toFixed(0)} W`, pageWidth / 2, yPos, { align: 'center' });
-    yPos += 8;
-    doc.setTextColor(40);
-
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(normalizePolishChars(`(o godz. ${String(hourTotalCS_Local).padStart(2, '0')}:00 ${timeZoneNotice})`), pageWidth / 2, yPos, { align: 'center' });
-    yPos += 10;
+    // 2. Peak Load Results
+    addHeader('2. Wyniki - Szczytowe Obciążenie (Clear Sky)');
     
+    // Highlight Box
+    doc.setFillColor(254, 242, 242); // Light red/orange bg
+    doc.setDrawColor(252, 165, 165); // Red border
+    doc.roundedRect(margin, yPos, pageWidth - (2 * margin), 35, 3, 3, 'FD');
+    
+    doc.setFontSize(11);
+    doc.setTextColor(153, 27, 27);
+    doc.text('Maksymalne Całkowite Obciążenie Chłodnicze:', pageWidth / 2, yPos + 8, { align: 'center' });
+    
+    doc.setFontSize(30);
+    doc.setFont('Roboto', 'bold');
+    doc.setTextColor(220, 38, 38); // Strong Red
+    doc.text(`${maxTotalCS.toFixed(0)} W`, pageWidth / 2, yPos + 22, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setFont('Roboto', 'normal');
+    doc.setTextColor(120);
+    doc.text(`Występuje o godzinie: ${String(hourTotalCS_Local).padStart(2, '0')}:00 (${timeZoneNotice})`, pageWidth / 2, yPos + 30, { align: 'center' });
+    
+    yPos += 45;
+
+    // Detailed Tables
+    doc.setFontSize(11);
+    doc.setTextColor(0);
+    doc.text('Szczegółowy bilans mocy w godzinie szczytu:', margin, yPos);
+    yPos += 6;
+
     const sensibleBody = [
-        [normalizePolishChars('Sloneczne'), `${solarLoadPeak.toFixed(0)} W`],
-        [normalizePolishChars('Przewodzenie'), `${conductionLoadPeak.toFixed(0)} W`],
-        [normalizePolishChars('Wewnetrzne'), `${internalSensibleLoadPeak.toFixed(0)} W`],
-        [normalizePolishChars('Wentylacja'), `${ventilationSensibleLoadPeak.toFixed(0)} W`],
+        ['Słoneczne (okna)', `${solarLoadPeak.toFixed(0)} W`],
+        ['Przewodzenie (okna)', `${conductionLoadPeak.toFixed(0)} W`],
+        ['Wewnętrzne (ludzie, sprzęt)', `${internalSensibleLoadPeak.toFixed(0)} W`],
+        ['Wentylacja mechaniczna', `${ventilationSensibleLoadPeak.toFixed(0)} W`],
     ];
 
     const latentBody = [
-        [normalizePolishChars('Wewnetrzne'), `${internalLatentAtPeak.toFixed(0)} W`],
-        [normalizePolishChars('Wentylacja'), `${ventilationLatentAtPeak.toFixed(0)} W`],
+        ['Wewnętrzne (ludzie)', `${internalLatentAtPeak.toFixed(0)} W`],
+        ['Wentylacja mechaniczna', `${ventilationLatentAtPeak.toFixed(0)} W`],
     ];
 
+    // Left Table (Sensible)
     autoTable(doc, {
         startY: yPos,
-        head: [[normalizePolishChars(`Obciazenie jawne: ${sensibleAtPeak.toFixed(0)} W`)]],
+        head: [[`Zyski Jawne (Razem: ${sensibleAtPeak.toFixed(0)} W)`, '']],
         body: sensibleBody,
-        theme: 'grid',
-        headStyles: { fillColor: [230, 126, 34], textColor: 255 },
-        margin: { left: margin, right: pageWidth / 2 + 2 },
-        tableWidth: pageWidth / 2 - margin - 2,
-    });
-    
-    autoTable(doc, {
-        startY: yPos,
-        head: [[normalizePolishChars(`Obciazenie utajone: ${latentAtPeak.toFixed(0)} W`)]],
-        body: latentBody,
-        theme: 'grid',
-        headStyles: { fillColor: [52, 152, 219], textColor: 255 },
-        margin: { left: pageWidth / 2 + 2 },
-        tableWidth: pageWidth / 2 - margin - 2,
-    });
-    yPos = (doc as any).lastAutoTable.finalY + 8;
-    
-    autoTable(doc, {
-        startY: yPos,
-        head: [[normalizePolishChars('Suma dobowa energii chlodniczej')]],
-        body: [
-            [normalizePolishChars('Projektowa (Clear Sky)'), `${totalKWhCS.toFixed(1)} kWh`],
-            [normalizePolishChars('Typowa (Global)'), `${totalKWhGlobal.toFixed(1)} kWh`],
-        ],
-        theme: 'grid',
-        headStyles: { fillColor: [44, 62, 80] },
-        margin: { left: margin, right: margin }
+        theme: 'plain',
+        headStyles: { fillColor: [255, 237, 213], textColor: [194, 65, 12], fontStyle: 'bold', font: 'Roboto' },
+        bodyStyles: { textColor: 20, fontSize: 9, font: 'Roboto' },
+        columnStyles: { 0: { cellWidth: 'auto' }, 1: { cellWidth: 25, halign: 'right', fontStyle: 'bold' } },
+        margin: { left: margin, right: pageWidth / 2 + 5 },
+        tableWidth: (pageWidth - 2 * margin) / 2 - 5,
+        tableLineColor: 200,
+        tableLineWidth: 0.1,
+        styles: { font: 'Roboto' }
     });
 
+    const finalY1 = (doc as any).lastAutoTable.finalY;
+
+    // Right Table (Latent)
+    autoTable(doc, {
+        startY: yPos,
+        head: [[`Zyski Utajone (Razem: ${latentAtPeak.toFixed(0)} W)`, '']],
+        body: latentBody,
+        theme: 'plain',
+        headStyles: { fillColor: [219, 234, 254], textColor: [30, 64, 175], fontStyle: 'bold', font: 'Roboto' },
+        bodyStyles: { textColor: 20, fontSize: 9, font: 'Roboto' },
+        columnStyles: { 0: { cellWidth: 'auto' }, 1: { cellWidth: 25, halign: 'right', fontStyle: 'bold' } },
+        margin: { left: pageWidth / 2 + 5, right: margin },
+        tableWidth: (pageWidth - 2 * margin) / 2 - 5,
+        tableLineColor: 200,
+        tableLineWidth: 0.1,
+        styles: { font: 'Roboto' }
+    });
+
+    const finalY2 = (doc as any).lastAutoTable.finalY;
+    yPos = Math.max(finalY1, finalY2) + 15;
+
+    // Energy Estimation
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(margin, yPos, pageWidth - 2*margin, 25, 2, 2, 'FD');
     
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.setFont('Roboto', 'bold');
+    doc.text('Szacunkowe dobowe zużycie energii chłodniczej:', margin + 5, yPos + 7);
+    
+    doc.setFontSize(10);
+    doc.setFont('Roboto', 'normal');
+    doc.setTextColor(50);
+    doc.text(`- Warunki projektowe (bezchmurne niebo, najgorszy możliwy przypadek): ${totalKWhCS.toFixed(1)} kWh`, margin + 5, yPos + 14);
+    doc.text(`- Warunki typowe (uśrednione zachmurzenie): ${totalKWhGlobal.toFixed(1)} kWh`, margin + 5, yPos + 20);
+
+
+    // --- PAGE 2: Pie Chart ---
     doc.addPage();
     yPos = margin;
-    addHeader(normalizePolishChars(`Udzial Skladowych w Szczycie (${String(hourTotalCS_Local).padStart(2, '0')}:00)`));
-
-    const pieChartDataValues = [solarLoadPeak, conductionLoadPeak, internalSensibleLoadPeak, ventilationSensibleLoadPeak, latentAtPeak].map(v => Math.max(0, v));
     
+    addHeader('3. Struktura Zysków Ciepła');
+    
+    // Prepare Pie Data
+    const pieChartValues = [
+        { label: 'Słoneczne', val: solarLoadPeak, color: '#f59e0b' },
+        { label: 'Przewodzenie', val: conductionLoadPeak, color: '#f97316' },
+        { label: 'Wewn. Jawne', val: internalSensibleLoadPeak, color: '#ef4444' },
+        { label: 'Wentylacja Jawna', val: ventilationSensibleLoadPeak, color: '#a855f7' },
+        { label: 'Utajone', val: latentAtPeak, color: '#3b82f6' }
+    ].filter(item => item.val > 0);
+
+    const totalVal = pieChartValues.reduce((acc, curr) => acc + curr.val, 0);
+
     const pieChartData = {
-        labels: ['Sloneczne', 'Przewodzenie', 'Wewn. Jawne', 'Wentylacja Jawna', 'Utajone'],
+        labels: pieChartValues.map(d => `${d.label} (${Math.round(d.val/totalVal*100)}%)`),
         datasets: [{
-            data: pieChartDataValues,
-            backgroundColor: ['#f1c40f', '#e67e22', '#e74c3c', '#8e44ad', '#3498db'],
-            borderColor: '#fff',
+            data: pieChartValues.map(d => d.val),
+            backgroundColor: pieChartValues.map(d => d.color),
+            borderColor: '#ffffff',
             borderWidth: 2,
         }]
     };
     
+    // Generate Pie Chart Image with Labels
     const pieChartImg = await createTempChart({
         type: 'pie',
         data: pieChartData,
         options: {
-            responsive: false,
-            layout: {
-                padding: {
-                    top: 40, bottom: 40, left: 80, right: 80
-                }
-            },
+            layout: { padding: 20 },
             plugins: {
-                title: { display: true, text: normalizePolishChars('Udzial skladowych w szczytowym obciazeniu calkowitym') },
-                legend: { display: true, position: 'right' },
+                legend: { 
+                    display: true, 
+                    position: 'bottom',
+                    labels: { font: { size: 14, family: 'Arial' }, padding: 20 }
+                },
+                title: { 
+                    display: true, 
+                    text: 'Składowe obciążenia w szczycie', 
+                    font: { size: 18, family: 'Arial' },
+                    padding: { bottom: 10 }
+                }
             }
         },
-    }, [outlabelsLinePlugin]);
+        plugins: [pieLabelsPlugin] // Add the custom plugin here
+    }, 800, 800);
 
-    doc.addImage(pieChartImg, 'PNG', margin, yPos, 180, 100);
-    yPos += 110;
-    
+    const pieSize = 160; 
+    const xOffsetPie = (pageWidth - pieSize) / 2;
+    doc.addImage(pieChartImg, 'PNG', xOffsetPie, yPos, pieSize, pieSize);
+    yPos += pieSize + 15;
+
+
+    // --- PAGE 3: Daily Charts ---
     doc.addPage();
     yPos = margin;
-    addHeader('Wykresy Godzinowe Obciazenia Chlodniczego');
+    addHeader('4. Przebieg Dobowy Obciążenia');
 
-    const labels = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
+    const hours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
 
+    // 1. Line Chart
     const lineChartImg = await createTempChart({
         type: 'line',
         data: {
-            labels,
+            labels: hours,
             datasets: [
-                { label: normalizePolishChars('Projektowe (CS)'), data: reorderDataForLocalTime(finalGains.clearSky.total, offset), borderColor: '#e74c3c', backgroundColor: 'rgba(231, 76, 60, 0.2)', fill: true, tension: 0.3, yAxisID: 'yLoad' },
-                { label: normalizePolishChars('Temperatura zewn.'), data: reorderDataForLocalTime(state.tExtProfile, offset), borderColor: '#64748b', backgroundColor: 'transparent', borderDash: [5, 5], tension: 0.3, yAxisID: 'yTemp' }
+                { 
+                    label: 'Obciążenie Chłodnicze [W]', 
+                    data: reorderDataForLocalTime(finalGains.clearSky.total, offset), 
+                    borderColor: '#ef4444', 
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)', 
+                    fill: true, 
+                    borderWidth: 3,
+                    pointRadius: 0,
+                    tension: 0.3
+                },
+                { 
+                    label: 'Temp. Zewnętrzna [°C]', 
+                    data: reorderDataForLocalTime(state.tExtProfile, offset), 
+                    borderColor: '#94a3b8', 
+                    borderWidth: 2,
+                    borderDash: [5, 5], 
+                    pointRadius: 0,
+                    tension: 0.3,
+                    yAxisID: 'yTemp' 
+                }
             ]
         },
         options: {
-            responsive: false,
-            plugins: { title: { display: true, text: normalizePolishChars('Calkowite obciazenie chlodnicze (Projektowe)') } },
+            layout: { padding: { left: 10, right: 10, top: 10, bottom: 10 } },
             scales: {
-                x: { title: { display: true, text: normalizePolishChars(`Godzina (czas lokalny)`) } },
-                yLoad: { position: 'left', title: { display: true, text: normalizePolishChars('Obciazenie (W)') } },
-                yTemp: { position: 'right', title: { display: true, text: normalizePolishChars('Temperatura (°C)') }, grid: { drawOnChartArea: false } }
+                y: { 
+                    beginAtZero: true,
+                    title: { display: true, text: 'Moc [W]', font: { size: 14, family: 'Arial' } },
+                    ticks: { font: { size: 12, family: 'Arial' } }
+                },
+                yTemp: { 
+                    position: 'right', 
+                    grid: { display: false }, 
+                    title: { display: true, text: 'Temp [°C]', font: { size: 14, family: 'Arial' } },
+                    ticks: { font: { size: 12, family: 'Arial' } }
+                },
+                x: {
+                    ticks: { font: { size: 10, family: 'Arial' }, maxRotation: 45 }
+                }
+            },
+            plugins: { 
+                legend: { labels: { font: { size: 12, family: 'Arial' } } },
+                title: { display: true, text: 'Całkowite obciążenie w czasie', font: { size: 16, family: 'Arial' } }
             }
-        }
-    });
-    doc.addImage(lineChartImg, 'PNG', margin, yPos, 180, 80);
-    yPos += 90;
+        },
+    }, 1000, 400);
 
+    doc.addImage(lineChartImg, 'PNG', margin, yPos, pageWidth - 2*margin, 70);
+    yPos += 80;
+
+    // 2. Bar Chart (Stacked Components)
     const barChartImg = await createTempChart({
         type: 'bar',
         data: {
-            labels,
+            labels: hours,
             datasets: [
-                { label: normalizePolishChars('Sloneczne'), data: reorderDataForLocalTime(loadComponents.solar, offset), backgroundColor: 'rgba(241, 196, 15, 0.7)', stack: 'a' },
-                { label: normalizePolishChars('Przewodzenie'), data: reorderDataForLocalTime(loadComponents.conduction, offset), backgroundColor: 'rgba(230, 126, 34, 0.7)', stack: 'a' },
-                { label: normalizePolishChars('Wewn. Jawne'), data: reorderDataForLocalTime(loadComponents.internalSensible, offset), backgroundColor: 'rgba(231, 76, 60, 0.7)', stack: 'a' },
-                { label: normalizePolishChars('Wentylacja Jawna'), data: reorderDataForLocalTime(loadComponents.ventilationSensible, offset), backgroundColor: 'rgba(142, 68, 173, 0.7)', stack: 'a' },
-                { label: normalizePolishChars('Utajone (wewn. + went.)'), data: reorderDataForLocalTime(finalGains.clearSky.latent, offset), backgroundColor: 'rgba(52, 152, 219, 0.7)', stack: 'a' }
+                { label: 'Słoneczne', data: reorderDataForLocalTime(loadComponents.solar, offset), backgroundColor: '#f59e0b', stack: 'a' },
+                { label: 'Przewodzenie', data: reorderDataForLocalTime(loadComponents.conduction, offset), backgroundColor: '#f97316', stack: 'a' },
+                { label: 'Wewn. Jawne', data: reorderDataForLocalTime(loadComponents.internalSensible, offset), backgroundColor: '#ef4444', stack: 'a' },
+                { label: 'Went. Jawna', data: reorderDataForLocalTime(loadComponents.ventilationSensible, offset), backgroundColor: '#a855f7', stack: 'a' },
+                { label: 'Utajone', data: reorderDataForLocalTime(finalGains.clearSky.latent, offset), backgroundColor: '#3b82f6', stack: 'a' }
             ]
         },
         options: {
-            responsive: false,
-            plugins: { title: { display: true, text: normalizePolishChars('Skladowe obciazenia chlodniczego (Clear Sky)') } },
-            scales: { 
-                x: { stacked: true, title: {display: true, text: normalizePolishChars(`Godzina (czas lokalny)`)} }, 
-                y: { stacked: true, title: {display: true, text: normalizePolishChars('Obciazenie (W)')} } 
+            layout: { padding: { left: 10, right: 10, top: 10, bottom: 10 } },
+            scales: {
+                y: { 
+                    stacked: true,
+                    beginAtZero: true,
+                    title: { display: true, text: 'Moc [W]', font: { size: 14, family: 'Arial' } },
+                    ticks: { font: { size: 12, family: 'Arial' } }
+                },
+                x: {
+                    stacked: true,
+                    ticks: { font: { size: 10, family: 'Arial' }, maxRotation: 45 }
+                }
             },
-        }
-    });
+            plugins: { 
+                legend: { labels: { font: { size: 10, family: 'Arial' } } },
+                title: { display: true, text: 'Składowe obciążenia w czasie', font: { size: 16, family: 'Arial' } }
+            }
+        },
+    }, 1000, 400);
 
-    if (yPos + 85 > pageHeight - margin) {
-        doc.addPage();
-        yPos = margin;
-    }
-    doc.addImage(barChartImg, 'PNG', margin, yPos, 180, 80);
-    yPos += 90;
+    doc.addImage(barChartImg, 'PNG', margin, yPos, pageWidth - 2*margin, 70);
+    yPos += 80;
 
-    doc.addPage();
-    yPos = margin;
-    addHeader('Tabela Wynikow Godzinowych (Clear Sky)');
+    // Disclaimer
+    doc.setFontSize(7);
+    doc.setTextColor(150);
+    const disclaimer = `KLAUZULA ODPOWIEDZIALNOŚCI:
+    Niniejszy raport jest wynikiem symulacji komputerowej opartej na wprowadzonych danych oraz statystycznych modelach klimatycznych. Rzeczywiste zapotrzebowanie na chłód może różnić się w zależności od dokładności danych wejściowych, jakości wykonania budynku, sposobu użytkowania oraz lokalnych warunków mikroklimatycznych. Autor aplikacji nie ponosi odpowiedzialności za ewentualne błędy w doborze urządzeń na podstawie tego raportu. Zaleca się weryfikację wyników przez uprawnionego projektanta HVAC.`;
     
-    const tableData = Array.from({ length: 24 }, (_, localHour) => {
-        const utcHour = (localHour - offset + 24) % 24;
-        return [
-            `${String(localHour).padStart(2,'0')}:00`,
-            finalGains.clearSky.sensible[utcHour].toFixed(0),
-            finalGains.clearSky.latent[utcHour].toFixed(0),
-            finalGains.clearSky.total[utcHour].toFixed(0)
-        ]
-    });
-
-    autoTable(doc, {
-        startY: yPos,
-        head: [[
-            normalizePolishChars('Godzina'), 
-            normalizePolishChars('Obc. jawne [W]'), 
-            normalizePolishChars('Obc. utajone [W]'), 
-            normalizePolishChars('Obc. calkowite [W]')
-        ]],
-        body: tableData,
-        theme: 'grid',
-        headStyles: { fillColor: [44, 62, 80] },
-    });
+    const splitDisclaimer = doc.splitTextToSize(disclaimer, pageWidth - 2*margin);
+    
+    // Moved up to avoid overlapping with footer
+    doc.text(splitDisclaimer, margin, pageHeight - 35);
 
     addFooter();
-    doc.save(normalizePolishChars(`${input.projectName.replace(/ /g, '_')}_raport.pdf`));
+    doc.save(`Raport_Zyskow_Ciepla_${new Date().toISOString().slice(0, 10)}.pdf`);
 };
