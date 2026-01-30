@@ -22,7 +22,7 @@ const reorderDataForLocalTime = (data: number[], offset: number): number[] => {
     return Array.from({ length: 24 }, (_, i) => data[(i - offset + 24) % 24] || 0);
 };
 
-// Plugin do rysowania etykiet na wykresie kołowym (bez zewnętrznych bibliotek)
+// Plugin do rysowania etykiet na wykresie kołowym
 const pieLabelsPlugin = {
     id: 'pieLabels',
     afterDatasetsDraw(chart: any) {
@@ -30,21 +30,17 @@ const pieLabelsPlugin = {
         chart.data.datasets.forEach((dataset: any, i: number) => {
             const meta = chart.getDatasetMeta(i);
             meta.data.forEach((element: any, index: number) => {
-                // Pobieramy wartość procentową z etykiety (zakładamy format "Label (XX%)")
                 const labelText = data.labels[index];
                 const percentMatch = labelText.match(/\((\d+)%\)/);
                 
                 if (percentMatch) {
                     const percent = parseInt(percentMatch[1], 10);
-                    // Rysuj tylko jeśli wycinek jest wystarczająco duży (> 4%)
                     if (percent > 4) {
                         const { x, y } = element.tooltipPosition();
                         ctx.fillStyle = '#fff';
-                        // Używamy standardowej czcionki systemowej dla Canvas, która obsługuje PL znaki
                         ctx.font = 'bold 12px Arial, sans-serif';
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        // Dodanie cienia dla lepszej czytelności
                         ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
                         ctx.shadowBlur = 4;
                         ctx.fillText(`${percent}%`, x, y);
@@ -56,13 +52,25 @@ const pieLabelsPlugin = {
     }
 };
 
+// Plugin do białego tła (wymagany dla JPEG)
+const whiteBackgroundPlugin = {
+    id: 'customCanvasBackgroundColor',
+    beforeDraw: (chart: any, args: any, options: any) => {
+        const { ctx } = chart;
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-over';
+        ctx.fillStyle = options.color || '#ffffff';
+        ctx.fillRect(0, 0, chart.width, chart.height);
+        ctx.restore();
+    }
+};
+
 // Funkcja pomocnicza do tworzenia obrazu wykresu
 async function createTempChart(config: any, width: number, height: number): Promise<string> {
     const offscreenCanvas = document.createElement('canvas');
     offscreenCanvas.width = width;
     offscreenCanvas.height = height;
     
-    // Ensure font in chart matches PDF look roughly and supports PL chars
     const defaults = Chart.defaults;
     defaults.font.family = 'Arial, sans-serif';
 
@@ -75,14 +83,22 @@ async function createTempChart(config: any, width: number, height: number): Prom
             transitions: { active: { animation: { duration: 0 } } },
             responsive: false,
             maintainAspectRatio: false,
-            devicePixelRatio: 2
-        }
+            devicePixelRatio: 2, // Keep retina quality
+            plugins: {
+                ...config.options?.plugins,
+                customCanvasBackgroundColor: {
+                    color: '#ffffff', // Force white background
+                }
+            }
+        },
+        plugins: [...(config.plugins || []), whiteBackgroundPlugin]
     };
 
     const chart = new Chart(offscreenCanvas, chartConfig);
     await new Promise(resolve => setTimeout(resolve, 50));
     
-    const dataUrl = chart.canvas.toDataURL('image/png');
+    // Export as JPEG with 0.75 quality (significantly smaller than PNG)
+    const dataUrl = chart.canvas.toDataURL('image/jpeg', 0.75);
     chart.destroy();
     return dataUrl;
 }
@@ -95,7 +111,13 @@ export const generatePdfReport = async (state: any) => {
     const fontRegular = await fetchFont('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf');
     const fontBold = await fetchFont('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Medium.ttf');
 
-    const doc = new jsPDF('p', 'mm', 'a4');
+    // Enable PDF compression
+    const doc = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4',
+        compress: true
+    });
     
     // Register Fonts
     doc.addFileToVFS('Roboto-Regular.ttf', fontRegular);
@@ -331,7 +353,7 @@ export const generatePdfReport = async (state: any) => {
         }]
     };
     
-    // Generate Pie Chart Image with Labels
+    // Generate Pie Chart Image with Labels (JPEG for smaller size)
     const pieChartImg = await createTempChart({
         type: 'pie',
         data: pieChartData,
@@ -351,12 +373,12 @@ export const generatePdfReport = async (state: any) => {
                 }
             }
         },
-        plugins: [pieLabelsPlugin] // Add the custom plugin here
+        plugins: [pieLabelsPlugin]
     }, 800, 800);
 
     const pieSize = 160; 
     const xOffsetPie = (pageWidth - pieSize) / 2;
-    doc.addImage(pieChartImg, 'PNG', xOffsetPie, yPos, pieSize, pieSize);
+    doc.addImage(pieChartImg, 'JPEG', xOffsetPie, yPos, pieSize, pieSize);
     yPos += pieSize + 15;
 
 
@@ -420,7 +442,7 @@ export const generatePdfReport = async (state: any) => {
         },
     }, 1000, 400);
 
-    doc.addImage(lineChartImg, 'PNG', margin, yPos, pageWidth - 2*margin, 70);
+    doc.addImage(lineChartImg, 'JPEG', margin, yPos, pageWidth - 2*margin, 70);
     yPos += 80;
 
     // 2. Bar Chart (Stacked Components)
@@ -457,7 +479,7 @@ export const generatePdfReport = async (state: any) => {
         },
     }, 1000, 400);
 
-    doc.addImage(barChartImg, 'PNG', margin, yPos, pageWidth - 2*margin, 70);
+    doc.addImage(barChartImg, 'JPEG', margin, yPos, pageWidth - 2*margin, 70);
     yPos += 80;
 
     // Disclaimer
