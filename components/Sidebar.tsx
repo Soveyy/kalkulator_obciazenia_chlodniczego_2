@@ -58,10 +58,13 @@ const Sidebar: React.FC = () => {
                             </div>
                             <div className="space-y-2">
                                 <div className="flex gap-2">
-                                    <Button fullWidth onClick={() => dispatch({ type: 'SAVE_PROJECT' })}>Zapisz</Button>
-                                    <Button fullWidth variant="secondary" onClick={() => dispatch({ type: 'LOAD_PROJECT' })}>Wczytaj</Button>
+                                    <Button fullWidth onClick={() => dispatch({ type: 'SAVE_PROJECT_AS', payload: state.input.projectName })}>Zapisz</Button>
+                                    <Button fullWidth variant="secondary" onClick={() => dispatch({ type: 'SET_MODAL', payload: { isOpen: true, type: 'projectList' } })}>Wczytaj</Button>
                                 </div>
-                                <Button fullWidth variant="danger" onClick={() => dispatch({ type: 'RESET_PROJECT' })}>Resetuj</Button>
+                                <div className="flex gap-2">
+                                    <Button fullWidth variant="secondary" onClick={() => dispatch({ type: 'GENERATE_SHARE_LINK' })}>Udostępnij</Button>
+                                    <Button fullWidth variant="danger" onClick={() => dispatch({ type: 'RESET_PROJECT' })}>Resetuj</Button>
+                                </div>
                             </div>
                          </div>
                     </Card>
@@ -170,7 +173,7 @@ const Sidebar: React.FC = () => {
                 </div>
                 
                 <div className="mt-auto pt-4 text-center text-xs text-slate-400">
-                    Wersja 0.33
+                    Wersja 0.34
                 </div>
                 <style>{`.label-style { display: block; text-sm font-medium mb-1 text-slate-700 dark:text-slate-300; }`}</style>
             </aside>

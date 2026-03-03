@@ -13,9 +13,9 @@ import TempDatabaseModal from './components/modals/TempDatabaseModal';
 import WindowEditModal from './components/modals/WindowEditModal';
 import BulkShadingModal from './components/modals/BulkShadingModal';
 import RtsVisualizerModal from './components/modals/RtsVisualizerModal';
-import ToastContainer from './components/ToastContainer';
 import CompassHelper from './components/CompassHelper';
 import KPIDashboard from './components/KPIDashboard';
+import ProjectListModal from './components/modals/ProjectListModal';
 
 const AppContent: React.FC = () => {
     const { state } = useCalculator();
@@ -60,6 +60,7 @@ const App: React.FC = () => {
       <WindowEditModal />
       <BulkShadingModal />
       <RtsVisualizerModal />
+      <ProjectListModal />
       <ToastContainer />
     </CalculatorProvider>
   );

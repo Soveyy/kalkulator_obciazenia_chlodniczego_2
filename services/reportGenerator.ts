@@ -2,7 +2,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Chart from 'chart.js/auto';
-import { MONTH_NAMES } from '../constants';
+import { MONTH_NAMES, LIGHTING_TYPES } from '../constants';
 
 // Helper to fetch font as base64
 async function fetchFont(url: string): Promise<string> {
@@ -237,6 +237,25 @@ export const generatePdfReport = async (state: any) => {
         params.push(['Klasa szczelności', vent.tightnessClass === 'tight' ? 'Szczelne' : vent.tightnessClass === 'average' ? 'Średnie' : 'Nieszczelne']);
     }
     
+    const acc = state.accumulation;
+    if (acc && acc.include) {
+        const THERMAL_MASS_TYPES: Record<string, string> = {
+            'light': 'Lekka',
+            'medium': 'Średnia',
+            'heavy': 'Ciężka',
+            'very_heavy': 'Bardzo ciężka'
+        };
+        const FLOOR_TYPES: Record<string, string> = {
+            'panels': 'Panele',
+            'tiles': 'Płytki',
+            'carpet': 'Wykładzina'
+        };
+        params.push(['Masa termiczna', THERMAL_MASS_TYPES[acc.thermalMass] || acc.thermalMass]);
+        params.push(['Typ podłogi', FLOOR_TYPES[acc.floorType] || acc.floorType]);
+    } else {
+        params.push(['Akumulacja ciepła', 'Pominięta']);
+    }
+
     autoTable(doc, {
         startY: yPos,
         head: [['Parametr', 'Wartość']],
@@ -271,7 +290,9 @@ export const generatePdfReport = async (state: any) => {
     doc.setTextColor(120);
     doc.text(`Występuje o godzinie: ${String(hourTotalCS_Local).padStart(2, '0')}:00 (${timeZoneNotice})`, pageWidth / 2, yPos + 30, { align: 'center' });
     
-    yPos += 45;
+    // --- PAGE 2: Detailed Tables & Design Assumptions ---
+    doc.addPage();
+    yPos = margin;
 
     // Detailed Tables
     doc.setFontSize(11);
@@ -293,7 +314,7 @@ export const generatePdfReport = async (state: any) => {
         ['Infiltracja', `${infiltrationLatentAtPeak.toFixed(0)} W`],
     ];
 
-    // Left Table (Sensible)
+    // Sensible Table
     autoTable(doc, {
         startY: yPos,
         head: [[`Zyski Jawne (Razem: ${sensibleAtPeak.toFixed(0)} W)`, '']],
@@ -302,16 +323,15 @@ export const generatePdfReport = async (state: any) => {
         headStyles: { fillColor: [255, 237, 213], textColor: [194, 65, 12], fontStyle: 'bold', font: 'Roboto' },
         bodyStyles: { textColor: 20, fontSize: 9, font: 'Roboto' },
         columnStyles: { 0: { cellWidth: 'auto' }, 1: { cellWidth: 25, halign: 'right', fontStyle: 'bold' } },
-        margin: { left: margin, right: pageWidth / 2 + 5 },
-        tableWidth: (pageWidth - 2 * margin) / 2 - 5,
+        margin: { left: margin, right: margin },
         tableLineColor: 200,
         tableLineWidth: 0.1,
         styles: { font: 'Roboto' }
     });
 
-    const finalY1 = (doc as any).lastAutoTable.finalY;
+    yPos = (doc as any).lastAutoTable.finalY + 10;
 
-    // Right Table (Latent)
+    // Latent Table
     autoTable(doc, {
         startY: yPos,
         head: [[`Zyski Utajone (Razem: ${latentAtPeak.toFixed(0)} W)`, '']],
@@ -320,15 +340,13 @@ export const generatePdfReport = async (state: any) => {
         headStyles: { fillColor: [219, 234, 254], textColor: [30, 64, 175], fontStyle: 'bold', font: 'Roboto' },
         bodyStyles: { textColor: 20, fontSize: 9, font: 'Roboto' },
         columnStyles: { 0: { cellWidth: 'auto' }, 1: { cellWidth: 25, halign: 'right', fontStyle: 'bold' } },
-        margin: { left: pageWidth / 2 + 5, right: margin },
-        tableWidth: (pageWidth - 2 * margin) / 2 - 5,
+        margin: { left: margin, right: margin },
         tableLineColor: 200,
         tableLineWidth: 0.1,
         styles: { font: 'Roboto' }
     });
 
-    const finalY2 = (doc as any).lastAutoTable.finalY;
-    yPos = Math.max(finalY1, finalY2) + 15;
+    yPos = (doc as any).lastAutoTable.finalY + 15;
 
     // Energy Estimation
     doc.setFillColor(248, 250, 252);
@@ -346,12 +364,160 @@ export const generatePdfReport = async (state: any) => {
     doc.text(`- Warunki projektowe (bezchmurne niebo, najgorszy możliwy przypadek): ${totalKWhCS.toFixed(1)} kWh`, margin + 5, yPos + 14);
     doc.text(`- Warunki typowe (uśrednione zachmurzenie): ${totalKWhGlobal.toFixed(1)} kWh`, margin + 5, yPos + 20);
 
-
-    // --- PAGE 2: Pie Chart ---
-    doc.addPage();
-    yPos = margin;
+    yPos += 35;
     
-    addHeader('3. Struktura Zysków Ciepła');
+    addHeader('3. Założenia Projektowe');
+
+    // Tabela 1: Okna
+    doc.setFontSize(11);
+    doc.setTextColor(0);
+    doc.setFont('Roboto', 'bold');
+    doc.text('3.1 Przegrody przezroczyste (Okna)', margin, yPos);
+    yPos += 6;
+
+    const SHADING_TYPES: Record<string, string> = {
+        'louvers': 'Żaluzje',
+        'draperies': 'Zasłony',
+        'roller_shades': 'Rolety',
+        'insect_screens': 'Moskitiery'
+    };
+
+    const windowsBody = state.windows.map((w: any) => [
+        w.direction,
+        (w.width * w.height).toFixed(2),
+        w.u.toFixed(2),
+        w.shgc.toFixed(2),
+        w.shading.enabled ? SHADING_TYPES[w.shading.type] || 'Tak' : 'Brak'
+    ]);
+
+    if (windowsBody.length === 0) {
+        windowsBody.push(['Brak okien', '-', '-', '-', '-']);
+    }
+
+    autoTable(doc, {
+        startY: yPos,
+        head: [['Kierunek', 'Powierzchnia [m²]', 'Wsp. U [W/m²K]', 'Wsp. g', 'Osłona']],
+        body: windowsBody,
+        theme: 'grid',
+        headStyles: { fillColor: [241, 245, 249], textColor: 50, fontStyle: 'bold', lineColor: 200, font: 'Roboto' },
+        bodyStyles: { textColor: 50, font: 'Roboto' },
+        styles: { fontSize: 9, cellPadding: 3, font: 'Roboto' },
+        margin: { left: margin, right: margin }
+    });
+    yPos = (doc as any).lastAutoTable.finalY + 10;
+
+    // Tabela 2: Zyski wewnętrzne
+    doc.setFont('Roboto', 'bold');
+    doc.setTextColor(0);
+    doc.text('3.2 Zyski wewnętrzne', margin, yPos);
+    yPos += 6;
+
+    const ACTIVITY_LEVELS: Record<string, string> = {
+        'seated_very_light': 'Siedząca, bardzo lekka',
+        'standing_light': 'Stojąca, lekka',
+        'walking_moderate': 'Chodzenie, umiarkowana',
+        'heavy_sport': 'Ciężka, sport'
+    };
+
+    const internalBody = [];
+    const p = state.internalGains.people;
+    if (p.enabled && p.count) {
+        internalBody.push(['Ludzie', `${p.count} os.`, ACTIVITY_LEVELS[p.activityLevel] || '-', `${p.startHour}:00 - ${p.endHour}:00`]);
+    } else {
+        internalBody.push(['Ludzie', 'Brak', '-', '-']);
+    }
+
+    const l = state.internalGains.lighting;
+    if (l.enabled && l.powerDensity) {
+        const lightingName = LIGHTING_TYPES[l.type]?.label || 'Własne';
+        internalBody.push([`Oświetlenie - ${lightingName}`, `${l.powerDensity} W/m²`, '-', `${l.startHour}:00 - ${l.endHour}:00`]);
+    } else {
+        internalBody.push(['Oświetlenie', 'Brak', '-', '-']);
+    }
+
+    const eq = state.internalGains.equipment;
+    if (eq && eq.length > 0) {
+        eq.forEach((e: any) => {
+            if (e.power && e.quantity) {
+                internalBody.push([`Urządzenie: ${e.name || 'Brak nazwy'}`, `${e.power} W x ${e.quantity} szt.`, '-', `${e.startHour}:00 - ${e.endHour}:00`]);
+            }
+        });
+    } else {
+        internalBody.push(['Urządzenia', 'Brak', '-', '-']);
+    }
+
+    autoTable(doc, {
+        startY: yPos,
+        head: [['Kategoria', 'Ilość / Moc', 'Aktywność', 'Harmonogram']],
+        body: internalBody,
+        theme: 'grid',
+        headStyles: { fillColor: [241, 245, 249], textColor: 50, fontStyle: 'bold', lineColor: 200, font: 'Roboto' },
+        bodyStyles: { textColor: 50, font: 'Roboto' },
+        styles: { fontSize: 9, cellPadding: 3, font: 'Roboto' },
+        margin: { left: margin, right: margin }
+    });
+    yPos = (doc as any).lastAutoTable.finalY + 10;
+
+    // Tabela 3: Wentylacja i Infiltracja
+    doc.setFont('Roboto', 'bold');
+    doc.setTextColor(0);
+    doc.text('3.3 Wentylacja i Infiltracja', margin, yPos);
+    yPos += 6;
+
+    const VENT_TYPES: Record<string, string> = {
+        'none': 'Brak',
+        'mechanical': 'Mechaniczna',
+        'natural': 'Grawitacyjna'
+    };
+    const EXCHANGER_TYPES: Record<string, string> = {
+        'counterflow_hrv': 'Krzyżowy/Przeciwprądowy (HRV)',
+        'counterflow_erv': 'Krzyżowy/Przeciwprądowy z odzyskiem wilgoci (ERV)',
+        'rotary_condensing': 'Obrotowy (kondensacyjny)',
+        'rotary_sorption': 'Obrotowy (sorpcyjny)'
+    };
+    const TIGHTNESS_CLASSES: Record<string, string> = {
+        'tight': 'Szczelne',
+        'average': 'Średnie',
+        'leaky': 'Nieszczelne'
+    };
+
+    const ventBody = [];
+    const v = state.internalGains.ventilation;
+    
+    if (v.enabled && v.type !== 'none') {
+        const typeName = VENT_TYPES[v.type] || v.type;
+        const airflow = v.type === 'mechanical' ? `${v.airflow} m³/h` : `${v.naturalVentilationAirflow} m³/h`;
+        const exchanger = v.type === 'mechanical' ? (EXCHANGER_TYPES[v.exchangerType] || '-') : '-';
+        ventBody.push(['Wentylacja', typeName, airflow, exchanger]);
+    } else {
+        ventBody.push(['Wentylacja', 'Brak', '-', '-']);
+    }
+
+    if (v.includeInfiltration) {
+        ventBody.push(['Infiltracja', 'Uwzględniona', `Kondygnacje: ${v.buildingStories}`, `Szczelność: ${TIGHTNESS_CLASSES[v.tightnessClass] || '-'}`]);
+    } else {
+        ventBody.push(['Infiltracja', 'Brak', '-', '-']);
+    }
+
+    autoTable(doc, {
+        startY: yPos,
+        head: [['Kategoria', 'Typ / Status', 'Strumień / Parametr 1', 'Odzysk / Parametr 2']],
+        body: ventBody,
+        theme: 'grid',
+        headStyles: { fillColor: [241, 245, 249], textColor: 50, fontStyle: 'bold', lineColor: 200, font: 'Roboto' },
+        bodyStyles: { textColor: 50, font: 'Roboto' },
+        styles: { fontSize: 9, cellPadding: 3, font: 'Roboto' },
+        margin: { left: margin, right: margin }
+    });
+    yPos = (doc as any).lastAutoTable.finalY + 15;
+
+    // --- Pie Chart ---
+    if (yPos > pageHeight - 180) {
+        doc.addPage();
+        yPos = margin;
+    }
+    
+    addHeader('4. Struktura Zysków Ciepła');
     
     // Prepare Pie Data
     const pieChartValues = [
@@ -407,7 +573,7 @@ export const generatePdfReport = async (state: any) => {
     // --- PAGE 3: Daily Charts ---
     doc.addPage();
     yPos = margin;
-    addHeader('4. Przebieg Dobowy Obciążenia');
+    addHeader('5. Przebieg Dobowy Obciążenia');
 
     const hours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
 

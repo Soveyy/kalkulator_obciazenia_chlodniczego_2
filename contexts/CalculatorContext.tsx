@@ -5,6 +5,13 @@ import { calculateWorstMonth, calculateGainsForMonth, generateTemperatureProfile
 import { loadAllData } from '../services/dataService';
 import { generatePdfReport } from '../services/reportGenerator';
 import { MONTH_NAMES } from '../constants';
+import LZString from 'lz-string';
+
+interface SavedProject {
+    name: string;
+    date: string;
+    data: any;
+}
 
 interface State {
     windows: Window[];
@@ -27,6 +34,7 @@ interface State {
     hoveredDirection: string | null;
     isSidebarOpen: boolean;
     isGeneratingReport: boolean;
+    savedProjects: SavedProject[];
 }
 
 type Action = 
@@ -51,8 +59,13 @@ type Action =
     | { type: 'SET_MODAL'; payload: { isOpen: boolean; type?: string | null; data?: any } }
     | { type: 'ADD_TOAST'; payload: { message: string; type: 'info' | 'success' | 'danger' } }
     | { type: 'REMOVE_TOAST'; payload: number }
-    | { type: 'SAVE_PROJECT' }
-    | { type: 'LOAD_PROJECT' }
+    | { type: 'SAVE_PROJECT' } // Legacy single save
+    | { type: 'LOAD_PROJECT' } // Legacy single load
+    | { type: 'SAVE_PROJECT_AS'; payload: string }
+    | { type: 'LOAD_PROJECT_FROM_LIST'; payload: string }
+    | { type: 'DELETE_PROJECT'; payload: string }
+    | { type: 'SET_SAVED_PROJECTS'; payload: SavedProject[] }
+    | { type: 'GENERATE_SHARE_LINK' }
     | { type: 'RESET_PROJECT' }
     | { type: 'SET_STATE'; payload: Partial<State> }
     | { type: 'SET_ACTIVE_TAB'; payload: AppTab }
@@ -119,6 +132,7 @@ const initialState: State = {
     hoveredDirection: null,
     isSidebarOpen: false,
     isGeneratingReport: false,
+    savedProjects: [],
 };
 
 let toastId = 0;
@@ -271,6 +285,8 @@ function calculatorReducer(state: State, action: Action): State {
             return { ...state, isSidebarOpen: !state.isSidebarOpen };
         case 'SET_GENERATING_REPORT':
             return { ...state, isGeneratingReport: action.payload };
+        case 'SET_SAVED_PROJECTS':
+            return { ...state, savedProjects: action.payload };
         default:
             return state;
     }
@@ -309,6 +325,41 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
         document.documentElement.classList.toggle('dark', initialTheme === 'dark');
     }, []);
     
+    // Load saved projects list on mount
+    useEffect(() => {
+        const savedProjectsStr = localStorage.getItem('hvac_saved_projects');
+        if (savedProjectsStr) {
+            try {
+                const savedProjects = JSON.parse(savedProjectsStr);
+                dispatch({ type: 'SET_SAVED_PROJECTS', payload: savedProjects });
+            } catch (e) {
+                console.error("Failed to parse saved projects", e);
+            }
+        }
+    }, []);
+
+    // Check for URL params on mount
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const data = params.get('data');
+        if (data) {
+            try {
+                const decompressed = LZString.decompressFromEncodedURIComponent(data);
+                if (decompressed) {
+                    const projectData = JSON.parse(decompressed);
+                    dispatch({ type: 'SET_STATE', payload: projectData });
+                    dispatch({ type: 'ADD_TOAST', payload: { message: 'Projekt wczytany z linku!', type: 'success' } });
+                    
+                    // Clean URL
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            } catch (e) {
+                console.error("Failed to load project from URL", e);
+                dispatch({ type: 'ADD_TOAST', payload: { message: 'Nie udało się wczytać projektu z linku.', type: 'danger' } });
+            }
+        }
+    }, []);
+
     useEffect(() => {
         if (state.isSidebarOpen) {
             document.body.style.overflow = 'hidden';
@@ -424,6 +475,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
 
     const enhancedDispatch = useCallback((action: Action) => {
         if (action.type === 'SAVE_PROJECT') {
+            // Legacy save
             const projectData = {
                 windows: state.windows,
                 input: state.input,
@@ -431,8 +483,9 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                 internalGains: state.internalGains,
             };
             localStorage.setItem('heatGainProject', JSON.stringify(projectData));
-            dispatch({ type: 'ADD_TOAST', payload: { message: 'Projekt zapisany!', type: 'success' } });
+            dispatch({ type: 'ADD_TOAST', payload: { message: 'Projekt zapisany (szybki zapis)!', type: 'success' } });
         } else if (action.type === 'LOAD_PROJECT') {
+            // Legacy load
             const savedProject = localStorage.getItem('heatGainProject');
             if (savedProject) {
                 const projectData = JSON.parse(savedProject);
@@ -440,8 +493,60 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                 dispatch({ type: 'SET_STATE', payload: projectData });
                 dispatch({ type: 'ADD_TOAST', payload: { message: 'Projekt wczytany!', type: 'success' } });
             } else {
-                dispatch({ type: 'ADD_TOAST', payload: { message: 'Nie znaleziono zapisanego projektu.', type: 'info' } });
+                dispatch({ type: 'ADD_TOAST', payload: { message: 'Nie znaleziono szybkiego zapisu.', type: 'info' } });
             }
+        } else if (action.type === 'SAVE_PROJECT_AS') {
+            const name = action.payload;
+            const projectData = {
+                windows: state.windows,
+                input: { ...state.input, projectName: name },
+                accumulation: state.accumulation,
+                internalGains: state.internalGains,
+            };
+            
+            const newProject: SavedProject = {
+                name,
+                date: new Date().toISOString(),
+                data: projectData
+            };
+
+            const updatedProjects = [...state.savedProjects.filter(p => p.name !== name), newProject];
+            localStorage.setItem('hvac_saved_projects', JSON.stringify(updatedProjects));
+            
+            dispatch({ type: 'SET_SAVED_PROJECTS', payload: updatedProjects });
+            dispatch({ type: 'SET_INPUT', payload: { ...state.input, projectName: name } });
+            dispatch({ type: 'ADD_TOAST', payload: { message: `Projekt "${name}" zapisany!`, type: 'success' } });
+
+        } else if (action.type === 'LOAD_PROJECT_FROM_LIST') {
+            const project = state.savedProjects.find(p => p.name === action.payload);
+            if (project) {
+                setInitialCalculationDone(false);
+                dispatch({ type: 'SET_STATE', payload: project.data });
+                dispatch({ type: 'ADD_TOAST', payload: { message: `Projekt "${project.name}" wczytany!`, type: 'success' } });
+            }
+        } else if (action.type === 'DELETE_PROJECT') {
+            const updatedProjects = state.savedProjects.filter(p => p.name !== action.payload);
+            localStorage.setItem('hvac_saved_projects', JSON.stringify(updatedProjects));
+            dispatch({ type: 'SET_SAVED_PROJECTS', payload: updatedProjects });
+            dispatch({ type: 'ADD_TOAST', payload: { message: 'Projekt usunięty.', type: 'info' } });
+
+        } else if (action.type === 'GENERATE_SHARE_LINK') {
+            const projectData = {
+                windows: state.windows,
+                input: state.input,
+                accumulation: state.accumulation,
+                internalGains: state.internalGains,
+            };
+            const json = JSON.stringify(projectData);
+            const compressed = LZString.compressToEncodedURIComponent(json);
+            const url = `${window.location.origin}${window.location.pathname}?data=${compressed}`;
+            
+            navigator.clipboard.writeText(url).then(() => {
+                dispatch({ type: 'ADD_TOAST', payload: { message: 'Link skopiowany do schowka!', type: 'success' } });
+            }).catch(() => {
+                dispatch({ type: 'ADD_TOAST', payload: { message: 'Nie udało się skopiować linku.', type: 'danger' } });
+            });
+
         } else if (action.type === 'RESET_PROJECT') {
             setInitialCalculationDone(false);
             dispatch({ type: 'SET_STATE', payload: {
