@@ -16,6 +16,7 @@ import RtsVisualizerModal from './components/modals/RtsVisualizerModal';
 import CompassHelper from './components/CompassHelper';
 import KPIDashboard from './components/KPIDashboard';
 import ProjectListModal from './components/modals/ProjectListModal';
+import ToastContainer from './components/ToastContainer';
 
 const AppContent: React.FC = () => {
     const { state } = useCalculator();
