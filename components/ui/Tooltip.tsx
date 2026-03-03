@@ -18,7 +18,7 @@ const Tooltip: React.FC<TooltipProps> = ({ text, position = 'bottom', children }
   return (
     <span className="group relative ml-1 inline-flex items-center">
       {children || <InformationCircleIcon className="w-4 h-4 text-slate-400 dark:text-slate-500 cursor-help" />}
-      <span className={`absolute z-50 w-max max-w-xs scale-95 transform rounded-md bg-slate-800 px-2 py-1 text-xs font-semibold text-white opacity-0 transition-all group-hover:scale-100 group-hover:opacity-100 dark:bg-slate-700 pointer-events-none ${positionClasses[position]}`}>
+      <span className={`absolute z-50 w-max max-w-[180px] scale-95 transform rounded-md bg-slate-800 px-2 py-1.5 text-[11px] leading-tight font-medium text-white opacity-0 transition-all group-hover:scale-100 group-hover:opacity-100 dark:bg-slate-700 pointer-events-none shadow-xl border border-white/10 ${positionClasses[position]}`}>
         {text}
       </span>
     </span>

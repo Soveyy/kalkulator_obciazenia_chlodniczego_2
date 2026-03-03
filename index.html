@@ -61,8 +61,32 @@
     .collapsible-content.expanded {
         max-height: 500px; /* Adjust as needed for table height */
     }
+    .label-style {
+        display: block;
+        font-size: 0.875rem;
+        margin-bottom: 0.25rem;
+        color: #334155;
+    }
+    .dark .label-style {
+        color: #cbd5e1;
+    }
 </style>
 <link rel="stylesheet" href="/index.css">
+    <script>
+        // Skrypt czyszczący, aby usunąć Service Workery i wyczyścić cache, które mogą blokować odświeżanie podglądu
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                }
+            });
+        }
+        if ('caches' in window) {
+            caches.keys().then(function(names) {
+                for (let name of names) caches.delete(name);
+            });
+        }
+    </script>
 </head>
 <body class="bg-slate-100 dark:bg-slate-900">
     <div id="root"></div>

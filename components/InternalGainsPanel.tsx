@@ -137,17 +137,17 @@ const InternalGainsPanel: React.FC = () => {
             <Card>
                 <h3 className="font-semibold mb-3">Ludzie</h3>
                 <div className="space-y-4">
-                    <Checkbox id="people_enabled" label="Uwzględnij zyski od ludzi" name="enabled" checked={state.internalGains.people.enabled} onChange={handlePeopleChange} />
+                    <Checkbox id="people_enabled" label="Uwzględnij zyski ciepła od ludzi" name="enabled" checked={state.internalGains.people.enabled} onChange={handlePeopleChange} />
                     {state.internalGains.people.enabled && (
                         <div className="pl-4 border-l-2 border-slate-200 dark:border-slate-700 space-y-4 mt-4">
                             <div>
-                                <label className="label-style">Liczba osób:</label>
+                                <label className="label-style font-medium">Liczba osób:</label>
                                 <Input type="number" name="count" value={state.internalGains.people.count} onChange={handlePeopleChange} min="0" />
                             </div>
                             <div>
-                                <label className="label-style flex items-center">
+                                <label className="label-style flex items-center font-medium">
                                     Poziom aktywności:
-                                    <Tooltip text="Zyski ciepła od ludzi są korygowane w zależności od temperatury wewnętrznej. Dla temp. >= 27°C, zysk jawny jest zmniejszany o 20%, a utajony odpowiednio zwiększany." />
+                                    <Tooltip text="Zyski ciepła od ludzi są korygowane w zależności od temperatury wewnętrznej. Dla temp. >= 27°C, zysk jawny jest zmniejszany o 20%, a utajony odpowiednio zwiększany." position="top" />
                                 </label>
                                 <Select name="activityLevel" value={state.internalGains.people.activityLevel} onChange={handlePeopleChange}>
                                     {Object.entries(PEOPLE_ACTIVITY_LEVELS).map(([key, value]) => (
@@ -173,11 +173,11 @@ const InternalGainsPanel: React.FC = () => {
             <Card>
                  <h3 className="font-semibold mb-3">Oświetlenie</h3>
                  <div className="space-y-4">
-                    <Checkbox id="lighting_enabled" label="Uwzględnij zyski od oświetlenia" name="enabled" checked={state.internalGains.lighting.enabled} onChange={handleLightingChange} />
+                    <Checkbox id="lighting_enabled" label="Uwzględnij zyski ciepła od oświetlenia" name="enabled" checked={state.internalGains.lighting.enabled} onChange={handleLightingChange} />
                     {state.internalGains.lighting.enabled && (
                         <div className="pl-4 border-l-2 border-slate-200 dark:border-slate-700 space-y-4 mt-4">
                             <div>
-                                <label className="label-style">Rodzaj oświetlenia:</label>
+                                <label className="label-style font-medium">Rodzaj oświetlenia:</label>
                                 <Select name="type" value={state.internalGains.lighting.type} onChange={handleLightingChange}>
                                    {Object.entries(LIGHTING_TYPES).map(([key, value]) => (
                                         <option key={key} value={key}>{value.label}</option>
@@ -185,7 +185,7 @@ const InternalGainsPanel: React.FC = () => {
                                 </Select>
                             </div>
                              <div>
-                                <label className="label-style">Gęstość mocy (W/m²):</label>
+                                <label className="label-style font-medium">Gęstość mocy (W/m²):</label>
                                 <Input type="number" name="powerDensity" value={state.internalGains.lighting.powerDensity} onChange={handleLightingChange} step="1" min="0" />
                             </div>
                             <div className="mt-2">
@@ -275,7 +275,6 @@ const InternalGainsPanel: React.FC = () => {
                     ))}
                 </div>
             </Card>
-            <style>{`.label-style { display: block; text-sm font-medium mb-1 text-slate-700 dark:text-slate-300; }`}</style>
         </div>
     );
 };

@@ -11,6 +11,7 @@ const VentilationPanel: React.FC = () => {
     const { state, dispatch } = useCalculator();
     const { ventilation } = state.internalGains;
     const { input } = state;
+    const [moistureError, setMoistureError] = React.useState<string | null>(null);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
@@ -22,7 +23,22 @@ const VentilationPanel: React.FC = () => {
             (newVentilationGains as any)[name] = checked;
         } else if (type === 'radio') {
             (newVentilationGains as any)[name] = value;
-        } else if (['airflow', 'naturalVentilationAirflow', 'exteriorWallPerimeter', 'roomHeight', 'windSpeed', 'outdoorMoistureContent'].includes(name)) {
+        } else if (name === 'outdoorMoistureContent') {
+            if (value === '') {
+                newVentilationGains.outdoorMoistureContent = '';
+                setMoistureError(null);
+            } else {
+                const num = parseFloat(value);
+                if (!isNaN(num)) {
+                    newVentilationGains.outdoorMoistureContent = num;
+                    if (num < 0.005 || num > 0.018) {
+                        setMoistureError('Wartość musi być w zakresie 0,005 - 0,018 kg/kg');
+                    } else {
+                        setMoistureError(null);
+                    }
+                }
+            }
+        } else if (['airflow', 'naturalVentilationAirflow', 'exteriorWallPerimeter', 'roomHeight', 'windSpeed'].includes(name)) {
             if (value === '') {
                 (newVentilationGains as any)[name] = '';
             } else {
@@ -59,24 +75,31 @@ const VentilationPanel: React.FC = () => {
                 <h3 className="font-semibold mb-3">Parametry strefy</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label className="label-style">Obwód ścian zewnętrznych (m):</label>
+                        <label className="label-style font-medium">Obwód ścian zewnętrznych (m):</label>
                         <Input type="number" name="exteriorWallPerimeter" value={ventilation.exteriorWallPerimeter} onChange={handleChange} min="0" step="0.1" />
                     </div>
                     <div>
-                        <label className="label-style">Wysokość pomieszczenia (m):</label>
+                        <label className="label-style font-medium">Wysokość pomieszczenia (m):</label>
                         <Input type="number" name="roomHeight" value={ventilation.roomHeight} onChange={handleChange} min="0" step="0.1" />
                     </div>
                     <div>
-                        <label className="label-style flex items-center">
+                        <label className="label-style flex items-center font-medium">
                             Zawartość wilgoci powietrza zewn. (kg/kg):
-                            <Tooltip text="Zawartość wilgoci powietrza zewnętrznego. Używana do obliczenia obciążenia utajonego." />
+                            <Tooltip text="Zawartość wilgoci powietrza zewnętrznego. Używana do obliczenia obciążenia utajonego." position="top" />
                         </label>
-                        <Input name="outdoorMoistureContent" type="number" value={ventilation.outdoorMoistureContent} onChange={handleChange} step="0.0001" />
+                        <div className="relative">
+                            <Input name="outdoorMoistureContent" type="number" value={ventilation.outdoorMoistureContent} onChange={handleChange} step="0.0001" className={moistureError ? 'border-red-500 focus:ring-red-500' : ''} />
+                            {moistureError && (
+                                <p className="text-[10px] text-red-500 mt-1 absolute bg-white dark:bg-slate-900 px-1 rounded border border-red-200 dark:border-red-900/50 z-10 shadow-sm">
+                                    {moistureError}
+                                </p>
+                            )}
+                        </div>
                     </div>
                     <div>
-                        <label className="label-style flex items-center">
+                        <label className="label-style flex items-center font-medium">
                             Efektywna pow. nieszczelności (cm²):
-                            <Tooltip text="Obliczona na podstawie obwodu, wysokości i wybranej klasy szczelności budynku." />
+                            <Tooltip text="Obliczona na podstawie obwodu, wysokości i wybranej klasy szczelności budynku." position="top" />
                         </label>
                         <Input type="text" value={effectiveLeakageArea} disabled className="bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed" />
                     </div>
@@ -90,7 +113,7 @@ const VentilationPanel: React.FC = () => {
                     {ventilation.includeInfiltration && (
                         <div className="pl-4 border-l-2 border-slate-200 dark:border-slate-700 space-y-4 mt-4">
                             <div>
-                                <label className="label-style">Całkowita liczba kondygnacji budynku:</label>
+                                <label className="label-style font-medium">Całkowita liczba kondygnacji budynku:</label>
                                 <Select name="buildingStories" value={ventilation.buildingStories} onChange={handleChange}>
                                     <option value="1">1</option>
                                     <option value="2">2</option>
@@ -98,7 +121,7 @@ const VentilationPanel: React.FC = () => {
                                 </Select>
                             </div>
                             <div>
-                                <label className="label-style">Klasa szczelności przegród:</label>
+                                <label className="label-style font-medium">Klasa szczelności przegród:</label>
                                 <Select name="tightnessClass" value={ventilation.tightnessClass} onChange={handleChange}>
                                     <option value="tight">Szczelne (0.7 cm²/m²)</option>
                                     <option value="average">Średnie (2.0 cm²/m²)</option>
@@ -106,17 +129,17 @@ const VentilationPanel: React.FC = () => {
                                 </Select>
                             </div>
                             <div>
-                                <label className="label-style">Klasa osłonięcia przed wiatrem:</label>
+                                <label className="label-style font-medium">Klasa osłonięcia przed wiatrem:</label>
                                 <Select name="shieldingClass" value={ventilation.shieldingClass} onChange={handleChange}>
-                                    <option value="1">1 - Brak osłon</option>
-                                    <option value="2">2 - Typowe dla domów wiejskich</option>
-                                    <option value="3">3 - Typowe dla budynków naprzeciwko</option>
-                                    <option value="4">4 - Typowe dla budynków miejskich na większych działkach</option>
-                                    <option value="5">5 - Typowe dla gęstej zabudowy</option>
+                                    <option value="1">Klasa 1 - Brak przeszkód (teren otwarty)</option>
+                                    <option value="2">Klasa 2 - Osłona słaba (odizolowany dom wiejski)</option>
+                                    <option value="3">Klasa 3 - Osłona umiarkowana (budynki po przeciwnej stronie ulicy)</option>
+                                    <option value="4">Klasa 4 - Osłona miejska rozproszona (przeszkody dalej niż wysokość budynku)</option>
+                                    <option value="5">Klasa 5 - Osłona silna (gęsta zabudowa, bliskie sąsiedztwo budynków/drzew)</option>
                                 </Select>
                             </div>
                             <div>
-                                <label className="label-style">Prędkość wiatru U (m/s):</label>
+                                <label className="label-style font-medium">Prędkość wiatru U (m/s):</label>
                                 <Input type="number" name="windSpeed" value={ventilation.windSpeed} onChange={handleChange} min="0" step="0.1" />
                             </div>
                         </div>
@@ -136,13 +159,13 @@ const VentilationPanel: React.FC = () => {
                         </label>
                         <label className="flex items-center space-x-2 cursor-pointer">
                             <input type="radio" name="type" value="mechanical" checked={ventilation.type === 'mechanical'} onChange={(e) => {
-                                dispatch({ type: 'SET_VENTILATION_GAINS', payload: { ...ventilation, type: 'mechanical', enabled: true } });
+                                dispatch({ type: 'SET_VENTILATION_GAINS', payload: { ...ventilation, type: 'mechanical', enabled: true, airflow: 50 } });
                             }} className="form-radio text-indigo-600 focus:ring-indigo-500" />
                             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Mechaniczna z odzyskiem</span>
                         </label>
                         <label className="flex items-center space-x-2 cursor-pointer">
                             <input type="radio" name="type" value="natural" checked={ventilation.type === 'natural'} onChange={(e) => {
-                                dispatch({ type: 'SET_VENTILATION_GAINS', payload: { ...ventilation, type: 'natural', enabled: true } });
+                                dispatch({ type: 'SET_VENTILATION_GAINS', payload: { ...ventilation, type: 'natural', enabled: true, naturalVentilationAirflow: 50 } });
                             }} className="form-radio text-indigo-600 focus:ring-indigo-500" />
                             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Grawitacyjna</span>
                         </label>
@@ -153,11 +176,11 @@ const VentilationPanel: React.FC = () => {
                             {ventilation.type === 'mechanical' ? (
                                 <>
                                     <div>
-                                        <label className="label-style">Strumień powietrza wentylacyjnego (m³/h):</label>
+                                        <label className="label-style font-medium">Strumień powietrza wentylacyjnego (m³/h):</label>
                                         <Input type="number" name="airflow" value={ventilation.airflow} onChange={handleChange} min="0" />
                                     </div>
                                     <div>
-                                        <label className="label-style">Typ wymiennika odzysku ciepła:</label>
+                                        <label className="label-style font-medium">Typ wymiennika odzysku ciepła:</label>
                                         <Select name="exchangerType" value={ventilation.exchangerType} onChange={handleChange}>
                                             {Object.entries(VENTILATION_EXCHANGER_TYPES).map(([key, value]) => (
                                                 <option key={key} value={key}>{value.label}</option>
@@ -170,7 +193,7 @@ const VentilationPanel: React.FC = () => {
                                 </>
                             ) : (
                                 <div>
-                                    <label className="label-style">Normatywny wydatek powietrza (m³/h):</label>
+                                    <label className="label-style font-medium">Normatywny wydatek powietrza (m³/h):</label>
                                     <Input type="number" name="naturalVentilationAirflow" value={ventilation.naturalVentilationAirflow} onChange={handleChange} min="0" />
                                 </div>
                             )}
@@ -178,7 +201,6 @@ const VentilationPanel: React.FC = () => {
                     )}
                 </div>
             </Card>
-            <style>{`.label-style { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem; color: #334155; } .dark .label-style { color: #cbd5e1; }`}</style>
         </div>
     );
 };

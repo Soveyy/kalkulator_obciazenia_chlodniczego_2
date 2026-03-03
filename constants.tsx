@@ -91,10 +91,10 @@ export const DRAPERY_MATERIAL_LABELS: { [key: string]: string } = {
 };
 
 export const DRAPERY_MATERIAL_DESCRIPTIONS: { [key: string]: string } = {
-    open: 'Wskazówka: Lekka tkanina, przepuszczająca dużo światła i zapewniająca widok.',
-    semiopen: 'Wskazówka: Tkanina pośrednia, częściowo przepuszczająca światło.',
-    closed: 'Wskazówka: Ciężka tkanina, nieprzezroczysta, blokująca światło.',
-    sheer: 'Wskazówka: Bardzo lekka, transparentna tkanina.'
+    open: 'Lekka tkanina, przepuszczająca dużo światła i zapewniająca widok.',
+    semiopen: 'Tkanina pośrednia, częściowo przepuszczająca światło.',
+    closed: 'Ciężka tkanina, nieprzezroczysta, blokująca światło.',
+    sheer: 'Bardzo lekka, transparentna tkanina.'
 };
 
 export const ROLLER_SHADE_SETTING_LABELS: { [key: string]: string } = {

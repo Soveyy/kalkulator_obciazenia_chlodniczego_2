@@ -9,7 +9,7 @@ import LZString from 'lz-string';
 
 const initialState: State = {
     windows: [],
-    input: { projectName: 'Mój Projekt', tInternal: '24', rhInternal: '50', tExternal: '35', roomArea: '25' },
+    input: { projectName: 'Mój Projekt', tInternal: '24', rhInternal: '50', tExternal: '32', roomArea: '25' },
     accumulation: {
         include: true,
         thermalMass: 'very_heavy',
@@ -37,7 +37,7 @@ const initialState: State = {
             type: 'none',
             airflow: 150,
             exchangerType: 'counterflow_hrv',
-            outdoorMoistureContent: 0.0125,
+            outdoorMoistureContent: 0.0115,
             naturalVentilationAirflow: 150,
             includeInfiltration: false,
             exteriorWallPerimeter: 10,
@@ -244,6 +244,13 @@ const CalculatorContext = createContext<{
     handleGenerateReport: () => void;
     isCalculating: boolean;
     toasts: any[];
+    progress: {
+        base: boolean;
+        internal: boolean;
+        windows: boolean;
+        ventilation: boolean;
+        total: number;
+    };
 }>({
     state: initialState,
     dispatch: () => null,
@@ -253,6 +260,7 @@ const CalculatorContext = createContext<{
     handleGenerateReport: () => {},
     isCalculating: false,
     toasts: [],
+    progress: { base: false, internal: false, windows: false, ventilation: false, total: 0 }
 });
 
 export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }) => {
@@ -337,6 +345,19 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
         dispatch({ type: 'SET_STATE', payload: { theme: newTheme, results: state.results, activeResults: state.activeResults }});
         document.documentElement.classList.toggle('dark', newTheme === 'dark');
     };
+
+    const progress = React.useMemo(() => {
+        const base = state.input.projectName.trim() !== '' && parseFloat(state.input.roomArea) > 0;
+        const internal = state.internalGains.people.enabled || state.internalGains.lighting.enabled || state.internalGains.equipment.length > 0;
+        const windows = state.windows.length > 0;
+        const ventilation = state.internalGains.ventilation.type !== 'none';
+        
+        const sections = [base, internal, windows, ventilation];
+        const completed = sections.filter(Boolean).length;
+        const total = Math.round((completed / sections.length) * 100);
+
+        return { base, internal, windows, ventilation, total };
+    }, [state.input.projectName, state.input.roomArea, state.internalGains, state.windows]);
     
     const performCalculation = useCallback((month: string, customMessage?: string) => {
         if (!state.allData) return;
@@ -510,7 +531,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
         }
     }, [state, initialCalculationDone]);
 
-    const value = { state, dispatch: enhancedDispatch, theme: state.theme, toggleTheme, handleCalculate, isCalculating, toasts: state.toasts, handleGenerateReport };
+    const value = { state, dispatch: enhancedDispatch, theme: state.theme, toggleTheme, handleCalculate, isCalculating, toasts: state.toasts, handleGenerateReport, progress };
 
     return (
         <CalculatorContext.Provider value={value}>

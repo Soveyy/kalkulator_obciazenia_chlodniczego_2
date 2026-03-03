@@ -24,18 +24,21 @@ const Sidebar: React.FC = () => {
             />
             <aside 
                 className={`
-                    bg-slate-50 dark:bg-slate-900 p-4 flex flex-col 
+                    bg-slate-50 dark:bg-slate-900 p-3 flex flex-col 
                     transform transition-transform duration-300 ease-in-out
                     
                     fixed inset-x-0 bottom-0 z-40 h-[85vh] w-full rounded-t-2xl shadow-2xl
                     ${state.isSidebarOpen ? 'translate-y-0' : 'translate-y-full'}
                     
-                    lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:w-80 lg:rounded-none lg:shadow-none lg:translate-y-0 lg:translate-x-0 lg:pb-24
+                    lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:w-80 lg:rounded-none lg:shadow-none lg:translate-y-0 lg:translate-x-0 lg:pb-20
                 `}
             >
                  <div className="w-16 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto mb-2 lg:hidden" aria-hidden="true"></div>
-                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Parametry Główne</h2>
+                 <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-xl font-bold text-slate-800 dark:text-white">Parametry Główne</h2>
+                        <span className={`w-2 h-2 rounded-full transition-colors ${useCalculator().progress.base ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                    </div>
                     <button 
                         className="lg:hidden p-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
                         onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
@@ -45,13 +48,12 @@ const Sidebar: React.FC = () => {
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-6 pb-4 -mr-2 pr-2">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-4 pb-4 -mr-2 pr-2">
                     {/* Project Management */}
-                    <Card>
-                        <h3 className="font-semibold mb-3">Projekt</h3>
-                         <div className="space-y-3">
+                    <Card className="!p-4">
+                         <div className="space-y-2">
                             <div>
-                                <label className="label-style flex items-center">
+                                <label className="label-style flex items-center font-semibold">
                                     Nazwa Projektu:
                                 </label>
                                 <Input name="projectName" type="text" value={state.input.projectName} onChange={(e) => dispatch({ type: 'SET_INPUT', payload: { ...state.input, [e.target.name]: e.target.value } })} />
@@ -70,27 +72,26 @@ const Sidebar: React.FC = () => {
                     </Card>
 
                     {/* Input Data */}
-                    <Card>
-                        <h3 className="font-semibold mb-3">Dane Wejściowe</h3>
-                        <div className="space-y-3">
+                    <Card className="!p-4">
+                        <div className="space-y-2">
                             <div>
-                                <label className="label-style flex items-center">
+                                <label className="label-style flex items-center font-semibold">
                                     Temperatura wewnętrzna (°C):
-                                    <Tooltip text="Projektowana temperatura powietrza wewnątrz pomieszczenia."/>
+                                    <Tooltip text="Projektowana temperatura powietrza wewnątrz pomieszczenia." position="top" />
                                 </label>
                                 <Input name="tInternal" type="number" value={state.input.tInternal} onChange={(e) => dispatch({ type: 'SET_INPUT', payload: { ...state.input, [e.target.name]: e.target.value } })} />
                             </div>
                             <div>
-                                <label className="label-style flex items-center">
+                                <label className="label-style flex items-center font-semibold">
                                     Wilgotność wewn. (%):
-                                    <Tooltip text="Projektowana wilgotność względna powietrza wewnątrz."/>
+                                    <Tooltip text="Projektowana wilgotność względna powietrza wewnątrz." position="top" />
                                 </label>
                                 <Input name="rhInternal" type="number" value={state.input.rhInternal} onChange={(e) => dispatch({ type: 'SET_INPUT', payload: { ...state.input, [e.target.name]: e.target.value } })} />
                             </div>
                             <div>
-                                <label className="label-style flex items-center">
+                                <label className="label-style flex items-center font-semibold">
                                     Temperatura zewn. (°C):
-                                    <Tooltip text="Maksymalna projektowana dobowa temperatura zewnętrzna." />
+                                    <Tooltip text="Maksymalna projektowana dobowa temperatura zewnętrzna." position="top" />
                                 </label>
                                  <div className="flex gap-2 items-center">
                                     <Input name="tExternal" type="number" value={state.input.tExternal} onChange={(e) => dispatch({ type: 'SET_INPUT', payload: { ...state.input, [e.target.name]: e.target.value } })} />
@@ -98,9 +99,9 @@ const Sidebar: React.FC = () => {
                                  </div>
                             </div>
                              <div>
-                                <label className="label-style flex items-center">
-                                    Powierzchnia pomieszczenia (m²):
-                                    <Tooltip text="Powierzchnia jest wykorzystywana do obliczania zysków od oświetlenia oraz urządzeń." />
+                                <label className="label-style flex items-center font-semibold">
+                                    Powierzchnia (m²):
+                                    <Tooltip text="Powierzchnia jest wykorzystywana do obliczania zysków od oświetlenia oraz urządzeń." position="top" />
                                 </label>
                                 <Input name="roomArea" type="number" value={state.input.roomArea} onChange={(e) => dispatch({ type: 'SET_INPUT', payload: { ...state.input, [e.target.name]: e.target.value } })} />
                             </div>
@@ -108,12 +109,12 @@ const Sidebar: React.FC = () => {
                     </Card>
 
                     {/* Accumulation Settings */}
-                    <Card>
-                         <h3 className="font-semibold mb-3 flex items-center">
+                    <Card className="!p-4">
+                         <h3 className="font-semibold mb-2 flex items-center">
                             Akumulacja Ciepła (RTS)
-                            <Tooltip text="Ustawienia dotyczące zdolności budynku do magazynowania i opóźniania oddawania ciepła." />
+                            <Tooltip text="Ustawienia dotyczące zdolności budynku do magazynowania i opóźniania oddawania ciepła." position="top" />
                         </h3>
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                             <Checkbox
                                 id="accumulation_enabled"
                                 label="Uwzględnij akumulację ciepła"
@@ -122,11 +123,11 @@ const Sidebar: React.FC = () => {
                                 onChange={(e) => dispatch({ type: 'SET_ACCUMULATION', payload: { ...state.accumulation, [e.target.name]: e.target.checked } })}
                             />
                             {state.accumulation.include && (
-                                <div className="pl-4 border-l-2 border-slate-200 dark:border-slate-700 space-y-3 mt-3">
+                                <div className="pl-4 border-l-2 border-slate-200 dark:border-slate-700 space-y-2 mt-2">
                                     <div>
-                                        <label className="label-style flex items-center">
+                                        <label className="label-style flex items-center font-semibold">
                                             Masa termiczna budynku:
-                                            <Tooltip text="Określa zdolność budynku do magazynowania ciepła. Konstrukcja ciężka wolniej reaguje na zmiany temperatury." />
+                                            <Tooltip text="Określa zdolność budynku do magazynowania ciepła. Konstrukcja ciężka wolniej reaguje na zmiany temperatury." position="top" />
                                         </label>
                                         <Select name="thermalMass" value={state.accumulation.thermalMass} onChange={(e) => dispatch({ type: 'SET_ACCUMULATION', payload: { ...state.accumulation, [e.target.name]: e.target.value as any } })}>
                                             <option value="light">Lekka</option>
@@ -136,9 +137,9 @@ const Sidebar: React.FC = () => {
                                         </Select>
                                     </div>
                                      <div>
-                                        <label className="label-style flex items-center">
+                                        <label className="label-style flex items-center font-semibold">
                                             Typ podłogi:
-                                            <Tooltip text="Typ wykończenia podłogi wpływa na sposób pochłaniania i oddawania ciepła." />
+                                            <Tooltip text="Typ wykończenia podłogi wpływa na sposób pochłaniania i oddawania ciepła." position="top" />
                                         </label>
                                         <Select name="floorType" value={state.accumulation.floorType} onChange={(e) => dispatch({ type: 'SET_ACCUMULATION', payload: { ...state.accumulation, [e.target.name]: e.target.value as any } })}>
                                             <option value="panels">Panele / Drewno</option>
@@ -147,9 +148,9 @@ const Sidebar: React.FC = () => {
                                         </Select>
                                     </div>
                                     <div>
-                                        <label className="label-style flex items-center">
+                                        <label className="label-style flex items-center font-semibold">
                                             Procent przeszklenia fasady:
-                                            <Tooltip text="Szacowany stosunek powierzchni okien do całkowitej powierzchni fasady. Wpływa na charakterystykę akumulacji ciepła." />
+                                            <Tooltip text="Szacowany stosunek powierzchni okien do całkowitej powierzchni fasady. Wpływa na charakterystykę akumulacji ciepła." position="top" />
                                         </label>
                                         <Select name="glassPercentage" value={state.accumulation.glassPercentage} onChange={(e) => dispatch({ type: 'SET_ACCUMULATION', payload: { ...state.accumulation, [e.target.name]: parseInt(e.target.value) as any } })}>
                                             <option value={10}>10%</option>
@@ -157,7 +158,7 @@ const Sidebar: React.FC = () => {
                                             <option value={90}>90%</option>
                                         </Select>
                                     </div>
-                                    <div className="mt-4">
+                                    <div className="mt-2">
                                         <Button 
                                             variant="secondary" 
                                             fullWidth 
@@ -171,11 +172,6 @@ const Sidebar: React.FC = () => {
                         </div>
                     </Card>
                 </div>
-                
-                <div className="mt-auto pt-4 text-center text-xs text-slate-400">
-                    Wersja 0.35
-                </div>
-                <style>{`.label-style { display: block; text-sm font-medium mb-1 text-slate-700 dark:text-slate-300; }`}</style>
             </aside>
         </>
     );

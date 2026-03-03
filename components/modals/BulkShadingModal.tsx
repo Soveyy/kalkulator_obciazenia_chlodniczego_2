@@ -164,7 +164,6 @@ const BulkShadingModal: React.FC = () => {
                     </div>
                 )}
             </div>
-             <style>{`.label-style { display: block; margin-bottom: 0.25rem; font-medium; color: #475569; } .dark .label-style { color: #cbd5e1; }`}</style>
         </Modal>
     );
 };

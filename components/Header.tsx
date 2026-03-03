@@ -9,7 +9,7 @@ const Header: React.FC = () => {
     return (
         <header className="mb-6">
             <h1 className="text-xl font-bold text-slate-800 dark:text-white text-center mb-4 lg:hidden">
-                Zaawansowany Kalkulator Zysków Ciepła
+                Kalkulator obciążenia chłodniczego
             </h1>
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -21,9 +21,14 @@ const Header: React.FC = () => {
                         <MenuIcon className="w-5 h-5" />
                         <span className="font-semibold text-sm pr-2">Konfiguracja</span>
                     </button>
-                    <h1 className="hidden lg:block text-2xl md:text-3xl font-bold text-slate-800 dark:text-white">
-                        Zaawansowany Kalkulator Zysków Ciepła
-                    </h1>
+                    <div className="flex items-baseline gap-3">
+                        <h1 className="hidden lg:block text-2xl md:text-3xl font-bold text-slate-800 dark:text-white">
+                            Kalkulator obciążenia chłodniczego
+                        </h1>
+                        <span className="hidden lg:block text-xs font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
+                            v0.35
+                        </span>
+                    </div>
                     <Tooltip text="Pokaż metodologię" position="bottom">
                          <button
                             onClick={() => dispatch({ type: 'SET_MODAL', payload: { type: 'methodology', isOpen: true } })}
