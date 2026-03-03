@@ -64,7 +64,7 @@ type Action =
 
 const initialState: State = {
     windows: [],
-    input: { projectName: 'Mój Projekt', tInternal: '24', rhInternal: '50', tExternal: '35', roomArea: '25', tDewPoint: '15' },
+    input: { projectName: 'Mój Projekt', tInternal: '24', rhInternal: '50', tExternal: '35', roomArea: '25' },
     accumulation: {
         include: true,
         thermalMass: 'very_heavy',
@@ -89,8 +89,18 @@ const initialState: State = {
         equipment: [],
         ventilation: {
             enabled: false,
+            type: 'none',
             airflow: 150,
             exchangerType: 'counterflow_hrv',
+            outdoorMoistureContent: 0.0125,
+            naturalVentilationAirflow: 150,
+            includeInfiltration: false,
+            exteriorWallPerimeter: 10,
+            roomHeight: 2.7,
+            buildingStories: '1',
+            tightnessClass: 'average',
+            shieldingClass: '3',
+            windSpeed: 3.4,
         },
     },
     allData: null,

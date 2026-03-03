@@ -24,9 +24,11 @@ const PeakSummary: React.FC = () => {
     const conductionLoadPeak = loadComponents.conduction[hourTotalCS_UTC] || 0;
     const internalSensibleLoadPeak = loadComponents.internalSensible[hourTotalCS_UTC] || 0;
     const ventilationSensibleLoadPeak = loadComponents.ventilationSensible[hourTotalCS_UTC] || 0;
+    const infiltrationSensibleLoadPeak = loadComponents.infiltrationSensible[hourTotalCS_UTC] || 0;
     
     const internalLatentAtPeak = state.activeResults.components.internalGainsLatent[hourTotalCS_UTC] || 0;
     const ventilationLatentAtPeak = state.activeResults.ventilationLoad.latent[hourTotalCS_UTC] || 0;
+    const infiltrationLatentAtPeak = state.activeResults.infiltrationLoad.latent[hourTotalCS_UTC] || 0;
 
     const anyShadingEnabled = state.windows.some(win => win.shading && win.shading.enabled);
 
@@ -50,6 +52,7 @@ const PeakSummary: React.FC = () => {
                         <p>→ Przewodzenie: {conductionLoadPeak.toFixed(0)} W</p>
                         <p>→ Wewnętrzne: {internalSensibleLoadPeak.toFixed(0)} W</p>
                         <p>→ Wentylacja: {ventilationSensibleLoadPeak.toFixed(0)} W</p>
+                        <p>→ Infiltracja: {infiltrationSensibleLoadPeak.toFixed(0)} W</p>
                     </div>
                 </div>
                  <div>
@@ -58,6 +61,7 @@ const PeakSummary: React.FC = () => {
                      <div className="text-xs pl-2">
                         <p>→ Wewnętrzne: {internalLatentAtPeak.toFixed(0)} W</p>
                         <p>→ Wentylacja: {ventilationLatentAtPeak.toFixed(0)} W</p>
+                        <p>→ Infiltracja: {infiltrationLatentAtPeak.toFixed(0)} W</p>
                     </div>
                 </div>
             </div>

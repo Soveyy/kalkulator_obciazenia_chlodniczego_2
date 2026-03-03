@@ -79,6 +79,13 @@ const Sidebar: React.FC = () => {
                             </div>
                             <div>
                                 <label className="label-style flex items-center">
+                                    Wilgotność wewn. (%):
+                                    <Tooltip text="Projektowana wilgotność względna powietrza wewnątrz."/>
+                                </label>
+                                <Input name="rhInternal" type="number" value={state.input.rhInternal} onChange={(e) => dispatch({ type: 'SET_INPUT', payload: { ...state.input, [e.target.name]: e.target.value } })} />
+                            </div>
+                            <div>
+                                <label className="label-style flex items-center">
                                     Temperatura zewn. (°C):
                                     <Tooltip text="Maksymalna projektowana dobowa temperatura zewnętrzna." />
                                 </label>
@@ -163,7 +170,7 @@ const Sidebar: React.FC = () => {
                 </div>
                 
                 <div className="mt-auto pt-4 text-center text-xs text-slate-400">
-                    Wersja 0.32
+                    Wersja 0.33
                 </div>
                 <style>{`.label-style { display: block; text-sm font-medium mb-1 text-slate-700 dark:text-slate-300; }`}</style>
             </aside>

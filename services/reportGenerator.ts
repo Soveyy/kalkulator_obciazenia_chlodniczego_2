@@ -183,9 +183,11 @@ export const generatePdfReport = async (state: any) => {
     const conductionLoadPeak = loadComponents.conduction[hourTotalCS_UTC] || 0;
     const internalSensibleLoadPeak = loadComponents.internalSensible[hourTotalCS_UTC] || 0;
     const ventilationSensibleLoadPeak = loadComponents.ventilationSensible[hourTotalCS_UTC] || 0;
+    const infiltrationSensibleLoadPeak = loadComponents.infiltrationSensible[hourTotalCS_UTC] || 0;
     
     const internalLatentAtPeak = state.activeResults.components.internalGainsLatent[hourTotalCS_UTC] || 0;
     const ventilationLatentAtPeak = state.activeResults.ventilationLoad.latent[hourTotalCS_UTC] || 0;
+    const infiltrationLatentAtPeak = state.activeResults.infiltrationLoad.latent[hourTotalCS_UTC] || 0;
     
     // Daily energy estimation
     const totalKWhCS = finalGains.clearSky.total.reduce((sum: number, val: number) => sum + Math.max(0, val), 0) / 1000;
@@ -217,6 +219,23 @@ export const generatePdfReport = async (state: any) => {
         ['Temperatura zewnętrzna (projektowa)', `${input.tExternal} °C`],
         ['Powierzchnia pomieszczenia', `${input.roomArea} m²`],
     ];
+
+    const vent = state.internalGains.ventilation;
+    if (vent.enabled) {
+        params.push(['Typ wentylacji', vent.type === 'mechanical' ? 'Mechaniczna z odzyskiem' : 'Grawitacyjna']);
+        if (vent.type === 'mechanical') {
+            params.push(['Strumień powietrza (mech.)', `${vent.airflow} m³/h`]);
+        } else {
+            params.push(['Wydatek powietrza (graw.)', `${vent.naturalVentilationAirflow} m³/h`]);
+        }
+        params.push(['Zawartość wilgoci zewn.', `${vent.outdoorMoistureContent} kg/kg`]);
+    }
+    if (vent.includeInfiltration) {
+        params.push(['Infiltracja', 'Tak']);
+        params.push(['Obwód ścian zewn.', `${vent.exteriorWallPerimeter} m`]);
+        params.push(['Wysokość pom.', `${vent.roomHeight} m`]);
+        params.push(['Klasa szczelności', vent.tightnessClass === 'tight' ? 'Szczelne' : vent.tightnessClass === 'average' ? 'Średnie' : 'Nieszczelne']);
+    }
     
     autoTable(doc, {
         startY: yPos,
@@ -264,12 +283,14 @@ export const generatePdfReport = async (state: any) => {
         ['Słoneczne (okna)', `${solarLoadPeak.toFixed(0)} W`],
         ['Przewodzenie (okna)', `${conductionLoadPeak.toFixed(0)} W`],
         ['Wewnętrzne (ludzie, sprzęt)', `${internalSensibleLoadPeak.toFixed(0)} W`],
-        ['Wentylacja mechaniczna', `${ventilationSensibleLoadPeak.toFixed(0)} W`],
+        ['Wentylacja', `${ventilationSensibleLoadPeak.toFixed(0)} W`],
+        ['Infiltracja', `${infiltrationSensibleLoadPeak.toFixed(0)} W`],
     ];
 
     const latentBody = [
         ['Wewnętrzne (ludzie)', `${internalLatentAtPeak.toFixed(0)} W`],
-        ['Wentylacja mechaniczna', `${ventilationLatentAtPeak.toFixed(0)} W`],
+        ['Wentylacja', `${ventilationLatentAtPeak.toFixed(0)} W`],
+        ['Infiltracja', `${infiltrationLatentAtPeak.toFixed(0)} W`],
     ];
 
     // Left Table (Sensible)
@@ -337,7 +358,8 @@ export const generatePdfReport = async (state: any) => {
         { label: 'Słoneczne', val: solarLoadPeak, color: '#f59e0b' },
         { label: 'Przewodzenie', val: conductionLoadPeak, color: '#f97316' },
         { label: 'Wewn. Jawne', val: internalSensibleLoadPeak, color: '#ef4444' },
-        { label: 'Wentylacja Jawna', val: ventilationSensibleLoadPeak, color: '#a855f7' },
+        { label: 'Wentylacja', val: ventilationSensibleLoadPeak, color: '#a855f7' },
+        { label: 'Infiltracja', val: infiltrationSensibleLoadPeak, color: '#10b981' },
         { label: 'Utajone', val: latentAtPeak, color: '#3b82f6' }
     ].filter(item => item.val > 0);
 
@@ -454,7 +476,8 @@ export const generatePdfReport = async (state: any) => {
                 { label: 'Słoneczne', data: reorderDataForLocalTime(loadComponents.solar, offset), backgroundColor: '#f59e0b', stack: 'a' },
                 { label: 'Przewodzenie', data: reorderDataForLocalTime(loadComponents.conduction, offset), backgroundColor: '#f97316', stack: 'a' },
                 { label: 'Wewn. Jawne', data: reorderDataForLocalTime(loadComponents.internalSensible, offset), backgroundColor: '#ef4444', stack: 'a' },
-                { label: 'Went. Jawna', data: reorderDataForLocalTime(loadComponents.ventilationSensible, offset), backgroundColor: '#a855f7', stack: 'a' },
+                { label: 'Wentylacja', data: reorderDataForLocalTime(loadComponents.ventilationSensible, offset), backgroundColor: '#a855f7', stack: 'a' },
+                { label: 'Infiltracja', data: reorderDataForLocalTime(loadComponents.infiltrationSensible, offset), backgroundColor: '#10b981', stack: 'a' },
                 { label: 'Utajone', data: reorderDataForLocalTime(finalGains.clearSky.latent, offset), backgroundColor: '#3b82f6', stack: 'a' }
             ]
         },

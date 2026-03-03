@@ -71,8 +71,18 @@ export interface InternalGains {
 
 export interface VentilationGains {
     enabled: boolean;
+    type: 'none' | 'mechanical' | 'natural';
     airflow: number | ''; // m3/h
     exchangerType: 'counterflow_hrv' | 'counterflow_erv' | 'rotary_condensing' | 'rotary_sorption';
+    outdoorMoistureContent: number | ''; // kg/kg
+    naturalVentilationAirflow: number | ''; // m3/h
+    includeInfiltration: boolean;
+    exteriorWallPerimeter: number | ''; // m
+    roomHeight: number | ''; // m
+    buildingStories: '1' | '2' | '3+';
+    tightnessClass: 'tight' | 'average' | 'leaky';
+    shieldingClass: '1' | '2' | '3' | '4' | '5';
+    windSpeed: number | ''; // m/s
 }
 
 export interface InputState {
@@ -81,7 +91,6 @@ export interface InputState {
     rhInternal: string;
     tExternal: string;
     roomArea: string;
-    tDewPoint: string;
 }
 
 export interface CalculationResultData {
@@ -111,6 +120,7 @@ export interface CalculationLoadComponents {
     conduction: number[];
     internalSensible: number[];
     ventilationSensible: number[];
+    infiltrationSensible: number[];
 }
 
 export interface CalculationResults {
@@ -124,13 +134,9 @@ export interface CalculationResults {
         clearSky: CalculationResultData;
     },
     ventilationLoad: CalculationResultData;
+    infiltrationLoad: CalculationResultData;
     components: CalculationComponents;
-    loadComponents: {
-      solar: number[],
-      conduction: number[],
-      internalSensible: number[],
-      ventilationSensible: number[],
-    };
+    loadComponents: CalculationLoadComponents;
     incidentSolarPower: number[];
 }
 

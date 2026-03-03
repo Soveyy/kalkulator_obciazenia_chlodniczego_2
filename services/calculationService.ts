@@ -193,34 +193,118 @@ export function calculateGainsForMonth(
 
     const ventilationLoadSensible = Array(24).fill(0);
     const ventilationLoadLatent = Array(24).fill(0);
+    const infiltrationLoadSensible = Array(24).fill(0);
+    const infiltrationLoadLatent = Array(24).fill(0);
 
-    if (internalGains.ventilation && internalGains.ventilation.enabled) {
-        const airflow = Number(internalGains.ventilation.airflow) || 0;
-        const { exchangerType } = internalGains.ventilation;
-        const exchanger = VENTILATION_EXCHANGER_TYPES[exchangerType];
-        const C_s = 0.342;
-        const C_l = 836.1;
+    const getHumidityRatioWithRH = (temp: number, rh: number) => {
+        const SVP = 611.2 * Math.exp(17.67 * temp / (temp + 243.5));
+        const VP = SVP * rh;
+        const P = 101325;
+        return 0.622 * VP / (P - VP);
+    };
 
-        const getHumidityRatioWithRH = (temp: number, rh: number) => {
-            const SVP = 611.2 * Math.exp(17.67 * temp / (temp + 243.5));
-            const VP = SVP * rh;
-            const P = 101325;
-            return 0.622 * VP / (P - VP);
-        };
+    const wInternal = getHumidityRatioWithRH(tInternal, rhInternal);
+    
+    if (internalGains.ventilation) {
+        const { 
+            enabled, type, airflow, exchangerType, outdoorMoistureContent, naturalVentilationAirflow,
+            includeInfiltration, exteriorWallPerimeter, roomHeight, buildingStories, tightnessClass, shieldingClass, windSpeed
+        } = internalGains.ventilation;
 
-        const getHumidityRatioFromDewPoint = (dewPoint: number) => {
-            const SVP = 611.2 * Math.exp(17.67 * dewPoint / (dewPoint + 243.5));
-            const P_atm = 101325;
-            return (0.622 * SVP) / (P_atm - SVP);
-        };
-        
-        const wInternal = getHumidityRatioWithRH(tInternal, rhInternal);
-        const wExternal = getHumidityRatioFromDewPoint(parseFloat(input.tDewPoint) || 15);
+        const wExternal = Number(outdoorMoistureContent) || 0.0125;
+
+        const Q_mech_h = Array(24).fill(0);
+        const Q_nat_h = Array(24).fill(0);
+        const Q_inf_h = Array(24).fill(0);
+
+        if (enabled) {
+            if (type === 'mechanical') {
+                const mechAirflow = Number(airflow) || 0;
+                for (let h = 0; h < 24; h++) {
+                    Q_mech_h[h] = mechAirflow;
+                }
+            } else if (type === 'natural') {
+                const natAirflow = Number(naturalVentilationAirflow) || 0;
+                for (let h = 0; h < 24; h++) {
+                    Q_nat_h[h] = natAirflow;
+                }
+            }
+        }
+
+        if (includeInfiltration) {
+            const perimeter = Number(exteriorWallPerimeter) || 0;
+            const height = Number(roomHeight) || 0;
+            const wallArea = perimeter * height;
+
+            let tightnessFactor = 2.0; // average
+            if (tightnessClass === 'tight') tightnessFactor = 0.7;
+            if (tightnessClass === 'leaky') tightnessFactor = 4.0;
+            
+            const A_L = wallArea * tightnessFactor; // cm2
+
+            let C_s = 0.000145; // 1 story
+            if (buildingStories === '2') C_s = 0.000290;
+            if (buildingStories === '3+') C_s = 0.000435;
+
+            const C_w_table: Record<string, number[]> = {
+                '1': [0.000319, 0.000420, 0.000494],
+                '2': [0.000246, 0.000325, 0.000382],
+                '3': [0.000174, 0.000231, 0.000271],
+                '4': [0.000104, 0.000137, 0.000161],
+                '5': [0.000032, 0.000042, 0.000049],
+            };
+
+            let storyIndex = 0;
+            if (buildingStories === '2') storyIndex = 1;
+            if (buildingStories === '3+') storyIndex = 2;
+
+            const C_w = C_w_table[shieldingClass]?.[storyIndex] || 0.000174;
+            const U = Number(windSpeed) || 3.4;
+
+            for (let h = 0; h < 24; h++) {
+                const tExt = tExtProfile[h];
+                const deltaT = Math.abs(tExt - tInternal);
+                
+                // Q in m3/s
+                const Q_m3_s = (A_L / 1000) * Math.sqrt(C_s * deltaT + C_w * U * U);
+                Q_inf_h[h] = Q_m3_s * 3600;
+            }
+        }
 
         for (let h = 0; h < 24; h++) {
             const tExt = tExtProfile[h];
-            ventilationLoadSensible[h] = C_s * airflow * (tExt - tInternal) * (1 - exchanger.eta_s);
-            ventilationLoadLatent[h] = C_l * airflow * (wExternal - wInternal) * (1 - exchanger.eta_l);
+            
+            // Obliczanie dynamicznej gęstości powietrza (równanie stanu gazu doskonałego)
+            const rho = 101325 / (287.058 * (tExt + 273.15));
+            
+            // Dynamiczne współczynniki zgodnie z instrukcją
+            const C_s_air_dynamic = (rho * 1006) / 3600; // Wh/(m3*K)
+            const C_l_air_dynamic = (rho * 2501000) / 3600; // Wh/(m3*(kg/kg))
+            
+            if (type === 'mechanical' && enabled) {
+                const exchanger = VENTILATION_EXCHANGER_TYPES[exchangerType];
+                ventilationLoadSensible[h] = C_s_air_dynamic * Q_mech_h[h] * (tExt - tInternal) * (1 - exchanger.eta_s);
+                ventilationLoadLatent[h] = C_l_air_dynamic * Q_mech_h[h] * (wExternal - wInternal) * (1 - exchanger.eta_l);
+                
+                if (includeInfiltration) {
+                    infiltrationLoadSensible[h] = C_s_air_dynamic * Q_inf_h[h] * (tExt - tInternal);
+                    infiltrationLoadLatent[h] = C_l_air_dynamic * Q_inf_h[h] * (wExternal - wInternal);
+                }
+            } else if (type === 'natural' && enabled) {
+                if (includeInfiltration) {
+                    const Q_combined = Math.sqrt(Q_nat_h[h] * Q_nat_h[h] + Q_inf_h[h] * Q_inf_h[h]);
+                    ventilationLoadSensible[h] = C_s_air_dynamic * Q_combined * (tExt - tInternal);
+                    ventilationLoadLatent[h] = C_l_air_dynamic * Q_combined * (wExternal - wInternal);
+                } else {
+                    ventilationLoadSensible[h] = C_s_air_dynamic * Q_nat_h[h] * (tExt - tInternal);
+                    ventilationLoadLatent[h] = C_l_air_dynamic * Q_nat_h[h] * (wExternal - wInternal);
+                }
+            } else {
+                if (includeInfiltration) {
+                    infiltrationLoadSensible[h] = C_s_air_dynamic * Q_inf_h[h] * (tExt - tInternal);
+                    infiltrationLoadLatent[h] = C_l_air_dynamic * Q_inf_h[h] * (wExternal - wInternal);
+                }
+            }
         }
     }
 
@@ -228,6 +312,12 @@ export function calculateGainsForMonth(
         sensible: ventilationLoadSensible,
         latent: ventilationLoadLatent,
         total: ventilationLoadSensible.map((s, i) => s + ventilationLoadLatent[i]),
+    };
+
+    const infiltrationLoad: CalculationResultData = {
+        sensible: infiltrationLoadSensible,
+        latent: infiltrationLoadLatent,
+        total: infiltrationLoadSensible.map((s, i) => s + infiltrationLoadLatent[i]),
     };
 
     const finalGains = { global: { sensible: [], latent: [], total: [] }, clearSky: { sensible: [], latent: [], total: [] } };
@@ -406,11 +496,11 @@ export function calculateGainsForMonth(
         const nonSolarCoolingLoad = accumulation.include ? applyRTS(nonSolarRadiantTotal, rtsFactorsNonSolar) : nonSolarRadiantTotal;
 
         const totalConvectiveLoad = Array(24).fill(0).map((_, h) => 
-            internalGainsSensibleConvective[h] + solarConvectiveGains[h] + conductionGainsConvective[h] + ventilationLoadSensible[h]
+            internalGainsSensibleConvective[h] + solarConvectiveGains[h] + conductionGainsConvective[h] + ventilationLoadSensible[h] + infiltrationLoadSensible[h]
         );
         
         const sensibleLoad = Array(24).fill(0).map((_, h) => solarLoadFromSolarRTS[h] + nonSolarCoolingLoad[h] + totalConvectiveLoad[h]);
-        const totalLatentLoad = internalGainsLatent.map((l, i) => l + ventilationLoad.latent[i]);
+        const totalLatentLoad = internalGainsLatent.map((l, i) => l + ventilationLoad.latent[i] + infiltrationLoad.latent[i]);
 
         finalGains[scenario as 'global' | 'clearSky'] = {
             sensible: sensibleLoad,
@@ -510,10 +600,11 @@ export function calculateGainsForMonth(
             total: loadComponents_internalSensible.map((g,i) => g + internalGainsLatent[i])
         },
         windowGainsLoad: {
-            global: { sensible: finalGains.global.sensible.map((g,i) => g - loadComponents_internalSensible[i] - ventilationLoad.sensible[i]), latent: Array(24).fill(0), total: finalGains.global.sensible.map((g,i) => g - loadComponents_internalSensible[i] - ventilationLoad.sensible[i]) },
-            clearSky: { sensible: finalGains.clearSky.sensible.map((g,i) => g - loadComponents_internalSensible[i] - ventilationLoad.sensible[i]), latent: Array(24).fill(0), total: finalGains.clearSky.sensible.map((g,i) => g - loadComponents_internalSensible[i] - ventilationLoad.sensible[i]) },
+            global: { sensible: finalGains.global.sensible.map((g,i) => g - loadComponents_internalSensible[i] - ventilationLoad.sensible[i] - infiltrationLoad.sensible[i]), latent: Array(24).fill(0), total: finalGains.global.sensible.map((g,i) => g - loadComponents_internalSensible[i] - ventilationLoad.sensible[i] - infiltrationLoad.sensible[i]) },
+            clearSky: { sensible: finalGains.clearSky.sensible.map((g,i) => g - loadComponents_internalSensible[i] - ventilationLoad.sensible[i] - infiltrationLoad.sensible[i]), latent: Array(24).fill(0), total: finalGains.clearSky.sensible.map((g,i) => g - loadComponents_internalSensible[i] - ventilationLoad.sensible[i] - infiltrationLoad.sensible[i]) },
         },
         ventilationLoad,
+        infiltrationLoad,
         components: {
             solarGainsGlobal: allComponents.global.solar,
             solarGainsClearSky: allComponents.clearSky.solar,
@@ -528,6 +619,7 @@ export function calculateGainsForMonth(
             conduction: loadComponents_conduction,
             internalSensible: loadComponents_internalSensible,
             ventilationSensible: ventilationLoad.sensible,
+            infiltrationSensible: infiltrationLoad.sensible,
         },
         incidentSolarPower: totalIncidentSolarPower,
     };
