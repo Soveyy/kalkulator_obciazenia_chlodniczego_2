@@ -85,6 +85,9 @@ const BulkShadingModal: React.FC = () => {
                                     shadingDb[key] && <option key={key} value={key}>{label as string}</option>
                                 )}
                             </Select>
+                            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                                Uwaga: Zasłony nie zostaną zastosowane do okien pochylonych (zostaną one pominięte).
+                            </p>
                         </div>
 
                         {shading.type === 'louvers' && shadingDb.louvers &&

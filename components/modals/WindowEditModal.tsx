@@ -25,7 +25,7 @@ const WindowEditModal: React.FC = () => {
             if (isNew) {
                 const defaultWindow: Window = {
                     id: 0, // temp ID
-                    type: 'modern', direction: 'S', u: 0.9, shgc: 0.5, width: 1.0, height: 2.2,
+                    type: 'modern', direction: 'S', tilt: 90, u: 0.9, shgc: 0.5, width: 1.0, height: 2.2,
                     shading: { enabled: false, type: 'louvers', location: 'indoor', color: 'light', setting: 'tilted_45', material: 'open' },
                     overhang: { enabled: false, depth: 1.0, distanceAbove: 0.2 }
                 };
@@ -37,6 +37,8 @@ const WindowEditModal: React.FC = () => {
                 const originalWindow = state.windows.find(w => w.id === windowId);
                 if (originalWindow) {
                     const windowCopy = JSON.parse(JSON.stringify(originalWindow));
+                    // Ensure tilt exists for older projects
+                    if (windowCopy.tilt === undefined) windowCopy.tilt = 90;
                     setWindow(windowCopy);
                     setShading(windowCopy.shading);
                     setOverhang(windowCopy.overhang || { enabled: false, depth: 1.0, distanceAbove: 0.2 });
@@ -93,6 +95,24 @@ const WindowEditModal: React.FC = () => {
                 setWindow(prev => prev ? { ...prev, type: value as Window['type'], u: preset.u, shgc: preset.shgc } : null);
                 return;
             }
+        }
+
+        if (name === 'tilt') {
+            const newTilt = parseInt(value, 10);
+            setWindow(prev => prev ? { ...prev, tilt: newTilt } : null);
+            
+            // If changing to non-vertical, disable overhang and reset invalid shading types
+            if (newTilt !== 90) {
+                setOverhang(prev => ({ ...prev, enabled: false }));
+                setShading(prev => {
+                    if (!prev) return null;
+                    if (prev.type === 'draperies') {
+                        return { ...prev, type: 'louvers', setting: 'tilted_45', location: 'indoor', color: 'light', material: 'open' };
+                    }
+                    return prev;
+                });
+            }
+            return;
         }
         
         if ((name === 'u' || name === 'shgc') && window?.type !== 'custom') {
@@ -204,45 +224,63 @@ const WindowEditModal: React.FC = () => {
                         <Input type="number" name="height" value={window.height} onChange={handleChange} step="0.1" />
                     </div>
                 </div>
-                 <div>
-                    <label className="label-style">Kierunek świata:</label>
-                    <select 
-                        name="direction" 
-                        value={window.direction} 
-                        onChange={handleChange}
-                        onMouseLeave={() => dispatch({ type: 'SET_HOVERED_DIRECTION', payload: null })}
-                        className="w-full box-border px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
-                    >
-                        {WINDOW_DIRECTIONS.map(dir => (
-                            <option 
-                                key={dir.value} 
-                                value={dir.value}
-                                onMouseEnter={() => dispatch({ type: 'SET_HOVERED_DIRECTION', payload: dir.value })}
-                            >
-                                {dir.label}
-                            </option>
-                        ))}
-                    </select>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 italic">
-                        Wskazówka: Możesz również wybrać kierunek klikając na kompas po prawej stronie.
-                    </p>
+                 <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="label-style">Kierunek świata:</label>
+                        <select 
+                            name="direction" 
+                            value={window.direction} 
+                            onChange={handleChange}
+                            onMouseLeave={() => dispatch({ type: 'SET_HOVERED_DIRECTION', payload: null })}
+                            className="w-full box-border px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+                        >
+                            {WINDOW_DIRECTIONS.map(dir => (
+                                <option 
+                                    key={dir.value} 
+                                    value={dir.value}
+                                    onMouseEnter={() => dispatch({ type: 'SET_HOVERED_DIRECTION', payload: dir.value })}
+                                >
+                                    {dir.label}
+                                </option>
+                            ))}
+                        </select>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 italic">
+                            Wskazówka: Możesz również wybrać kierunek klikając na kompas po prawej stronie.
+                        </p>
+                    </div>
+                    <div>
+                        <label className="label-style flex items-center">
+                            Pochylenie okna:
+                            <Tooltip text="Kąt pochylenia okna względem poziomu. 90° to okno pionowe, 0° to okno płaskie (dachowe)." />
+                        </label>
+                        <Select name="tilt" value={window.tilt} onChange={handleChange}>
+                            <option value="0">0° (Płaskie)</option>
+                            <option value="15">15°</option>
+                            <option value="30">30°</option>
+                            <option value="45">45°</option>
+                            <option value="60">60°</option>
+                            <option value="75">75°</option>
+                            <option value="90">90° (Pionowe)</option>
+                        </Select>
+                    </div>
                 </div>
 
                 <hr className="my-4 border-slate-200 dark:border-slate-700"/>
                 
-                <div className="space-y-4">
+                <div className={`space-y-4 ${window.tilt !== 90 ? 'opacity-50 pointer-events-none' : ''}`}>
                     <div className="flex items-center">
                          <Checkbox 
                             id={`overhang_enabled_${window.id}`} 
                             label="Uwzględnij daszek / balkon powyżej" 
                             name="enabled" 
-                            checked={overhang.enabled} 
+                            checked={overhang.enabled && window.tilt === 90} 
                             onChange={handleOverhangChange} 
+                            disabled={window.tilt !== 90}
                         />
-                         <Tooltip text="Stały element architektoniczny (np. balkon, okap dachu) rzucający cień na okno." />
+                         <Tooltip text={window.tilt !== 90 ? "Daszki są dostępne tylko dla okien pionowych (90°)." : "Stały element architektoniczny (np. balkon, okap dachu) rzucający cień na okno."} />
                     </div>
 
-                    {overhang.enabled && (
+                    {overhang.enabled && window.tilt === 90 && (
                         <div className="pl-4 border-l-2 border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-4">
                              <div>
                                 <label className="label-style flex items-center">
@@ -271,10 +309,19 @@ const WindowEditModal: React.FC = () => {
                         <div>
                             <label className="label-style">Typ osłony:</label>
                             <Select name="type" value={shading.type} onChange={handleShadingChange}>
-                                {Object.entries(SHADING_TYPE_LABELS).map(([key, label]) => 
-                                    shadingDb[key] && <option key={key} value={key}>{label as string}</option>
-                                )}
+                                {Object.entries(SHADING_TYPE_LABELS).map(([key, label]) => {
+                                    // Disable draperies for non-vertical windows
+                                    if (window.tilt !== 90 && key === 'draperies') {
+                                        return null;
+                                    }
+                                    return shadingDb[key] && <option key={key} value={key}>{label as string}</option>
+                                })}
                             </Select>
+                            {window.tilt !== 90 && (
+                                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                                    Dla okien pochylonych dostępne są tylko żaluzje, rolety i moskitiery.
+                                </p>
+                            )}
                         </div>
 
                         {shading.type === 'louvers' && shadingDb.louvers &&

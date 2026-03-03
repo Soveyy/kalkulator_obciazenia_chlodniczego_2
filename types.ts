@@ -22,6 +22,7 @@ export interface Window {
   id: number;
   type: 'custom' | 'modern' | 'standard' | 'older_double' | 'historic';
   direction: string;
+  tilt: number;
   u: number;
   shgc: number;
   width: number;
@@ -100,19 +101,12 @@ export interface CalculationResultData {
 }
 
 export interface CalculationComponents {
-    solarGainsGlobal: number[];
     solarGainsClearSky: number[];
     conductionGainsRadiant: number[];
     conductionGainsConvective: number[];
     internalGainsSensibleRadiant: number[];
     internalGainsSensibleConvective: number[];
     internalGainsLatent: number[];
-}
-
-export interface WindowCalculationResult {
-    global: CalculationResultData;
-    clearSky: CalculationResultData;
-    incidentSolarPower: number[];
 }
 
 export interface CalculationLoadComponents {
@@ -125,12 +119,10 @@ export interface CalculationLoadComponents {
 
 export interface CalculationResults {
     finalGains: {
-        global: CalculationResultData;
         clearSky: CalculationResultData;
     };
     internalGainsLoad: CalculationResultData;
     windowGainsLoad: {
-        global: CalculationResultData;
         clearSky: CalculationResultData;
     },
     ventilationLoad: CalculationResultData;

@@ -83,17 +83,7 @@ const WindowGainsChart: React.FC = () => {
                  borderWidth: 2.5, 
                  yAxisID: 'yLoad',
                  tension: 0.3
-            },
-             { 
-                 label: 'Obciążenie chłodnicze - Okna (Typowe, Global)', 
-                 data: reorderDataForLocalTime(windowGainsLoad.global.total, offset), 
-                 borderColor: '#f1c40f', 
-                 fill: false, 
-                 borderWidth: 2, 
-                 borderDash: [5, 5], 
-                 yAxisID: 'yLoad',
-                 tension: 0.3
-            },
+            }
         ];
 
         if (showIncidentRadiation) {

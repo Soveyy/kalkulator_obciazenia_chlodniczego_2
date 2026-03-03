@@ -116,6 +116,7 @@ const WindowCard: React.FC<WindowCardProps> = ({ window }) => {
       <h3 className="font-bold text-lg mb-1 text-slate-800 dark:text-white">Okno {window.id}</h3>
       <div className="flex-grow text-sm space-y-1 text-slate-600 dark:text-slate-300">
         <p>Kierunek: <strong className="text-slate-800 dark:text-slate-100">{dirLabel.split(' (')[0]}</strong></p>
+        <p>Pochylenie: <strong className="text-slate-800 dark:text-slate-100">{window.tilt ?? 90}°</strong></p>
         <p>Powierzchnia: <strong className="text-slate-800 dark:text-slate-100">{area} m²</strong></p>
         <ShadingStatus shading={window.shading} />
       </div>

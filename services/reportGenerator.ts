@@ -191,7 +191,6 @@ export const generatePdfReport = async (state: any) => {
     
     // Daily energy estimation
     const totalKWhCS = finalGains.clearSky.total.reduce((sum: number, val: number) => sum + Math.max(0, val), 0) / 1000;
-    const totalKWhGlobal = finalGains.global.total.reduce((sum: number, val: number) => sum + Math.max(0, val), 0) / 1000;
 
 
     // --- PAGE 1 ---
@@ -362,7 +361,6 @@ export const generatePdfReport = async (state: any) => {
     doc.setFont('Roboto', 'normal');
     doc.setTextColor(50);
     doc.text(`- Warunki projektowe (bezchmurne niebo, najgorszy możliwy przypadek): ${totalKWhCS.toFixed(1)} kWh`, margin + 5, yPos + 14);
-    doc.text(`- Warunki typowe (uśrednione zachmurzenie): ${totalKWhGlobal.toFixed(1)} kWh`, margin + 5, yPos + 20);
 
     yPos += 35;
     
@@ -384,6 +382,7 @@ export const generatePdfReport = async (state: any) => {
 
     const windowsBody = state.windows.map((w: any) => [
         w.direction,
+        w.tilt !== undefined ? `${w.tilt}°` : '90°',
         (w.width * w.height).toFixed(2),
         w.u.toFixed(2),
         w.shgc.toFixed(2),
@@ -391,12 +390,12 @@ export const generatePdfReport = async (state: any) => {
     ]);
 
     if (windowsBody.length === 0) {
-        windowsBody.push(['Brak okien', '-', '-', '-', '-']);
+        windowsBody.push(['Brak okien', '-', '-', '-', '-', '-']);
     }
 
     autoTable(doc, {
         startY: yPos,
-        head: [['Kierunek', 'Powierzchnia [m²]', 'Wsp. U [W/m²K]', 'Wsp. g', 'Osłona']],
+        head: [['Kierunek', 'Pochylenie', 'Powierzchnia [m²]', 'Wsp. U [W/m²K]', 'Wsp. g', 'Osłona']],
         body: windowsBody,
         theme: 'grid',
         headStyles: { fillColor: [241, 245, 249], textColor: 50, fontStyle: 'bold', lineColor: 200, font: 'Roboto' },

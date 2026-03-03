@@ -34,7 +34,6 @@ const PeakSummary: React.FC = () => {
 
     // FIX: Calculate total daily energy in kWh from hourly data in Watts.
     const totalKWhCS = finalGains.clearSky.total.reduce((sum, val) => sum + val, 0) / 1000;
-    const totalKWhGlobal = finalGains.global.total.reduce((sum, val) => sum + val, 0) / 1000;
 
     return (
         <Card>
@@ -71,10 +70,6 @@ const PeakSummary: React.FC = () => {
                 <div className="flex justify-between items-baseline text-sm">
                     <span>Projektowa (Clear Sky):</span>
                     <span className="font-bold text-lg text-orange-500">{totalKWhCS.toFixed(1)} kWh</span>
-                </div>
-                <div className="flex justify-between items-baseline text-sm">
-                    <span>Typowa (Global):</span>
-                    <span className="font-bold text-lg text-blue-500">{totalKWhGlobal.toFixed(1)} kWh</span>
                 </div>
             </div>
 

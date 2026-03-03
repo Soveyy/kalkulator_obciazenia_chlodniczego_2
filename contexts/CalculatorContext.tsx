@@ -105,10 +105,20 @@ function calculatorReducer(state: State, action: Action): State {
          case 'UPDATE_ALL_SHADING': {
             return {
                 ...state,
-                windows: state.windows.map(win => ({
-                    ...win,
-                    shading: { ...win.shading, ...action.payload }
-                }))
+                windows: state.windows.map(win => {
+                    const isTilted = (win.tilt ?? 90) !== 90;
+                    const newShadingType = action.payload.type;
+                    
+                    // If window is tilted and we're trying to apply draperies, skip it
+                    if (isTilted && newShadingType === 'draperies') {
+                        return win;
+                    }
+                    
+                    return {
+                        ...win,
+                        shading: { ...win.shading, ...action.payload }
+                    };
+                })
             };
         }
         case 'SET_ACCUMULATION':

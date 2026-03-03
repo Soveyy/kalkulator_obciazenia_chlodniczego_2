@@ -71,8 +71,7 @@ const HeatGainChart: React.FC = () => {
 
         if (chartType === 'line') {
             datasets = [
-                { type: 'line', label: 'Obciążenie chłodnicze projektowe', data: reorderDataForLocalTime(finalGains.clearSky.total, offset), borderColor: '#e74c3c', backgroundColor: 'rgba(231, 76, 60, 0.2)', fill: true, tension: 0.3, yAxisID: 'yLoad' },
-                { type: 'line', label: 'Obciążenie chłodnicze typowe', data: reorderDataForLocalTime(finalGains.global.total, offset), borderColor: '#3498db', backgroundColor: 'rgba(52, 152, 219, 0.2)', fill: true, tension: 0.3, yAxisID: 'yLoad' }
+                { type: 'line', label: 'Obciążenie chłodnicze projektowe', data: reorderDataForLocalTime(finalGains.clearSky.total, offset), borderColor: '#e74c3c', backgroundColor: 'rgba(231, 76, 60, 0.2)', fill: true, tension: 0.3, yAxisID: 'yLoad' }
             ];
         } else { // bar chart
              datasets = [

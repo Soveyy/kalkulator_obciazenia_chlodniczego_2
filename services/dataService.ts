@@ -11,28 +11,29 @@ async function fetchData(url: string): Promise<any> {
 
 function parseIrradianceData(rawData: any): any {
     const parsedData: any = {};
+    
+    const processNode = (node: any, path: string): any => {
+        if (typeof node === 'string') {
+            try {
+                return JSON.parse(node);
+            } catch(e) {
+                console.error(`Error parsing at ${path}: ${e.message}`);
+                return [];
+            }
+        } else if (node !== null && typeof node === 'object' && !Array.isArray(node)) {
+            const result: any = {};
+            for (const key in node) {
+                result[key] = processNode(node[key], `${path} -> ${key}`);
+            }
+            return result;
+        }
+        return node;
+    };
+
     for (const month in rawData) {
         parsedData[month] = {};
-        if (rawData[month].T2m) {
-            try {
-                parsedData[month].T2m = JSON.parse(rawData[month].T2m);
-            } catch(e) {
-                console.error(`Error parsing T2m for month ${month}`, e);
-                parsedData[month].T2m = [];
-            }
-        }
-        for (const direction in rawData[month]) {
-            if (direction !== 'T2m') {
-                parsedData[month][direction] = {};
-                for (const key in rawData[month][direction]) {
-                    try {
-                        parsedData[month][direction][key] = JSON.parse(rawData[month][direction][key]);
-                    } catch(e) {
-                        console.error(`Error parsing ${key} for month ${month}, direction ${direction}`, e);
-                        parsedData[month][direction][key] = [];
-                    }
-                }
-            }
+        for (const key in rawData[month]) {
+            parsedData[month][key] = processNode(rawData[month][key], `month ${month} -> ${key}`);
         }
     }
     return parsedData;
