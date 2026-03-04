@@ -3,6 +3,7 @@ import { useCalculator } from '../contexts/CalculatorContext';
 import WindowCard from './WindowCard';
 import Button from './ui/Button';
 import { PlusIcon } from './Icons';
+import { motion, AnimatePresence } from 'motion/react';
 
 const WindowConfigurator: React.FC = () => {
   const { state, dispatch } = useCalculator();
@@ -30,11 +31,22 @@ const WindowConfigurator: React.FC = () => {
             <p>Kliknij przycisk "Dodaj", aby rozpocząć konfigurację.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-4 p-2">
-            {state.windows.map(win => (
-              <WindowCard key={win.id} window={win} />
-            ))}
-          </div>
+          <motion.div layout className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-4 p-2">
+            <AnimatePresence>
+              {state.windows.map(win => (
+                <motion.div
+                  key={win.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.8, y: -20 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                >
+                  <WindowCard window={win} />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
         )}
       </div>
     </div>

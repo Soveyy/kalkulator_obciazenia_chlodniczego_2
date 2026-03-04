@@ -52,7 +52,7 @@ const AppContent: React.FC = () => {
             <Header />
             
             {/* Project Progress Bar */}
-            <div className="mb-6">
+            <div className="mb-2">
                 <div className="flex justify-between items-center mb-1.5">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         Kompletność danych projektu
