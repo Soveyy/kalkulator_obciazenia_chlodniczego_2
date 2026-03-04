@@ -7,6 +7,24 @@ import Card from '../ui/Card';
 const SummaryPage: React.FC = () => {
     const { state, handleCalculate, isCalculating, handleGenerateReport } = useCalculator();
     
+    const isFormValid = React.useMemo(() => {
+        const { input, internalGains } = state;
+        const baseValid = 
+            input.projectName.trim() !== '' && 
+            input.tInternal !== '' && 
+            input.rhInternal !== '' && 
+            input.tExternal !== '' && 
+            input.roomArea !== '';
+        
+        const infiltrationValid = 
+            !internalGains.ventilation.includeInfiltration || 
+            (internalGains.ventilation.exteriorWallPerimeter !== '' && 
+             internalGains.ventilation.roomHeight !== '' && 
+             internalGains.ventilation.windSpeed !== '');
+            
+        return baseValid && infiltrationValid;
+    }, [state.input, state.internalGains.ventilation]);
+
     if (state.results) {
         return (
             <>
@@ -28,7 +46,7 @@ const SummaryPage: React.FC = () => {
                     Skonfigurowałeś już parametry pomieszczenia i źródła zysków ciepła. Kliknij poniższy przycisk, aby uruchomić pełną symulację. 
                     Kalkulator znajdzie miesiąc z największymi zyskami słonecznymi i przedstawi szczegółowe wyniki.
                 </p>
-                <Button variant="action" onClick={handleCalculate} disabled={isCalculating}>
+                <Button variant="action" onClick={handleCalculate} disabled={isCalculating || !isFormValid}>
                     {isCalculating ? (
                         <span className="flex items-center justify-center">
                             <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -37,7 +55,9 @@ const SummaryPage: React.FC = () => {
                             </svg>
                             Obliczanie...
                         </span>
-                    ) : 'Oblicz obciążenie chłodnicze'}
+                    ) : (
+                        !isFormValid ? 'Uzupełnij brakujące dane (migające pola)' : 'Oblicz obciążenie chłodnicze'
+                    )}
                 </Button>
             </div>
         </Card>

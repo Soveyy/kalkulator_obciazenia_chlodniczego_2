@@ -56,7 +56,13 @@ const Sidebar: React.FC = () => {
                                 <label className="label-style flex items-center font-semibold">
                                     Nazwa Projektu:
                                 </label>
-                                <Input name="projectName" type="text" value={state.input.projectName} onChange={(e) => dispatch({ type: 'SET_INPUT', payload: { ...state.input, [e.target.name]: e.target.value } })} />
+                                <Input 
+                                    name="projectName" 
+                                    type="text" 
+                                    value={state.input.projectName} 
+                                    onChange={(e) => dispatch({ type: 'SET_INPUT', payload: { ...state.input, [e.target.name]: e.target.value } })} 
+                                    className={!state.input.projectName ? 'animate-pulse-border border-blue-400' : ''}
+                                />
                             </div>
                             <div className="space-y-2">
                                 <div className="flex gap-2">
@@ -79,14 +85,26 @@ const Sidebar: React.FC = () => {
                                     Temperatura wewnętrzna (°C):
                                     <Tooltip text="Projektowana temperatura powietrza wewnątrz pomieszczenia." position="top" />
                                 </label>
-                                <Input name="tInternal" type="number" value={state.input.tInternal} onChange={(e) => dispatch({ type: 'SET_INPUT', payload: { ...state.input, [e.target.name]: e.target.value } })} />
+                                <Input 
+                                    name="tInternal" 
+                                    type="number" 
+                                    value={state.input.tInternal} 
+                                    onChange={(e) => dispatch({ type: 'SET_INPUT', payload: { ...state.input, [e.target.name]: e.target.value } })} 
+                                    className={!state.input.tInternal ? 'animate-pulse-border border-blue-400' : ''}
+                                />
                             </div>
                             <div>
                                 <label className="label-style flex items-center font-semibold">
                                     Wilgotność wewn. (%):
                                     <Tooltip text="Projektowana wilgotność względna powietrza wewnątrz." position="top" />
                                 </label>
-                                <Input name="rhInternal" type="number" value={state.input.rhInternal} onChange={(e) => dispatch({ type: 'SET_INPUT', payload: { ...state.input, [e.target.name]: e.target.value } })} />
+                                <Input 
+                                    name="rhInternal" 
+                                    type="number" 
+                                    value={state.input.rhInternal} 
+                                    onChange={(e) => dispatch({ type: 'SET_INPUT', payload: { ...state.input, [e.target.name]: e.target.value } })} 
+                                    className={!state.input.rhInternal ? 'animate-pulse-border border-blue-400' : ''}
+                                />
                             </div>
                             <div>
                                 <label className="label-style flex items-center font-semibold">
@@ -94,7 +112,13 @@ const Sidebar: React.FC = () => {
                                     <Tooltip text="Maksymalna projektowana dobowa temperatura zewnętrzna." position="top" />
                                 </label>
                                  <div className="flex gap-2 items-center">
-                                    <Input name="tExternal" type="number" value={state.input.tExternal} onChange={(e) => dispatch({ type: 'SET_INPUT', payload: { ...state.input, [e.target.name]: e.target.value } })} />
+                                    <Input 
+                                        name="tExternal" 
+                                        type="number" 
+                                        value={state.input.tExternal} 
+                                        onChange={(e) => dispatch({ type: 'SET_INPUT', payload: { ...state.input, [e.target.name]: e.target.value } })} 
+                                        className={!state.input.tExternal ? 'animate-pulse-border border-blue-400' : ''}
+                                    />
                                     <Button variant="secondary" className="px-2 py-1" onClick={() => dispatch({ type: 'SET_MODAL', payload: { isOpen: true, type: 'tempDatabase' } })}>Baza</Button>
                                  </div>
                             </div>
@@ -103,7 +127,13 @@ const Sidebar: React.FC = () => {
                                     Powierzchnia (m²):
                                     <Tooltip text="Powierzchnia jest wykorzystywana do obliczania zysków od oświetlenia oraz urządzeń." position="top" />
                                 </label>
-                                <Input name="roomArea" type="number" value={state.input.roomArea} onChange={(e) => dispatch({ type: 'SET_INPUT', payload: { ...state.input, [e.target.name]: e.target.value } })} />
+                                <Input 
+                                    name="roomArea" 
+                                    type="number" 
+                                    value={state.input.roomArea} 
+                                    onChange={(e) => dispatch({ type: 'SET_INPUT', payload: { ...state.input, [e.target.name]: e.target.value } })} 
+                                    className={!state.input.roomArea ? 'animate-pulse-border border-blue-400' : ''}
+                                />
                             </div>
                         </div>
                     </Card>

@@ -8,6 +8,7 @@ import InternalGainsPage from './components/pages/InternalGainsPage';
 import WindowsPage from './components/pages/WindowsPage';
 import VentilationPage from './components/pages/VentilationPage';
 import SummaryPage from './components/pages/SummaryPage';
+import RtsAnalysisPage from './components/pages/RtsAnalysisPage';
 import MethodologyModal from './components/modals/MethodologyModal';
 import TempDatabaseModal from './components/modals/TempDatabaseModal';
 import WindowEditModal from './components/modals/WindowEditModal';
@@ -33,6 +34,8 @@ const AppContent: React.FC = () => {
           return <VentilationPage key="ventilation" />;
         case 'summary':
           return <SummaryPage key="summary" />;
+        case 'rts':
+          return <RtsAnalysisPage key="rts" />;
         default:
           return null;
       }

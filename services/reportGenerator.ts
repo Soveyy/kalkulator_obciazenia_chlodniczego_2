@@ -268,7 +268,7 @@ export const generatePdfReport = async (state: any) => {
     yPos = (doc as any).lastAutoTable.finalY + 15;
 
     // 2. Peak Load Results
-    addHeader('2. Wyniki - Szczytowe Obciążenie (Clear Sky)');
+    addHeader('2. Wyniki - Szczytowe Obciążenie');
     
     // Highlight Box
     doc.setFillColor(254, 242, 242); // Light red/orange bg

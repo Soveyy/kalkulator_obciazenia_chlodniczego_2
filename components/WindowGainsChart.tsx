@@ -75,7 +75,7 @@ const WindowGainsChart: React.FC = () => {
 
         const datasets: any[] = [
              { 
-                 label: 'Obciążenie chłodnicze - Okna (Projektowe, Clear Sky)', 
+                 label: 'Obciążenie chłodnicze - Okna', 
                  data: reorderDataForLocalTime(windowGainsLoad.clearSky.total, offset), 
                  borderColor: '#e74c3c', 
                  backgroundColor: 'rgba(231, 76, 60, 0.2)',
@@ -88,7 +88,7 @@ const WindowGainsChart: React.FC = () => {
 
         if (showIncidentRadiation) {
             datasets.push({
-                label: 'Padające promieniowanie słoneczne (Clear Sky)',
+                label: 'Padające promieniowanie słoneczne',
                 data: reorderDataForLocalTime(incidentSolarPower, offset),
                 borderColor: '#95a5a6',
                 borderWidth: 1.5,
@@ -185,6 +185,17 @@ const WindowGainsChart: React.FC = () => {
         return (
             <Card className="flex items-center justify-center h-full min-h-[500px]">
                 <p className="text-slate-500 text-center px-4">Przejdź do zakładki "Podsumowanie" i uruchom obliczenia, aby zobaczyć wykres obciążenia od okien.</p>
+            </Card>
+        );
+    }
+
+    if (state.windows.length === 0) {
+        return (
+            <Card className="flex items-center justify-center h-full min-h-[500px]">
+                <div className="text-center px-4">
+                    <p className="text-slate-500 mb-2">Brak zdefiniowanych okien w projekcie.</p>
+                    <p className="text-xs text-slate-400">Dodaj okna w zakładce "Okna", aby zobaczyć analizę zysków słonecznych.</p>
+                </div>
             </Card>
         );
     }

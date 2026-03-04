@@ -23,7 +23,7 @@ const ResultsTable: React.FC = () => {
                 onClick={() => setIsCollapsed(!isCollapsed)}
                 aria-expanded={!isCollapsed}
             >
-                <span>Wyniki Godzinowe (Clear Sky)</span>
+                <span>Wyniki Godzinowe</span>
                 <ChevronDownIcon className={`w-5 h-5 transition-transform duration-200 ${!isCollapsed ? 'rotate-180' : ''}`} />
             </h3>
              <div className={`collapsible-content ${!isCollapsed ? 'expanded' : ''}`}>

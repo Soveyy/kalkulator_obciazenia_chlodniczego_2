@@ -9,7 +9,7 @@ import LZString from 'lz-string';
 
 const initialState: State = {
     windows: [],
-    input: { projectName: 'Mój Projekt', tInternal: '24', rhInternal: '50', tExternal: '32', roomArea: '25' },
+    input: { projectName: 'Mój Projekt', tInternal: '24', rhInternal: '50', tExternal: '32', roomArea: '' },
     accumulation: {
         include: true,
         thermalMass: 'very_heavy',
@@ -40,7 +40,7 @@ const initialState: State = {
             outdoorMoistureContent: 0.0115,
             naturalVentilationAirflow: 150,
             includeInfiltration: false,
-            exteriorWallPerimeter: 10,
+            exteriorWallPerimeter: '',
             roomHeight: 2.7,
             buildingStories: '1',
             tightnessClass: 'average',
@@ -347,7 +347,13 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
     };
 
     const progress = React.useMemo(() => {
-        const base = state.input.projectName.trim() !== '' && parseFloat(state.input.roomArea) > 0;
+        const base = 
+            state.input.projectName.trim() !== '' && 
+            state.input.roomArea !== '' && 
+            state.input.tInternal !== '' && 
+            state.input.tExternal !== '' && 
+            state.input.rhInternal !== '';
+            
         const internal = state.internalGains.people.enabled || state.internalGains.lighting.enabled || state.internalGains.equipment.length > 0;
         const windows = state.windows.length > 0;
         const ventilation = state.internalGains.ventilation.type !== 'none';

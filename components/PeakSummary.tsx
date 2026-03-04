@@ -70,9 +70,8 @@ const PeakSummary: React.FC = () => {
             </div>
 
             <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                <h4 className="font-semibold text-slate-700 dark:text-slate-300 mb-2">Suma dobowa energii chłodniczej:</h4>
-                <div className="flex justify-between items-baseline text-sm">
-                    <span>Projektowa (Clear Sky):</span>
+                <div className="flex justify-between items-baseline">
+                    <h4 className="font-semibold text-slate-700 dark:text-slate-300">Suma dobowa energii chłodniczej:</h4>
                     <span className="font-bold text-lg text-orange-500">{totalKWhCS.toFixed(1)} kWh</span>
                 </div>
             </div>

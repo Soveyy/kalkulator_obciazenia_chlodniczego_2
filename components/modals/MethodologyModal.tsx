@@ -21,12 +21,8 @@ const MethodologyModal: React.FC = () => {
                 <p>Kalkulator wykorzystuje zaawansowane, zgodne ze standardami inżynierskimi metody do symulacji zysków ciepła. Poniższe punkty szczegółowo opisują proces obliczeniowy.</p>
                 <ol className="list-decimal list-inside space-y-3">
                     <li>
-                        <strong className="font-semibold text-slate-800 dark:text-slate-100">Podstawa Klimatyczna – Dwa Scenariusze Pogodowe</strong>
-                        <p className="mt-1">U podstaw wszystkich obliczeń leżą dane klimatyczne dla lokalizacji Warszawa (52.23°N, 21.01°E). Aby zapewnić pełen obraz analityczny, kalkulator korzysta z dwóch niezależnych, godzinowych baz danych.</p>
-                        <ul className="list-disc list-inside pl-4 mt-2 space-y-1">
-                            <li><strong className="font-medium">Scenariusz Projektowy (Clear Sky):</strong> Wykorzystuje dane z bazy NSRDB (National Solar Radiation Database). Reprezentuje on teoretyczne, maksymalne nasłonecznienie w idealnych, bezchmurnych warunkach i jest kluczowy przy projektowaniu systemów chłodzenia.</li>
-                            <li><strong className="font-medium">Scenariusz Typowy (Global):</strong> Wykorzystuje dane z bazy PVGIS (Photovoltaic Geographical Information System), bazujące na tzw. "typowym roku meteorologicznym" (TMY). Dane te uwzględniają statystyczne, wieloletnie uśrednione zachmurzenie, co reprezentuje bardziej realistyczny, przeciętny dzień.</li>
-                        </ul>
+                        <strong className="font-semibold text-slate-800 dark:text-slate-100">Podstawa Klimatyczna</strong>
+                        <p className="mt-1">Obliczenia opierają się na danych klimatycznych dla lokalizacji Warszawa (52.23°N, 21.01°E). Kalkulator wykorzystuje dane z bazy NSRDB (National Solar Radiation Database), które reprezentują teoretyczne, maksymalne nasłonecznienie w idealnych, bezchmurnych warunkach (Clear Sky). Jest to standardowe podejście przy projektowaniu systemów klimatyzacji, zapewniające odpowiedni zapas mocy w najbardziej upalne dni.</p>
                     </li>
                     <li>
                         <strong className="font-semibold text-slate-800 dark:text-slate-100">Zyski Ciepła Zewnętrzne (Przez Okna)</strong>

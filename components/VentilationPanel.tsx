@@ -72,54 +72,56 @@ const VentilationPanel: React.FC = () => {
     return (
         <div className="space-y-6">
             <Card>
-                <h3 className="font-semibold mb-3">Parametry strefy</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="label-style font-medium">Obwód ścian zewnętrznych (m):</label>
-                        <Input type="number" name="exteriorWallPerimeter" value={ventilation.exteriorWallPerimeter} onChange={handleChange} min="0" step="0.1" />
-                    </div>
-                    <div>
-                        <label className="label-style font-medium">Wysokość pomieszczenia (m):</label>
-                        <Input type="number" name="roomHeight" value={ventilation.roomHeight} onChange={handleChange} min="0" step="0.1" />
-                    </div>
-                    <div>
-                        <label className="label-style flex items-center font-medium">
-                            Zawartość wilgoci powietrza zewn. (kg/kg):
-                            <Tooltip text="Zawartość wilgoci powietrza zewnętrznego. Używana do obliczenia obciążenia utajonego." position="top" />
-                        </label>
-                        <div className="relative">
-                            <Input name="outdoorMoistureContent" type="number" value={ventilation.outdoorMoistureContent} onChange={handleChange} step="0.0001" className={moistureError ? 'border-red-500 focus:ring-red-500' : ''} />
-                            {moistureError && (
-                                <p className="text-[10px] text-red-500 mt-1 absolute bg-white dark:bg-slate-900 px-1 rounded border border-red-200 dark:border-red-900/50 z-10 shadow-sm">
-                                    {moistureError}
-                                </p>
-                            )}
-                        </div>
-                    </div>
-                    <div>
-                        <label className="label-style flex items-center font-medium">
-                            Efektywna pow. nieszczelności (cm²):
-                            <Tooltip text="Obliczona na podstawie obwodu, wysokości i wybranej klasy szczelności budynku." position="top" />
-                        </label>
-                        <Input type="text" value={effectiveLeakageArea} disabled className="bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed" />
+                <h3 className="font-semibold mb-3">Parametry ogólne</h3>
+                <div className="max-w-md">
+                    <label className="label-style flex items-center font-medium">
+                        Zawartość wilgoci powietrza zewn. (kg/kg):
+                        <Tooltip text="Zawartość wilgoci powietrza zewnętrznego. Używana do obliczenia obciążenia utajonego dla wentylacji i infiltracji." position="top" />
+                    </label>
+                    <div className="relative">
+                        <Input name="outdoorMoistureContent" type="number" value={ventilation.outdoorMoistureContent} onChange={handleChange} step="0.0001" className={moistureError ? 'border-red-500 focus:ring-red-500' : ''} />
+                        {moistureError && (
+                            <p className="text-[10px] text-red-500 mt-1 absolute bg-white dark:bg-slate-900 px-1 rounded border border-red-200 dark:border-red-900/50 z-10 shadow-sm">
+                                {moistureError}
+                            </p>
+                        )}
                     </div>
                 </div>
             </Card>
 
             <Card>
-                <h3 className="font-semibold mb-3">Sekcja A: Infiltracja</h3>
+                <h3 className="font-semibold mb-3">Sekcja A: Infiltracja (nieszczelności)</h3>
                 <div className="space-y-4">
                     <Checkbox id="infiltration_enabled" label="Uwzględniaj infiltrację" name="includeInfiltration" checked={ventilation.includeInfiltration} onChange={handleChange} />
                     {ventilation.includeInfiltration && (
                         <div className="pl-4 border-l-2 border-slate-200 dark:border-slate-700 space-y-4 mt-4">
-                            <div>
-                                <label className="label-style font-medium">Całkowita liczba kondygnacji budynku:</label>
-                                <Select name="buildingStories" value={ventilation.buildingStories} onChange={handleChange}>
-                                    <option value="1">1</option>
-                                    <option value="2">2</option>
-                                    <option value="3+">3 lub więcej</option>
-                                </Select>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="label-style font-medium">Obwód ścian zewnętrznych (m):</label>
+                                    <Input 
+                                        type="number" 
+                                        name="exteriorWallPerimeter" 
+                                        value={ventilation.exteriorWallPerimeter} 
+                                        onChange={handleChange} 
+                                        min="0" 
+                                        step="0.1" 
+                                        className={!ventilation.exteriorWallPerimeter ? 'animate-pulse-border border-blue-400' : ''}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="label-style font-medium">Wysokość pomieszczenia (m):</label>
+                                    <Input 
+                                        type="number" 
+                                        name="roomHeight" 
+                                        value={ventilation.roomHeight} 
+                                        onChange={handleChange} 
+                                        min="0" 
+                                        step="0.1" 
+                                        className={!ventilation.roomHeight ? 'animate-pulse-border border-blue-400' : ''}
+                                    />
+                                </div>
                             </div>
+
                             <div>
                                 <label className="label-style font-medium">Klasa szczelności przegród:</label>
                                 <Select name="tightnessClass" value={ventilation.tightnessClass} onChange={handleChange}>
@@ -128,6 +130,24 @@ const VentilationPanel: React.FC = () => {
                                     <option value="leaky">Nieszczelne (4.0 cm²/m²)</option>
                                 </Select>
                             </div>
+
+                            <div>
+                                <label className="label-style flex items-center font-medium">
+                                    Efektywna pow. nieszczelności (cm²):
+                                    <Tooltip text="Obliczona na podstawie obwodu, wysokości i wybranej klasy szczelności budynku." position="top" />
+                                </label>
+                                <Input type="text" value={effectiveLeakageArea} disabled className="bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed" />
+                            </div>
+
+                            <div>
+                                <label className="label-style font-medium">Całkowita liczba kondygnacji budynku:</label>
+                                <Select name="buildingStories" value={ventilation.buildingStories} onChange={handleChange}>
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3+">3 lub więcej</option>
+                                </Select>
+                            </div>
+                            
                             <div>
                                 <label className="label-style font-medium">Klasa osłonięcia przed wiatrem:</label>
                                 <Select name="shieldingClass" value={ventilation.shieldingClass} onChange={handleChange}>
@@ -139,8 +159,19 @@ const VentilationPanel: React.FC = () => {
                                 </Select>
                             </div>
                             <div>
-                                <label className="label-style font-medium">Prędkość wiatru U (m/s):</label>
-                                <Input type="number" name="windSpeed" value={ventilation.windSpeed} onChange={handleChange} min="0" step="0.1" />
+                                <label className="label-style flex items-center font-medium">
+                                    Prędkość wiatru U (m/s):
+                                    <Tooltip text="Domyślna średnia prędkość powietrza dla Warszawy w miesiącach letnich wynosi 3,4 m/s." position="top" />
+                                </label>
+                                <Input 
+                                    type="number" 
+                                    name="windSpeed" 
+                                    value={ventilation.windSpeed} 
+                                    onChange={handleChange} 
+                                    min="0" 
+                                    step="0.1" 
+                                    className={!ventilation.windSpeed ? 'animate-pulse-border border-blue-400' : ''}
+                                />
                             </div>
                         </div>
                     )}

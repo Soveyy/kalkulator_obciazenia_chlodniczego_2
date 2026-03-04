@@ -478,6 +478,7 @@ export function calculateGainsForMonth(
     );
     
     const sensibleLoad = Array(24).fill(0).map((_, h) => solarLoadFromSolarRTS[h] + nonSolarCoolingLoad[h] + totalConvectiveLoad[h]);
+    const instantaneousSensibleLoad = Array(24).fill(0).map((_, h) => solarRadiantGains_SolarRTS[h] + nonSolarRadiantTotal[h] + totalConvectiveLoad[h]);
     const totalLatentLoad = internalGainsLatent.map((l, i) => l + ventilationLoad.latent[i] + infiltrationLoad.latent[i]);
 
     const finalGains = {
@@ -485,6 +486,14 @@ export function calculateGainsForMonth(
             sensible: sensibleLoad,
             latent: totalLatentLoad,
             total: sensibleLoad.map((s, h) => s + totalLatentLoad[h])
+        }
+    };
+
+    const instantaneousGains = {
+        clearSky: {
+            sensible: instantaneousSensibleLoad,
+            latent: totalLatentLoad,
+            total: instantaneousSensibleLoad.map((s, h) => s + totalLatentLoad[h])
         }
     };
 
@@ -552,6 +561,8 @@ export function calculateGainsForMonth(
 
     const loadComponents_solar = Array(24).fill(0).map((_, h) => solarConvectiveTotal[h] + solarLoadFromSolarRTS[h] + solarLoadFromNonSolarRTS[h]);
 
+    const windowGainsSensible = windows.length === 0 ? Array(24).fill(0) : finalGains.clearSky.sensible.map((g,i) => g - loadComponents_internalSensible[i] - ventilationLoad.sensible[i] - infiltrationLoad.sensible[i]);
+
     return {
         finalGains,
         internalGainsLoad: {
@@ -560,7 +571,11 @@ export function calculateGainsForMonth(
             total: loadComponents_internalSensible.map((g,i) => g + internalGainsLatent[i])
         },
         windowGainsLoad: {
-            clearSky: { sensible: finalGains.clearSky.sensible.map((g,i) => g - loadComponents_internalSensible[i] - ventilationLoad.sensible[i] - infiltrationLoad.sensible[i]), latent: Array(24).fill(0), total: finalGains.clearSky.sensible.map((g,i) => g - loadComponents_internalSensible[i] - ventilationLoad.sensible[i] - infiltrationLoad.sensible[i]) },
+            clearSky: { 
+                sensible: windowGainsSensible, 
+                latent: Array(24).fill(0), 
+                total: windowGainsSensible 
+            },
         },
         ventilationLoad,
         infiltrationLoad,
@@ -579,6 +594,7 @@ export function calculateGainsForMonth(
             ventilationSensible: ventilationLoad.sensible,
             infiltrationSensible: infiltrationLoad.sensible
         },
+        instantaneousGains,
         incidentSolarPower
     };
 }

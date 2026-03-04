@@ -1,7 +1,7 @@
 
 import { ChartType } from 'chart.js';
 
-export type AppTab = 'internal' | 'windows' | 'ventilation' | 'summary';
+export type AppTab = 'internal' | 'windows' | 'ventilation' | 'summary' | 'rts';
 
 export interface Shading {
   enabled: boolean;
@@ -129,6 +129,9 @@ export interface CalculationResults {
     infiltrationLoad: CalculationResultData;
     components: CalculationComponents;
     loadComponents: CalculationLoadComponents;
+    instantaneousGains: {
+        clearSky: CalculationResultData;
+    };
     incidentSolarPower: number[];
 }
 
