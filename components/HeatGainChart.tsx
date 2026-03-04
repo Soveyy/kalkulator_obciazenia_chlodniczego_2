@@ -79,7 +79,8 @@ const HeatGainChart: React.FC = () => {
                 { type: 'bar', label: 'Przewodzenie', data: reorderDataForLocalTime(loadComponents.conduction, offset), backgroundColor: 'rgba(230, 126, 34, 0.7)', stack: 'a', yAxisID: 'yLoad' },
                 { type: 'bar', label: 'Wewn. Jawne', data: reorderDataForLocalTime(loadComponents.internalSensible, offset), backgroundColor: 'rgba(231, 76, 60, 0.7)', stack: 'a', yAxisID: 'yLoad' },
                 { type: 'bar', label: 'Wentylacja Jawna', data: reorderDataForLocalTime(loadComponents.ventilationSensible, offset), backgroundColor: 'rgba(142, 68, 173, 0.7)', stack: 'a', yAxisID: 'yLoad' },
-                { type: 'bar', label: 'Utajone (wewn. + went.)', data: reorderDataForLocalTime(finalGains.clearSky.latent, offset), backgroundColor: 'rgba(52, 152, 219, 0.7)', stack: 'a', yAxisID: 'yLoad' }
+                { type: 'bar', label: 'Infiltracja Jawna', data: reorderDataForLocalTime(loadComponents.infiltrationSensible, offset), backgroundColor: 'rgba(16, 185, 129, 0.7)', stack: 'a', yAxisID: 'yLoad' },
+                { type: 'bar', label: 'Utajone (wewn. + went. + inf.)', data: reorderDataForLocalTime(finalGains.clearSky.latent, offset), backgroundColor: 'rgba(52, 152, 219, 0.7)', stack: 'a', yAxisID: 'yLoad' }
             ];
         }
 

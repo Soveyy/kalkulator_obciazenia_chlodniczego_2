@@ -69,11 +69,13 @@ const VentilationGainsChart: React.FC = () => {
         const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
         const textColor = isDarkMode ? '#ecf0f1' : '#333';
 
-        const { ventilationLoad } = state.activeResults;
+        const { ventilationLoad, infiltrationLoad } = state.activeResults;
 
         const datasets = [
-            { label: 'Obciążenie jawne', data: reorderDataForLocalTime(ventilationLoad.sensible, offset), backgroundColor: 'rgba(230, 126, 34, 0.7)', stack: 'a' },
-            { label: 'Obciążenie utajone', data: reorderDataForLocalTime(ventilationLoad.latent, offset), backgroundColor: 'rgba(52, 152, 219, 0.7)', stack: 'a' }
+            { label: 'Wentylacja jawna', data: reorderDataForLocalTime(ventilationLoad.sensible, offset), backgroundColor: 'rgba(230, 126, 34, 0.7)', stack: 'a' },
+            { label: 'Wentylacja utajona', data: reorderDataForLocalTime(ventilationLoad.latent, offset), backgroundColor: 'rgba(52, 152, 219, 0.7)', stack: 'a' },
+            { label: 'Infiltracja jawna', data: reorderDataForLocalTime(infiltrationLoad.sensible, offset), backgroundColor: 'rgba(16, 185, 129, 0.7)', stack: 'a' },
+            { label: 'Infiltracja utajona', data: reorderDataForLocalTime(infiltrationLoad.latent, offset), backgroundColor: 'rgba(52, 211, 153, 0.7)', stack: 'a' }
         ];
 
         const chartConfig: any = {
@@ -91,7 +93,7 @@ const VentilationGainsChart: React.FC = () => {
                     y: { title: { display: true, text: 'Obciążenie chłodnicze (W)', color: textColor }, ticks: { color: textColor }, grid: { color: gridColor }, stacked: true }
                 },
                 plugins: {
-                    title: { display: true, text: 'Godzinowe obciążenie od wentylacji mechanicznej', color: textColor, font: { size: 16 } },
+                    title: { display: true, text: 'Godzinowe obciążenie od wentylacji i infiltracji', color: textColor, font: { size: 16 } },
                     legend: { labels: { color: textColor } },
                     tooltip: { 
                         mode: 'index',

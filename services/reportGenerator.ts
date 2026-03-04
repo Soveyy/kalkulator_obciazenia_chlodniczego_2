@@ -160,6 +160,7 @@ export const generatePdfReport = async (state: any) => {
             doc.setTextColor(150);
             doc.text(`Strona ${i} z ${pageCount}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
             doc.text(`Raport wygenerowany: ${new Date().toLocaleDateString('pl-PL')}`, margin, pageHeight - 10);
+            doc.text(`Projekt: ${input.projectName || 'Bez nazwy'}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
         }
     };
 
@@ -211,29 +212,29 @@ export const generatePdfReport = async (state: any) => {
     // 1. Parameters Table
     addHeader('1. Parametry Projektowe');
     
-    const params = [
+    const allParams: [string, string][] = [
         ['Miesiąc obliczeniowy', MONTH_NAMES[parseInt(currentMonth, 10) - 1]],
         ['Temperatura wewnętrzna', `${input.tInternal} °C`],
         ['Wilgotność wewnętrzna', `${input.rhInternal} %`],
-        ['Temperatura zewnętrzna (projektowa)', `${input.tExternal} °C`],
+        ['Temperatura zewn. (projektowa)', `${input.tExternal} °C`],
         ['Powierzchnia pomieszczenia', `${input.roomArea} m²`],
     ];
 
     const vent = state.internalGains.ventilation;
     if (vent.enabled) {
-        params.push(['Typ wentylacji', vent.type === 'mechanical' ? 'Mechaniczna z odzyskiem' : 'Grawitacyjna']);
+        allParams.push(['Typ wentylacji', vent.type === 'mechanical' ? 'Mechaniczna z odzyskiem' : 'Grawitacyjna']);
         if (vent.type === 'mechanical') {
-            params.push(['Strumień powietrza (mech.)', `${vent.airflow} m³/h`]);
+            allParams.push(['Strumień powietrza (mech.)', `${vent.airflow} m³/h`]);
         } else {
-            params.push(['Wydatek powietrza (graw.)', `${vent.naturalVentilationAirflow} m³/h`]);
+            allParams.push(['Wydatek powietrza (graw.)', `${vent.naturalVentilationAirflow} m³/h`]);
         }
-        params.push(['Zawartość wilgoci zewn.', `${vent.outdoorMoistureContent} kg/kg`]);
+        allParams.push(['Zawartość wilgoci zewn.', `${vent.outdoorMoistureContent} kg/kg`]);
     }
     if (vent.includeInfiltration) {
-        params.push(['Infiltracja', 'Tak']);
-        params.push(['Obwód ścian zewn.', `${vent.exteriorWallPerimeter} m`]);
-        params.push(['Wysokość pom.', `${vent.roomHeight} m`]);
-        params.push(['Klasa szczelności', vent.tightnessClass === 'tight' ? 'Szczelne' : vent.tightnessClass === 'average' ? 'Średnie' : 'Nieszczelne']);
+        allParams.push(['Infiltracja', 'Tak']);
+        allParams.push(['Obwód ścian zewn.', `${vent.exteriorWallPerimeter} m`]);
+        allParams.push(['Wysokość pom.', `${vent.roomHeight} m`]);
+        allParams.push(['Klasa szczelności', vent.tightnessClass === 'tight' ? 'Szczelne' : vent.tightnessClass === 'average' ? 'Średnie' : 'Nieszczelne']);
     }
     
     const acc = state.accumulation;
@@ -249,21 +250,38 @@ export const generatePdfReport = async (state: any) => {
             'tiles': 'Płytki',
             'carpet': 'Wykładzina'
         };
-        params.push(['Masa termiczna', THERMAL_MASS_TYPES[acc.thermalMass] || acc.thermalMass]);
-        params.push(['Typ podłogi', FLOOR_TYPES[acc.floorType] || acc.floorType]);
+        allParams.push(['Masa termiczna', THERMAL_MASS_TYPES[acc.thermalMass] || acc.thermalMass]);
+        allParams.push(['Typ podłogi', FLOOR_TYPES[acc.floorType] || acc.floorType]);
     } else {
-        params.push(['Akumulacja ciepła', 'Pominięta']);
+        allParams.push(['Akumulacja ciepła', 'Pominięta']);
+    }
+
+    const paramsBody: string[][] = [];
+    for (let i = 0; i < allParams.length; i += 2) {
+        const row = [...allParams[i]];
+        if (i + 1 < allParams.length) {
+            row.push(...allParams[i + 1]);
+        } else {
+            row.push('', '');
+        }
+        paramsBody.push(row);
     }
 
     autoTable(doc, {
         startY: yPos,
-        head: [['Parametr', 'Wartość']],
-        body: params,
+        head: [['Parametr', 'Wartość', 'Parametr', 'Wartość']],
+        body: paramsBody,
         theme: 'grid',
         headStyles: { fillColor: [241, 245, 249], textColor: 50, fontStyle: 'bold', lineColor: 200, font: 'Roboto' },
         bodyStyles: { textColor: 50, font: 'Roboto' },
-        styles: { fontSize: 10, cellPadding: 3, font: 'Roboto' },
-        margin: { left: margin, right: margin }
+        styles: { fontSize: 9, cellPadding: 3, font: 'Roboto' },
+        margin: { left: margin, right: margin },
+        didParseCell: (data) => {
+            // Bold the month name (first row, second column)
+            if (data.section === 'body' && data.row.index === 0 && data.column.index === 1) {
+                data.cell.styles.fontStyle = 'bold';
+            }
+        }
     });
     yPos = (doc as any).lastAutoTable.finalY + 15;
 
@@ -273,7 +291,7 @@ export const generatePdfReport = async (state: any) => {
     // Highlight Box
     doc.setFillColor(254, 242, 242); // Light red/orange bg
     doc.setDrawColor(252, 165, 165); // Red border
-    doc.roundedRect(margin, yPos, pageWidth - (2 * margin), 35, 3, 3, 'FD');
+    doc.roundedRect(margin, yPos, pageWidth - (2 * margin), 42, 3, 3, 'FD');
     
     doc.setFontSize(11);
     doc.setTextColor(153, 27, 27);
@@ -287,8 +305,53 @@ export const generatePdfReport = async (state: any) => {
     doc.setFontSize(10);
     doc.setFont('Roboto', 'normal');
     doc.setTextColor(120);
-    doc.text(`Występuje o godzinie: ${String(hourTotalCS_Local).padStart(2, '0')}:00 (${timeZoneNotice})`, pageWidth / 2, yPos + 30, { align: 'center' });
     
+    const specificLoad = (maxTotalCS / input.roomArea).toFixed(1);
+    doc.text(`(wskaźnik powierzchniowy: ${specificLoad} W/m²)`, pageWidth / 2, yPos + 29, { align: 'center' });
+
+    const monthNamesLocative = [
+        'styczniu', 'lutym', 'marcu', 'kwietniu', 'maju', 'czerwcu',
+        'lipcu', 'sierpniu', 'wrześniu', 'październiku', 'listopadzie', 'grudniu'
+    ];
+    const monthLoc = monthNamesLocative[month - 1];
+    const prep = (month === 9) ? 'we' : 'w'; // 'we wrześniu'
+    
+    doc.text(`Występuje o godzinie: ${String(hourTotalCS_Local).padStart(2, '0')}:00 (${timeZoneNotice}) ${prep} ${monthLoc}`, pageWidth / 2, yPos + 37, { align: 'center' });
+    
+    yPos += 52;
+
+    // Energy Estimation
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(margin, yPos, pageWidth - 2*margin, 14, 2, 2, 'FD');
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.setFont('Roboto', 'bold');
+    doc.text('Szacunkowe dobowe zużycie energii chłodniczej:', margin + 5, yPos + 9);
+    
+    const textWidth = doc.getTextWidth('Szacunkowe dobowe zużycie energii chłodniczej: ');
+    doc.setFont('Roboto', 'normal');
+    doc.setTextColor(50);
+    doc.text(`${totalKWhCS.toFixed(1)} kWh`, margin + 5 + textWidth, yPos + 9);
+
+    yPos += 20;
+
+    doc.setFillColor(240, 249, 255);
+    doc.setDrawColor(186, 230, 253);
+    doc.roundedRect(margin, yPos, pageWidth - (2 * margin), 26, 2, 2, 'FD');
+    
+    doc.setFontSize(9);
+    doc.setFont('Roboto', 'bold');
+    doc.setTextColor(3, 105, 161);
+    doc.text('Uwaga metodyczna:', margin + 5, yPos + 6);
+    
+    doc.setFont('Roboto', 'normal');
+    doc.setTextColor(71, 85, 105);
+    const methodologyText = 'Obliczenia wykorzystują model całkowicie bezchmurnego nieba (Clear Sky) dla wybranego miesiąca. Zgodnie z metodyką RTS (Radiant Time Series), algorytm zakłada, że takie same, ekstremalne warunki pogodowe oraz wewnętrzne profile zysków ciepła powtarzają się przez kilka dni z rzędu, co pozwala na pełne uwzględnienie zjawiska akumulacji ciepła w masie budynku.';
+    const splitMethodology = doc.splitTextToSize(methodologyText, pageWidth - (2 * margin) - 10);
+    doc.text(splitMethodology, margin + 5, yPos + 11);
+
     // --- PAGE 2: Detailed Tables & Design Assumptions ---
     doc.addPage();
     yPos = margin;
@@ -322,13 +385,11 @@ export const generatePdfReport = async (state: any) => {
         headStyles: { fillColor: [255, 237, 213], textColor: [194, 65, 12], fontStyle: 'bold', font: 'Roboto' },
         bodyStyles: { textColor: 20, fontSize: 9, font: 'Roboto' },
         columnStyles: { 0: { cellWidth: 'auto' }, 1: { cellWidth: 25, halign: 'right', fontStyle: 'bold' } },
-        margin: { left: margin, right: margin },
-        tableLineColor: 200,
-        tableLineWidth: 0.1,
-        styles: { font: 'Roboto' }
+        margin: { left: margin, right: pageWidth / 2 + 5 },
+        styles: { font: 'Roboto', lineWidth: { bottom: 0.1 }, lineColor: [226, 232, 240] }
     });
 
-    yPos = (doc as any).lastAutoTable.finalY + 10;
+    const finalYSensible = (doc as any).lastAutoTable.finalY;
 
     // Latent Table
     autoTable(doc, {
@@ -339,30 +400,11 @@ export const generatePdfReport = async (state: any) => {
         headStyles: { fillColor: [219, 234, 254], textColor: [30, 64, 175], fontStyle: 'bold', font: 'Roboto' },
         bodyStyles: { textColor: 20, fontSize: 9, font: 'Roboto' },
         columnStyles: { 0: { cellWidth: 'auto' }, 1: { cellWidth: 25, halign: 'right', fontStyle: 'bold' } },
-        margin: { left: margin, right: margin },
-        tableLineColor: 200,
-        tableLineWidth: 0.1,
-        styles: { font: 'Roboto' }
+        margin: { left: pageWidth / 2 + 5, right: margin },
+        styles: { font: 'Roboto', lineWidth: { bottom: 0.1 }, lineColor: [226, 232, 240] }
     });
 
-    yPos = (doc as any).lastAutoTable.finalY + 15;
-
-    // Energy Estimation
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(margin, yPos, pageWidth - 2*margin, 25, 2, 2, 'FD');
-    
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.setFont('Roboto', 'bold');
-    doc.text('Szacunkowe dobowe zużycie energii chłodniczej:', margin + 5, yPos + 7);
-    
-    doc.setFontSize(10);
-    doc.setFont('Roboto', 'normal');
-    doc.setTextColor(50);
-    doc.text(`- Warunki projektowe (bezchmurne niebo, najgorszy możliwy przypadek): ${totalKWhCS.toFixed(1)} kWh`, margin + 5, yPos + 14);
-
-    yPos += 35;
+    yPos = Math.max(finalYSensible, (doc as any).lastAutoTable.finalY) + 15;
     
     addHeader('3. Założenia Projektowe');
 
@@ -403,7 +445,19 @@ export const generatePdfReport = async (state: any) => {
         styles: { fontSize: 9, cellPadding: 3, font: 'Roboto' },
         margin: { left: margin, right: margin }
     });
-    yPos = (doc as any).lastAutoTable.finalY + 10;
+    yPos = (doc as any).lastAutoTable.finalY + 5;
+
+    if (state.windows.length > 0) {
+        const totalWindowArea = state.windows.reduce((sum: number, w: any) => sum + (w.width * w.height), 0);
+        const wwr = ((totalWindowArea / input.roomArea) * 100).toFixed(1);
+        doc.setFontSize(9);
+        doc.setFont('Roboto', 'normal');
+        doc.setTextColor(100);
+        doc.text(`Całkowita powierzchnia okien: ${totalWindowArea.toFixed(2)} m² (${wwr}% powierzchni podłogi)`, margin, yPos);
+        yPos += 10;
+    } else {
+        yPos += 5;
+    }
 
     // Tabela 2: Zyski wewnętrzne
     doc.setFont('Roboto', 'bold');
@@ -673,8 +727,7 @@ export const generatePdfReport = async (state: any) => {
     // Disclaimer
     doc.setFontSize(7);
     doc.setTextColor(150);
-    const disclaimer = `KLAUZULA ODPOWIEDZIALNOŚCI:
-    Niniejszy raport jest wynikiem symulacji komputerowej opartej na wprowadzonych danych oraz statystycznych modelach klimatycznych. Rzeczywiste zapotrzebowanie na chłód może różnić się w zależności od dokładności danych wejściowych, jakości wykonania budynku, sposobu użytkowania oraz lokalnych warunków mikroklimatycznych. Autor aplikacji nie ponosi odpowiedzialności za ewentualne błędy w doborze urządzeń na podstawie tego raportu. Zaleca się weryfikację wyników przez uprawnionego projektanta HVAC.`;
+    const disclaimer = "KLAUZULA ODPOWIEDZIALNOŚCI:\nNiniejszy raport jest wynikiem symulacji komputerowej opartej na wprowadzonych danych oraz statystycznych modelach klimatycznych. Rzeczywiste zapotrzebowanie na chłód może różnić się w zależności od dokładności danych wejściowych, jakości wykonania budynku, sposobu użytkowania oraz lokalnych warunków mikroklimatycznych. Autor aplikacji nie ponosi odpowiedzialności za ewentualne błędy w doborze urządzeń na podstawie tego raportu. Zaleca się weryfikację wyników przez uprawnionego projektanta HVAC.\n\nAutor programu: Łukasz Sowiński";
     
     const splitDisclaimer = doc.splitTextToSize(disclaimer, pageWidth - 2*margin);
     
