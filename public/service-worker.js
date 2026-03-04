@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'heat-gain-calculator-v0.33';
+const CACHE_NAME = 'heat-gain-calculator-v0.38';
 const urlsToCache = [
   '/',
   '/index.html',

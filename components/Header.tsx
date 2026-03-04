@@ -26,7 +26,7 @@ const Header: React.FC = () => {
                             Kalkulator obciążenia chłodniczego
                         </h1>
                         <span className="hidden lg:block text-xs font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
-                            v0.35
+                            v0.38
                         </span>
                     </div>
                     <Tooltip text="Pokaż metodologię" position="bottom">

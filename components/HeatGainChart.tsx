@@ -136,6 +136,20 @@ const HeatGainChart: React.FC = () => {
                     tooltip: { 
                         mode: 'index',
                         callbacks: {
+                            label: (context: any) => {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    if (context.dataset.yAxisID === 'yTemp') {
+                                        label += context.parsed.y.toFixed(1) + ' °C';
+                                    } else {
+                                        label += context.parsed.y.toFixed(0) + ' W';
+                                    }
+                                }
+                                return label;
+                            },
                             footer: (tooltipItems: any[]) => {
                                 if (chartType === 'bar') {
                                     let sum = 0;

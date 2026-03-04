@@ -40,7 +40,7 @@ const WindowConfigurator: React.FC = () => {
                   initial={{ opacity: 0, scale: 0.8, y: 20 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.8, y: -20 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                  transition={{ type: 'spring', stiffness: 260, damping: 25 }}
                 >
                   <WindowCard window={win} />
                 </motion.div>

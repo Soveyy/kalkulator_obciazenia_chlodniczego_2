@@ -31,6 +31,10 @@ const PeakSummary: React.FC = () => {
     const infiltrationLatentAtPeak = state.activeResults.infiltrationLoad.latent[hourTotalCS_UTC] || 0;
 
     const anyShadingEnabled = state.windows.some(win => win.shading && win.shading.enabled);
+    
+    const isNaturalVentWithInf = state.internalGains.ventilation.enabled && 
+                                state.internalGains.ventilation.type === 'natural' && 
+                                state.internalGains.ventilation.includeInfiltration;
 
     // FIX: Calculate total daily energy in kWh from hourly data in Watts.
     const totalKWhCS = finalGains.clearSky.total.reduce((sum, val) => sum + val, 0) / 1000;
@@ -51,7 +55,7 @@ const PeakSummary: React.FC = () => {
                         <p>→ Przewodzenie: {conductionLoadPeak.toFixed(0)} W</p>
                         <p>→ Wewnętrzne: {internalSensibleLoadPeak.toFixed(0)} W</p>
                         <p>→ Wentylacja: {ventilationSensibleLoadPeak.toFixed(0)} W</p>
-                        <p>→ Infiltracja: {infiltrationSensibleLoadPeak.toFixed(0)} W</p>
+                        {!isNaturalVentWithInf && <p>→ Infiltracja: {infiltrationSensibleLoadPeak.toFixed(0)} W</p>}
                     </div>
                 </div>
                  <div>
@@ -60,7 +64,7 @@ const PeakSummary: React.FC = () => {
                      <div className="text-xs pl-2">
                         <p>→ Wewnętrzne: {internalLatentAtPeak.toFixed(0)} W</p>
                         <p>→ Wentylacja: {ventilationLatentAtPeak.toFixed(0)} W</p>
-                        <p>→ Infiltracja: {infiltrationLatentAtPeak.toFixed(0)} W</p>
+                        {!isNaturalVentWithInf && <p>→ Infiltracja: {infiltrationLatentAtPeak.toFixed(0)} W</p>}
                     </div>
                 </div>
             </div>
