@@ -123,14 +123,14 @@ export const LIGHTING_TYPES: { [key: string]: { label: string, powerDensity: num
     halogen: { label: 'Halogeny', powerDensity: 25.0, radiativeFraction: 0.70, spaceFraction: 1.0 }
 };
 
-export const EQUIPMENT_PRESETS: { [key: string]: { label: string, power: number } } = {
-    pc: { label: 'Komputer PC', power: 150 },
-    laptop: { label: 'Laptop', power: 60 },
-    monitor: { label: 'Monitor', power: 40 },
-    printer: { label: 'Drukarka laserowa', power: 100 },
-    tv: { label: 'Telewizor LED', power: 80 },
-    coffee: { label: 'Ekspres do kawy', power: 120 },
-    fridge: { label: 'Lodówka', power: 50 },
+export const EQUIPMENT_PRESETS: { [key: string]: { label: string, power: number, radiantFraction: number } } = {
+    pc: { label: 'Komputer PC', power: 120, radiantFraction: 0.10 },
+    laptop: { label: 'Laptop', power: 60, radiantFraction: 0.25 },
+    monitor: { label: 'Monitor', power: 25, radiantFraction: 0.40 },
+    printer: { label: 'Drukarka laserowa', power: 100, radiantFraction: 0.30 },
+    tv: { label: 'Telewizor LED', power: 60, radiantFraction: 0.40 },
+    coffee: { label: 'Ekspres do kawy', power: 120, radiantFraction: 0.40 },
+    fridge: { label: 'Lodówka', power: 50, radiantFraction: 0.30 },
 };
 
 export const WINDOW_PRESETS: { [key: string]: { u: number, shgc: number } } = {

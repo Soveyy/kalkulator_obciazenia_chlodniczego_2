@@ -1,6 +1,6 @@
 
 import { Window, AccumulationSettings, InternalGains, AllData, InputState, CalculationResults, Shading, CalculationResultData } from '../types';
-import { PEOPLE_ACTIVITY_LEVELS, LIGHTING_TYPES, VENTILATION_EXCHANGER_TYPES } from '../constants';
+import { PEOPLE_ACTIVITY_LEVELS, LIGHTING_TYPES, VENTILATION_EXCHANGER_TYPES, EQUIPMENT_PRESETS } from '../constants';
 import { SHGC_DIFFUSE_MULTIPLIERS, SHGC_DIRECT_CORRECTION_CURVES } from '../src/config/shgcConfig';
 
 
@@ -21,7 +21,7 @@ function getCorrectedSHGC(window: Window, nsrdbDirData: any, hour: number): { sh
     }
 
     const curve = SHGC_DIRECT_CORRECTION_CURVES[windowTypeKey];
-    const angles = Object.keys(curve).map(Number);
+    const angles = Object.keys(curve).map(Number).sort((a, b) => a - b);
     
     let x0 = angles.filter(a => a <= angleOfIncidence).pop();
     if (x0 === undefined) x0 = 0;
@@ -388,10 +388,18 @@ export function calculateGainsForMonth(
         const endHourUTC = (item.endHour - offset + 24) % 24;
         const power = Number(item.power) || 0;
         const quantity = Number(item.quantity) || 0;
+        
+        // Find if it matches a preset to get its radiant fraction
+        let radiantFraction = 0.4; // Default 40% radiant / 60% convective
+        const preset = Object.values(EQUIPMENT_PRESETS).find(p => p.label === item.name);
+        if (preset) {
+            radiantFraction = preset.radiantFraction;
+        }
+
         for (let hour = 0; hour < 24; hour++) {
             if (isHourActive(hour, startHourUTC, endHourUTC)) {
-                internalGainsSensibleRadiant[hour] += power * quantity * 0.5;
-                internalGainsSensibleConvective[hour] += power * quantity * 0.5;
+                internalGainsSensibleRadiant[hour] += power * quantity * radiantFraction;
+                internalGainsSensibleConvective[hour] += power * quantity * (1 - radiantFraction);
             }
         }
     });
