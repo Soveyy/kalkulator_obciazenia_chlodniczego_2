@@ -43,9 +43,9 @@ const ResultsTable: React.FC = () => {
                                 return (
                                 <tr key={localHour} className="bg-white border-b dark:bg-slate-800 dark:border-slate-700">
                                     <th scope="row" className="px-2 py-1 font-medium text-slate-900 dark:text-white">{`${String(localHour).padStart(2, '0')}:00`}</th>
-                                    <td className="px-2 py-1 text-right">{finalGains.clearSky.sensible[utcHour].toFixed(0)}</td>
-                                    <td className="px-2 py-1 text-right">{finalGains.clearSky.latent[utcHour].toFixed(0)}</td>
-                                    <td className="px-2 py-1 text-right font-semibold">{finalGains.clearSky.total[utcHour].toFixed(0)}</td>
+                                    <td className="px-2 py-1 text-right">{(finalGains.clearSky.sensible?.[utcHour] ?? 0).toFixed(0)}</td>
+                                    <td className="px-2 py-1 text-right">{(finalGains.clearSky.latent?.[utcHour] ?? 0).toFixed(0)}</td>
+                                    <td className="px-2 py-1 text-right font-semibold">{(finalGains.clearSky.total?.[utcHour] ?? 0).toFixed(0)}</td>
                                 </tr>
                             )})}
                         </tbody>

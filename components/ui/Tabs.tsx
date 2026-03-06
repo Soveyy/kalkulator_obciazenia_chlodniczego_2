@@ -15,7 +15,7 @@ const Tabs: React.FC = () => {
     { id: 'windows', label: '2. Okna', status: progress.windows },
     { id: 'ventilation', label: '3. Wentylacja', status: progress.ventilation },
     { id: 'summary', label: '4. Podsumowanie', status: progress.total === 100 },
-    { id: 'rts', label: '5. Analiza akumulacji', status: state.results !== null },
+    { id: 'rts', label: '5. Zaawansowana analiza', status: state.results !== null },
   ];
 
   return (
@@ -28,6 +28,8 @@ const Tabs: React.FC = () => {
             className={`whitespace-nowrap py-3 px-5 rounded-xl font-medium text-sm transition-all duration-200 flex items-center gap-2 border
               ${state.activeTab === tab.id
                 ? 'bg-white dark:bg-slate-800 border-blue-500 text-blue-600 dark:text-blue-400 shadow-md transform -translate-y-0.5'
+                : tab.id === 'rts' && state.results !== null && state.activeTab === 'summary'
+                ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-400 dark:border-blue-500 text-blue-700 dark:text-blue-300 animate-attention'
                 : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-800 hover:shadow-lg hover:-translate-y-1'
               }`}
           >

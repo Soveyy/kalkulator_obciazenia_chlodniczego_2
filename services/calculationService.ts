@@ -340,6 +340,13 @@ export function calculateGainsForMonth(
     const internalGainsSensibleConvective = Array(24).fill(0);
     const internalGainsLatent = Array(24).fill(0);
 
+    const peopleSensibleRadiant = Array(24).fill(0);
+    const peopleSensibleConvective = Array(24).fill(0);
+    const lightingSensibleRadiant = Array(24).fill(0);
+    const lightingSensibleConvective = Array(24).fill(0);
+    const equipmentSensibleRadiant = Array(24).fill(0);
+    const equipmentSensibleConvective = Array(24).fill(0);
+
     if (internalGains.people.enabled) {
         const activity = PEOPLE_ACTIVITY_LEVELS[internalGains.people.activityLevel];
         if (activity) {
@@ -358,8 +365,12 @@ export function calculateGainsForMonth(
 
             for (let hour = 0; hour < 24; hour++) {
                 if(isHourActive(hour, startHourUTC, endHourUTC)) {
-                    internalGainsSensibleRadiant[hour] += peopleCount * sensibleGain * activity.radiantFraction;
-                    internalGainsSensibleConvective[hour] += peopleCount * sensibleGain * (1 - activity.radiantFraction);
+                    const rad = peopleCount * sensibleGain * activity.radiantFraction;
+                    const conv = peopleCount * sensibleGain * (1 - activity.radiantFraction);
+                    internalGainsSensibleRadiant[hour] += rad;
+                    internalGainsSensibleConvective[hour] += conv;
+                    peopleSensibleRadiant[hour] += rad;
+                    peopleSensibleConvective[hour] += conv;
                     internalGainsLatent[hour] += peopleCount * latentGain;
                 }
             }
@@ -376,8 +387,12 @@ export function calculateGainsForMonth(
                 if(isHourActive(h, startHourUTC, endHourUTC)) {
                     const totalHeat = powerDensity * roomArea;
                     const heatToSpace = totalHeat * lightingType.spaceFraction;
-                    internalGainsSensibleRadiant[h] += heatToSpace * lightingType.radiativeFraction;
-                    internalGainsSensibleConvective[h] += heatToSpace * (1 - lightingType.radiativeFraction);
+                    const rad = heatToSpace * lightingType.radiativeFraction;
+                    const conv = heatToSpace * (1 - lightingType.radiativeFraction);
+                    internalGainsSensibleRadiant[h] += rad;
+                    internalGainsSensibleConvective[h] += conv;
+                    lightingSensibleRadiant[h] += rad;
+                    lightingSensibleConvective[h] += conv;
                 }
             }
         }
@@ -398,8 +413,12 @@ export function calculateGainsForMonth(
 
         for (let hour = 0; hour < 24; hour++) {
             if (isHourActive(hour, startHourUTC, endHourUTC)) {
-                internalGainsSensibleRadiant[hour] += power * quantity * radiantFraction;
-                internalGainsSensibleConvective[hour] += power * quantity * (1 - radiantFraction);
+                const rad = power * quantity * radiantFraction;
+                const conv = power * quantity * (1 - radiantFraction);
+                internalGainsSensibleRadiant[hour] += rad;
+                internalGainsSensibleConvective[hour] += conv;
+                equipmentSensibleRadiant[hour] += rad;
+                equipmentSensibleConvective[hour] += conv;
             }
         }
     });
@@ -489,11 +508,43 @@ export function calculateGainsForMonth(
     const instantaneousSensibleLoad = Array(24).fill(0).map((_, h) => solarRadiantGains_SolarRTS[h] + nonSolarRadiantTotal[h] + totalConvectiveLoad[h]);
     const totalLatentLoad = internalGainsLatent.map((l, i) => l + ventilationLoad.latent[i] + infiltrationLoad.latent[i]);
 
+    // Breakdown for final load
+    const windowsLoad = Array(24).fill(0).map((_, h) => {
+        const solarRad = accumulation.include ? applyRTS(solarRadiantGains_SolarRTS, rtsFactorsSolar)[h] : solarRadiantGains_SolarRTS[h];
+        const solarRadNonSolar = accumulation.include ? applyRTS(solarRadiantGains_NonSolarRTS, rtsFactorsNonSolar)[h] : solarRadiantGains_NonSolarRTS[h];
+        const condRad = accumulation.include ? applyRTS(conductionRadiantGains_NonSolarRTS, rtsFactorsNonSolar)[h] : conductionRadiantGains_NonSolarRTS[h];
+        return solarRad + solarRadNonSolar + condRad + solarConvectiveGains[h] + conductionGainsConvective[h];
+    });
+
+    const peopleLoad = Array(24).fill(0).map((_, h) => {
+        const rad = accumulation.include ? applyRTS(peopleSensibleRadiant, rtsFactorsNonSolar)[h] : peopleSensibleRadiant[h];
+        return rad + peopleSensibleConvective[h];
+    });
+
+    const lightingLoad = Array(24).fill(0).map((_, h) => {
+        const rad = accumulation.include ? applyRTS(lightingSensibleRadiant, rtsFactorsNonSolar)[h] : lightingSensibleRadiant[h];
+        return rad + lightingSensibleConvective[h];
+    });
+
+    const equipmentLoad = Array(24).fill(0).map((_, h) => {
+        const rad = accumulation.include ? applyRTS(equipmentSensibleRadiant, rtsFactorsNonSolar)[h] : equipmentSensibleRadiant[h];
+        return rad + equipmentSensibleConvective[h];
+    });
+
     const finalGains = {
         clearSky: {
             sensible: sensibleLoad,
             latent: totalLatentLoad,
-            total: sensibleLoad.map((s, h) => s + totalLatentLoad[h])
+            total: sensibleLoad.map((s, h) => s + totalLatentLoad[h]),
+            windows: windowsLoad,
+            people: peopleLoad,
+            lighting: lightingLoad,
+            equipment: equipmentLoad,
+            ventilationSensible: ventilationLoadSensible,
+            infiltrationSensible: infiltrationLoadSensible,
+            peopleLatent: internalGainsLatent,
+            ventilationLatent: ventilationLoadLatent,
+            infiltrationLatent: infiltrationLoadLatent
         }
     };
 
@@ -569,7 +620,7 @@ export function calculateGainsForMonth(
 
     const loadComponents_solar = Array(24).fill(0).map((_, h) => solarConvectiveTotal[h] + solarLoadFromSolarRTS[h] + solarLoadFromNonSolarRTS[h]);
 
-    const windowGainsSensible = windows.length === 0 ? Array(24).fill(0) : finalGains.clearSky.sensible.map((g,i) => g - loadComponents_internalSensible[i] - ventilationLoad.sensible[i] - infiltrationLoad.sensible[i]);
+    const windowGainsSensible = windowsLoad;
 
     return {
         finalGains,

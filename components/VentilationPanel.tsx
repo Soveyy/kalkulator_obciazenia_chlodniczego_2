@@ -38,13 +38,22 @@ const VentilationPanel: React.FC = () => {
                     }
                 }
             }
-        } else if (['airflow', 'naturalVentilationAirflow', 'exteriorWallPerimeter', 'roomHeight', 'windSpeed'].includes(name)) {
+        } else if (['airflow', 'naturalVentilationAirflow', 'exteriorWallPerimeter', 'roomHeight'].includes(name)) {
             if (value === '') {
                 (newVentilationGains as any)[name] = '';
             } else {
                 const num = parseFloat(value);
-                if (!isNaN(num) && num >= 0) {
-                    (newVentilationGains as any)[name] = num;
+                if (!isNaN(num)) {
+                    (newVentilationGains as any)[name] = Math.max(0, num);
+                }
+            }
+        } else if (name === 'windSpeed') {
+            if (value === '') {
+                newVentilationGains.windSpeed = '';
+            } else {
+                const num = parseFloat(value);
+                if (!isNaN(num)) {
+                    newVentilationGains.windSpeed = Math.max(0, Math.min(20, num));
                 }
             }
         } else {
@@ -79,7 +88,19 @@ const VentilationPanel: React.FC = () => {
                         <Tooltip text="Zawartość wilgoci powietrza zewnętrznego. Używana do obliczenia obciążenia utajonego dla wentylacji i infiltracji." position="top" />
                     </label>
                     <div className="relative">
-                        <Input name="outdoorMoistureContent" type="number" value={ventilation.outdoorMoistureContent} onChange={handleChange} step="0.0001" className={moistureError ? 'border-red-500 focus:ring-red-500' : ''} />
+                        <Input 
+                            name="outdoorMoistureContent" 
+                            type="number" 
+                            value={ventilation.outdoorMoistureContent} 
+                            onChange={handleChange} 
+                            step="0.0001" 
+                            min="0.005" 
+                            max="0.018" 
+                            className={
+                                ventilation.outdoorMoistureContent === '' ? 'animate-pulse-border border-blue-400' : 
+                                (ventilation.outdoorMoistureContent < 0.005 || ventilation.outdoorMoistureContent > 0.018) ? 'animate-pulse-error' : ''
+                            } 
+                        />
                         {moistureError && (
                             <p className="text-[10px] text-red-500 mt-1 absolute bg-white dark:bg-slate-900 px-1 rounded border border-red-200 dark:border-red-900/50 z-10 shadow-sm">
                                 {moistureError}
@@ -103,9 +124,12 @@ const VentilationPanel: React.FC = () => {
                                         name="exteriorWallPerimeter" 
                                         value={ventilation.exteriorWallPerimeter} 
                                         onChange={handleChange} 
-                                        min="0" 
-                                        step="0.1" 
-                                        className={!ventilation.exteriorWallPerimeter ? 'animate-pulse-border border-blue-400' : ''}
+                                        min="0.1" 
+                                        step="any" 
+                                        className={
+                                            ventilation.exteriorWallPerimeter === '' ? 'animate-pulse-border border-blue-400' : 
+                                            (ventilation.exteriorWallPerimeter < 0.1) ? 'animate-pulse-error' : ''
+                                        }
                                     />
                                 </div>
                                 <div>
@@ -115,9 +139,12 @@ const VentilationPanel: React.FC = () => {
                                         name="roomHeight" 
                                         value={ventilation.roomHeight} 
                                         onChange={handleChange} 
-                                        min="0" 
-                                        step="0.1" 
-                                        className={!ventilation.roomHeight ? 'animate-pulse-border border-blue-400' : ''}
+                                        min="0.1" 
+                                        step="any" 
+                                        className={
+                                            ventilation.roomHeight === '' ? 'animate-pulse-border border-blue-400' : 
+                                            (ventilation.roomHeight < 0.1) ? 'animate-pulse-error' : ''
+                                        }
                                     />
                                 </div>
                             </div>
@@ -169,8 +196,12 @@ const VentilationPanel: React.FC = () => {
                                     value={ventilation.windSpeed} 
                                     onChange={handleChange} 
                                     min="0" 
-                                    step="0.1" 
-                                    className={!ventilation.windSpeed ? 'animate-pulse-border border-blue-400' : ''}
+                                    max="20"
+                                    step="any" 
+                                    className={
+                                        ventilation.windSpeed === '' ? 'animate-pulse-border border-blue-400' : 
+                                        (ventilation.windSpeed < 0 || ventilation.windSpeed > 20) ? 'animate-pulse-error' : ''
+                                    }
                                 />
                             </div>
                         </div>
@@ -208,7 +239,7 @@ const VentilationPanel: React.FC = () => {
                                 <>
                                     <div>
                                         <label className="label-style font-medium">Strumień powietrza wentylacyjnego (m³/h):</label>
-                                        <Input type="number" name="airflow" value={ventilation.airflow} onChange={handleChange} min="0" />
+                                        <Input type="number" name="airflow" value={ventilation.airflow} onChange={handleChange} min="0" step="any" />
                                     </div>
                                     <div>
                                         <label className="label-style font-medium">Typ wymiennika odzysku ciepła:</label>
@@ -225,7 +256,7 @@ const VentilationPanel: React.FC = () => {
                             ) : (
                                 <div>
                                     <label className="label-style font-medium">Normatywny wydatek powietrza (m³/h):</label>
-                                    <Input type="number" name="naturalVentilationAirflow" value={ventilation.naturalVentilationAirflow} onChange={handleChange} min="0" />
+                                    <Input type="number" name="naturalVentilationAirflow" value={ventilation.naturalVentilationAirflow} onChange={handleChange} min="0" step="any" />
                                 </div>
                             )}
                         </div>

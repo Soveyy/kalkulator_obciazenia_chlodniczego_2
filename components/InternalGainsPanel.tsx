@@ -65,7 +65,7 @@ const InternalGainsPanel: React.FC = () => {
             } else {
                 const num = parseFloat(value);
                 if (!isNaN(num) && num >= 0) {
-                    val = Math.floor(num);
+                    val = num;
                 } else {
                     return; 
                 }
@@ -106,9 +106,16 @@ const InternalGainsPanel: React.FC = () => {
                 return { ...item, [name]: '' };
             }
             
-            const num = parseInt(value, 10);
-            if (!isNaN(num) && num >= 0) {
-                return { ...item, [name]: Math.floor(num) };
+            if (name === 'quantity') {
+                const num = parseInt(value, 10);
+                if (!isNaN(num) && num >= 0) {
+                    return { ...item, [name]: Math.floor(num) };
+                }
+            } else if (name === 'power') {
+                const num = parseFloat(value);
+                if (!isNaN(num) && num >= 0) {
+                    return { ...item, [name]: num };
+                }
             }
             return item;
         });
@@ -142,7 +149,18 @@ const InternalGainsPanel: React.FC = () => {
                         <div className="pl-4 border-l-2 border-slate-200 dark:border-slate-700 space-y-4 mt-4">
                             <div>
                                 <label className="label-style font-medium">Liczba osób:</label>
-                                <Input type="number" name="count" value={state.internalGains.people.count} onChange={handlePeopleChange} min="0" />
+                                <Input 
+                                    type="number" 
+                                    name="count" 
+                                    value={state.internalGains.people.count} 
+                                    onChange={handlePeopleChange} 
+                                    min="0" 
+                                    step="1" 
+                                    className={
+                                        state.internalGains.people.count === '' ? 'animate-pulse-border border-blue-400' : 
+                                        (state.internalGains.people.count < 0) ? 'animate-pulse-error' : ''
+                                    }
+                                />
                             </div>
                             <div>
                                 <label className="label-style flex items-center font-medium">
@@ -186,7 +204,18 @@ const InternalGainsPanel: React.FC = () => {
                             </div>
                              <div>
                                 <label className="label-style font-medium">Gęstość mocy (W/m²):</label>
-                                <Input type="number" name="powerDensity" value={state.internalGains.lighting.powerDensity} onChange={handleLightingChange} step="1" min="0" />
+                                <Input 
+                                    type="number" 
+                                    name="powerDensity" 
+                                    value={state.internalGains.lighting.powerDensity} 
+                                    onChange={handleLightingChange} 
+                                    step="any" 
+                                    min="0" 
+                                    className={
+                                        state.internalGains.lighting.powerDensity === '' ? 'animate-pulse-border border-blue-400' : 
+                                        (state.internalGains.lighting.powerDensity < 0) ? 'animate-pulse-error' : ''
+                                    }
+                                />
                             </div>
                             <div className="mt-2">
                                 <TimeRangeSlider 
@@ -229,14 +258,38 @@ const InternalGainsPanel: React.FC = () => {
                                 <div className="xl:w-24">
                                      <label className="xl:hidden text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1 block">Moc [W]</label>
                                      <div className="relative">
-                                        <Input name="power" type="number" value={item.power} onChange={(e) => handleEquipmentChange(item.id, e)} className="text-sm pr-6 !py-1 !px-2 !h-8" min="0" placeholder="Moc" />
+                                        <Input 
+                                            name="power" 
+                                            type="number" 
+                                            value={item.power} 
+                                            onChange={(e) => handleEquipmentChange(item.id, e)} 
+                                            className={`text-sm pr-6 !py-1 !px-2 !h-8 ${
+                                                item.power === '' ? 'animate-pulse-border border-blue-400' : 
+                                                (item.power < 0) ? 'animate-pulse-error' : ''
+                                            }`} 
+                                            min="0" 
+                                            step="any" 
+                                            placeholder="Moc" 
+                                        />
                                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">W</span>
                                      </div>
                                 </div>
                                 <div className="xl:w-20">
                                      <label className="xl:hidden text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1 block">Ilość</label>
                                      <div className="relative">
-                                        <Input name="quantity" type="number" value={item.quantity} onChange={(e) => handleEquipmentChange(item.id, e)} className="text-sm pr-8 !py-1 !px-2 !h-8" min="0" placeholder="Ilość" />
+                                        <Input 
+                                            name="quantity" 
+                                            type="number" 
+                                            value={item.quantity} 
+                                            onChange={(e) => handleEquipmentChange(item.id, e)} 
+                                            className={`text-sm pr-8 !py-1 !px-2 !h-8 ${
+                                                item.quantity === '' ? 'animate-pulse-border border-blue-400' : 
+                                                (item.quantity < 1) ? 'animate-pulse-error' : ''
+                                            }`} 
+                                            min="1" 
+                                            step="1" 
+                                            placeholder="Ilość" 
+                                        />
                                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">szt.</span>
                                      </div>
                                 </div>

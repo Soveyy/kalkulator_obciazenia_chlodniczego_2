@@ -1,5 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import Chart from 'chart.js/auto';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
+
+Chart.register(ChartDataLabels);
 
 interface PeakLoadPieChartProps {
     data: {
@@ -34,6 +37,21 @@ const PeakLoadPieChart: React.FC<PeakLoadPieChartProps> = ({ data, onRender }) =
                     },
                     legend: {
                         position: 'right'
+                    },
+                    datalabels: {
+                        color: '#fff',
+                        font: {
+                            weight: 'bold',
+                            size: 14
+                        },
+                        formatter: (value, context) => {
+                            const dataset = context.chart.data.datasets[0];
+                            const total = dataset.data.reduce((acc: number, curr: any) => acc + curr, 0);
+                            const percentage = ((value / total) * 100).toFixed(1) + '%';
+                            return percentage;
+                        },
+                        textShadowBlur: 4,
+                        textShadowColor: 'rgba(0,0,0,0.8)'
                     }
                 }
             }

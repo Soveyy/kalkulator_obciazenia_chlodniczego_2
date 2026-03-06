@@ -98,6 +98,15 @@ export interface CalculationResultData {
     sensible: number[];
     latent: number[];
     total: number[];
+    windows?: number[];
+    people?: number[];
+    lighting?: number[];
+    equipment?: number[];
+    ventilationSensible?: number[];
+    infiltrationSensible?: number[];
+    peopleLatent?: number[];
+    ventilationLatent?: number[];
+    infiltrationLatent?: number[];
 }
 
 export interface CalculationComponents {

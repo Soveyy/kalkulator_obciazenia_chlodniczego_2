@@ -17,18 +17,18 @@ const PeakSummary: React.FC = () => {
     const hourTotalCS_UTC = finalGains.clearSky.total.indexOf(maxTotalCS);
     const hourTotalCS_Local = (hourTotalCS_UTC + offset) % 24;
 
-    const sensibleAtPeak = finalGains.clearSky.sensible[hourTotalCS_UTC] || 0;
-    const latentAtPeak = finalGains.clearSky.latent[hourTotalCS_UTC] || 0;
+    const sensibleAtPeak = finalGains.clearSky.sensible?.[hourTotalCS_UTC] || 0;
+    const latentAtPeak = finalGains.clearSky.latent?.[hourTotalCS_UTC] || 0;
     
-    const solarLoadPeak = loadComponents.solar[hourTotalCS_UTC] || 0;
-    const conductionLoadPeak = loadComponents.conduction[hourTotalCS_UTC] || 0;
-    const internalSensibleLoadPeak = loadComponents.internalSensible[hourTotalCS_UTC] || 0;
-    const ventilationSensibleLoadPeak = loadComponents.ventilationSensible[hourTotalCS_UTC] || 0;
-    const infiltrationSensibleLoadPeak = loadComponents.infiltrationSensible[hourTotalCS_UTC] || 0;
+    const solarLoadPeak = loadComponents.solar?.[hourTotalCS_UTC] || 0;
+    const conductionLoadPeak = loadComponents.conduction?.[hourTotalCS_UTC] || 0;
+    const internalSensibleLoadPeak = loadComponents.internalSensible?.[hourTotalCS_UTC] || 0;
+    const ventilationSensibleLoadPeak = loadComponents.ventilationSensible?.[hourTotalCS_UTC] || 0;
+    const infiltrationSensibleLoadPeak = loadComponents.infiltrationSensible?.[hourTotalCS_UTC] || 0;
     
-    const internalLatentAtPeak = state.activeResults.components.internalGainsLatent[hourTotalCS_UTC] || 0;
-    const ventilationLatentAtPeak = state.activeResults.ventilationLoad.latent[hourTotalCS_UTC] || 0;
-    const infiltrationLatentAtPeak = state.activeResults.infiltrationLoad.latent[hourTotalCS_UTC] || 0;
+    const internalLatentAtPeak = state.activeResults.components.internalGainsLatent?.[hourTotalCS_UTC] || 0;
+    const ventilationLatentAtPeak = state.activeResults.ventilationLoad.latent?.[hourTotalCS_UTC] || 0;
+    const infiltrationLatentAtPeak = state.activeResults.infiltrationLoad.latent?.[hourTotalCS_UTC] || 0;
 
     const anyShadingEnabled = state.windows.some(win => win.shading && win.shading.enabled);
     

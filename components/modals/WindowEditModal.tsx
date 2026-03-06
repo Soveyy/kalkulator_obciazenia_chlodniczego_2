@@ -16,23 +16,25 @@ const WindowEditModal: React.FC = () => {
     const isModalOpen = isOpen && type === 'editWindow';
     const isNew = windowId === null;
 
-    const [window, setWindow] = useState<Window | null>(null);
+    const [window, setWindow] = useState<any | null>(null);
     const [shading, setShading] = useState<Shading | null>(null);
-    const [overhang, setOverhang] = useState<Overhang>({ enabled: false, depth: 1.0, distanceAbove: 0.2 });
+    const [overhang, setOverhang] = useState<any>({ enabled: false, depth: 1.0, distanceAbove: 0.2 });
+    const [errors, setErrors] = useState<string[]>([]);
 
     useEffect(() => {
         if (isModalOpen) {
             if (isNew) {
-                const defaultWindow: Window = {
+                const defaultWindow: any = {
                     id: 0, // temp ID
-                    type: 'modern', direction: 'S', tilt: 90, u: 0.9, shgc: 0.5, width: 1.0, height: 2.2,
+                    type: 'modern', direction: '', tilt: 90, u: 0.9, shgc: 0.5, width: '', height: '',
                     shading: { enabled: false, type: 'louvers', location: 'indoor', color: 'light', setting: 'tilted_45', material: 'open' },
                     overhang: { enabled: false, depth: 1.0, distanceAbove: 0.2 }
                 };
                 setWindow(defaultWindow);
                 setShading(defaultWindow.shading);
                 setOverhang(defaultWindow.overhang || { enabled: false, depth: 1.0, distanceAbove: 0.2 });
-                dispatch({ type: 'SET_SELECTED_DIRECTION', payload: defaultWindow.direction });
+                dispatch({ type: 'SET_SELECTED_DIRECTION', payload: null });
+                setErrors([]);
             } else {
                 const originalWindow = state.windows.find(w => w.id === windowId);
                 if (originalWindow) {
@@ -66,7 +68,37 @@ const WindowEditModal: React.FC = () => {
 
     const handleSave = () => {
         if (window && shading) {
-            const finalWindow = { ...window, shading, overhang };
+            const newErrors: string[] = [];
+            
+            // Dimensions validation
+            if (!window.width || window.width === '' || window.width <= 0) newErrors.push('width');
+            if (!window.height || window.height === '' || window.height <= 0) newErrors.push('height');
+            if (!window.direction) newErrors.push('direction');
+
+            // U-value and SHGC validation
+            if (window.u === '' || window.u < 0.05 || window.u > 10) newErrors.push('u');
+            if (window.shgc === '' || window.shgc < 0.05 || window.shgc > 1) newErrors.push('shgc');
+
+            // Overhang validation
+            if (overhang.enabled) {
+                if (overhang.depth === '' || overhang.depth <= 0) newErrors.push('overhang_depth');
+                if (overhang.distanceAbove === '' || overhang.distanceAbove <= 0) newErrors.push('overhang_distanceAbove');
+            }
+
+            if (newErrors.length > 0) {
+                setErrors(newErrors);
+                let message = 'Proszę poprawić błędy w formularzu.';
+                if (newErrors.includes('width') || newErrors.includes('height')) message = 'Szerokość i wysokość muszą być większe od 0.';
+                if (newErrors.includes('u')) message = 'Współczynnik U musi być w zakresie 0.05 - 10.';
+                if (newErrors.includes('shgc')) message = 'Współczynnik SHGC musi być w zakresie 0.05 - 1.';
+                if (newErrors.includes('overhang_depth') || newErrors.includes('overhang_distanceAbove')) message = 'Parametry daszku muszą być większe od 0.';
+                if (newErrors.includes('direction')) message = 'Proszę wybrać kierunek świata.';
+                
+                dispatch({ type: 'ADD_TOAST', payload: { message, type: 'danger' } });
+                return;
+            }
+
+            const finalWindow = { ...window, shading, overhang } as Window;
             if (isNew) {
                 const { id, ...windowData } = finalWindow;
                 dispatch({ type: 'ADD_WINDOW', payload: windowData as Omit<Window, 'id'> });
@@ -81,18 +113,57 @@ const WindowEditModal: React.FC = () => {
         const { name, value, type } = e.target;
         
         let val: any = value;
-        if (type === 'number' || name === 'u' || name === 'shgc' || name === 'width' || name === 'height' ) val = parseFloat(value);
+        if (type === 'number' || name === 'u' || name === 'shgc' || name === 'width' || name === 'height' ) {
+            if (value === '') {
+                val = '';
+            } else {
+                val = parseFloat(value);
+            }
+        }
+
+        // Real-time validation
+        if (name === 'u') {
+            if (val !== '' && (val < 0.05 || val > 10)) {
+                setErrors(prev => prev.includes('u') ? prev : [...prev, 'u']);
+            } else {
+                setErrors(prev => prev.filter(e => e !== 'u'));
+            }
+        }
+        if (name === 'shgc') {
+            if (val !== '' && (val < 0.05 || val > 1)) {
+                setErrors(prev => prev.includes('shgc') ? prev : [...prev, 'shgc']);
+            } else {
+                setErrors(prev => prev.filter(e => e !== 'shgc'));
+            }
+        }
+        if (name === 'width') {
+            if (val !== '' && val <= 0) {
+                setErrors(prev => prev.includes('width') ? prev : [...prev, 'width']);
+            } else {
+                setErrors(prev => prev.filter(e => e !== 'width'));
+            }
+        }
+        if (name === 'height') {
+            if (val !== '' && val <= 0) {
+                setErrors(prev => prev.includes('height') ? prev : [...prev, 'height']);
+            } else {
+                setErrors(prev => prev.filter(e => e !== 'height'));
+            }
+        }
 
         if (name === 'direction') {
             // Update global state to reflect selection on compass immediately
             // This might trigger the useEffect above, but since values will match, it shouldn't cause a loop or flicker
             dispatch({ type: 'SET_SELECTED_DIRECTION', payload: value });
+            setErrors(prev => prev.filter(e => e !== 'direction'));
         }
 
         if (name === 'type' && value !== 'custom') {
             const preset = WINDOW_PRESETS[value as keyof typeof WINDOW_PRESETS];
             if (preset) {
                 setWindow(prev => prev ? { ...prev, type: value as Window['type'], u: preset.u, shgc: preset.shgc } : null);
+                // Clear preset-related errors
+                setErrors(prev => prev.filter(err => err !== 'u' && err !== 'shgc'));
                 return;
             }
         }
@@ -156,9 +227,37 @@ const WindowEditModal: React.FC = () => {
 
     const handleOverhangChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value, type, checked } = e.target;
+        
+        let val: any = value;
+        if (type === 'number' || name === 'depth' || name === 'distanceAbove') {
+            if (value === '') {
+                val = '';
+            } else {
+                val = parseFloat(value);
+            }
+        } else if (type === 'checkbox') {
+            val = checked;
+        }
+
+        // Real-time validation for overhang
+        if (name === 'depth') {
+            if (val !== '' && val <= 0) {
+                setErrors(prev => prev.includes('overhang_depth') ? prev : [...prev, 'overhang_depth']);
+            } else {
+                setErrors(prev => prev.filter(e => e !== 'overhang_depth'));
+            }
+        }
+        if (name === 'distanceAbove') {
+            if (val !== '' && val <= 0) {
+                setErrors(prev => prev.includes('overhang_distanceAbove') ? prev : [...prev, 'overhang_distanceAbove']);
+            } else {
+                setErrors(prev => prev.filter(e => e !== 'overhang_distanceAbove'));
+            }
+        }
+
         setOverhang(prev => ({
             ...prev,
-            [name]: type === 'checkbox' ? checked : parseFloat(value)
+            [name]: val
         }));
     };
 
@@ -200,40 +299,78 @@ const WindowEditModal: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                      <div>
-                        <label className="label-style flex items-center">
+                        <label className={`label-style flex items-center ${errors.includes('u') ? 'text-red-500 font-bold' : ''}`}>
                             Współczynnik U:
-                            <Tooltip text="Współczynnik przenikania ciepła (W/m²K). Niższa wartość oznacza lepszą izolacyjność." />
+                            <Tooltip text="Współczynnik przenikania ciepła (W/m²K). Zakres: 0.05 - 10." />
                         </label>
-                        <Input type="number" name="u" value={window.u} onChange={handleChange} step="0.1" />
+                        <Input 
+                            type="number" 
+                            name="u" 
+                            value={window.u} 
+                            onChange={handleChange} 
+                            step="any" 
+                            min="0.05" 
+                            max="10"
+                            className={errors.includes('u') ? 'animate-pulse-error' : ''}
+                        />
                     </div>
                     <div>
-                        <label className="label-style flex items-center">
+                        <label className={`label-style flex items-center ${errors.includes('shgc') ? 'text-red-500 font-bold' : ''}`}>
                             Współczynnik SHGC:
-                             <Tooltip text="Współczynnik całkowitego zysku energii słonecznej (g). Niższa wartość oznacza mniejsze zyski od słońca." />
+                             <Tooltip text="Współczynnik całkowitego zysku energii słonecznej (g). Zakres: 0.05 - 1." />
                         </label>
-                        <Input type="number" name="shgc" value={window.shgc} onChange={handleChange} step="0.01" />
+                        <Input 
+                            type="number" 
+                            name="shgc" 
+                            value={window.shgc} 
+                            onChange={handleChange} 
+                            step="any" 
+                            min="0.05" 
+                            max="1"
+                            className={errors.includes('shgc') ? 'animate-pulse-error' : ''}
+                        />
                     </div>
                 </div>
                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="label-style">Szerokość (m):</label>
-                        <Input type="number" name="width" value={window.width} onChange={handleChange} step="0.1" />
+                        <label className={`label-style ${errors.includes('width') ? 'text-red-500 font-bold' : ''}`}>Szerokość (m):</label>
+                        <Input 
+                            type="number" 
+                            name="width" 
+                            value={window.width} 
+                            onChange={handleChange} 
+                            step="any" 
+                            min="0.01"
+                            className={`${errors.includes('width') ? 'animate-pulse-error' : ''} ${isNew && !window.width ? 'animate-pulse-border border-blue-400' : ''}`}
+                        />
                     </div>
                     <div>
-                        <label className="label-style">Wysokość (m):</label>
-                        <Input type="number" name="height" value={window.height} onChange={handleChange} step="0.1" />
+                        <label className={`label-style ${errors.includes('height') ? 'text-red-500 font-bold' : ''}`}>Wysokość (m):</label>
+                        <Input 
+                            type="number" 
+                            name="height" 
+                            value={window.height} 
+                            onChange={handleChange} 
+                            step="any" 
+                            min="0.01"
+                            className={`${errors.includes('height') ? 'animate-pulse-error' : ''} ${isNew && !window.height ? 'animate-pulse-border border-blue-400' : ''}`}
+                        />
                     </div>
                 </div>
                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="label-style">Kierunek świata:</label>
+                        <label className={`label-style ${errors.includes('direction') ? 'text-red-500 font-bold' : ''}`}>Kierunek świata:</label>
                         <select 
                             name="direction" 
-                            value={window.direction} 
+                            value={window.direction || ''} 
                             onChange={handleChange}
                             onMouseLeave={() => dispatch({ type: 'SET_HOVERED_DIRECTION', payload: null })}
-                            className="w-full box-border px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+                            className={`w-full box-border px-3 py-2 border rounded-md bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 transition-shadow ${
+                                errors.includes('direction') ? 'animate-pulse-error' : 
+                                (isNew && !window.direction ? 'animate-pulse-border border-blue-400' : 'border-slate-300 dark:border-slate-600 focus:ring-blue-500')
+                            }`}
                         >
+                            <option value="" disabled>Wybierz kierunek...</option>
                             {WINDOW_DIRECTIONS.map(dir => (
                                 <option 
                                     key={dir.value} 
@@ -283,18 +420,34 @@ const WindowEditModal: React.FC = () => {
                     {overhang.enabled && window.tilt === 90 && (
                         <div className="pl-4 border-l-2 border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-4">
                              <div>
-                                <label className="label-style flex items-center">
+                                <label className={`label-style flex items-center ${errors.includes('overhang_depth') ? 'text-red-500 font-bold' : ''}`}>
                                     Głębokość daszku [m]:
-                                    <Tooltip text="Wysięg daszku lub balkonu od lica ściany." />
+                                    <Tooltip text="Wysięg daszku lub balkonu od lica ściany. Musi być > 0." />
                                 </label>
-                                <Input type="number" name="depth" value={overhang.depth} onChange={handleOverhangChange} step="0.1" min="0" />
+                                <Input 
+                                    type="number" 
+                                    name="depth" 
+                                    value={overhang.depth} 
+                                    onChange={handleOverhangChange} 
+                                    step="any" 
+                                    min="0.01" 
+                                    className={errors.includes('overhang_depth') ? 'animate-pulse-error' : ''}
+                                />
                             </div>
                             <div>
-                                <label className="label-style flex items-center">
+                                <label className={`label-style flex items-center ${errors.includes('overhang_distanceAbove') ? 'text-red-500 font-bold' : ''}`}>
                                     Odległość nad oknem [m]:
-                                    <Tooltip text="Pionowa odległość od górnej krawędzi okna do spodu daszku." />
+                                    <Tooltip text="Pionowa odległość od górnej krawędzi okna do spodu daszku. Musi być > 0." />
                                 </label>
-                                <Input type="number" name="distanceAbove" value={overhang.distanceAbove} onChange={handleOverhangChange} step="0.1" min="0" />
+                                <Input 
+                                    type="number" 
+                                    name="distanceAbove" 
+                                    value={overhang.distanceAbove} 
+                                    onChange={handleOverhangChange} 
+                                    step="any" 
+                                    min="0.01" 
+                                    className={errors.includes('overhang_distanceAbove') ? 'animate-pulse-error' : ''}
+                                />
                             </div>
                         </div>
                     )}

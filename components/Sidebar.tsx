@@ -89,8 +89,17 @@ const Sidebar: React.FC = () => {
                                     name="tInternal" 
                                     type="number" 
                                     value={state.input.tInternal} 
-                                    onChange={(e) => dispatch({ type: 'SET_INPUT', payload: { ...state.input, [e.target.name]: e.target.value } })} 
-                                    className={!state.input.tInternal ? 'animate-pulse-border border-blue-400' : ''}
+                                    onChange={(e) => {
+                                        const val = e.target.value === '' ? '' : parseFloat(e.target.value);
+                                        dispatch({ type: 'SET_INPUT', payload: { ...state.input, tInternal: val } });
+                                    }} 
+                                    step="any"
+                                    min="-50"
+                                    max="50"
+                                    className={
+                                        state.input.tInternal === '' ? 'animate-pulse-border border-blue-400' : 
+                                        (state.input.tInternal < -50 || state.input.tInternal > 50) ? 'animate-pulse-error' : ''
+                                    }
                                 />
                             </div>
                             <div>
@@ -102,8 +111,17 @@ const Sidebar: React.FC = () => {
                                     name="rhInternal" 
                                     type="number" 
                                     value={state.input.rhInternal} 
-                                    onChange={(e) => dispatch({ type: 'SET_INPUT', payload: { ...state.input, [e.target.name]: e.target.value } })} 
-                                    className={!state.input.rhInternal ? 'animate-pulse-border border-blue-400' : ''}
+                                    onChange={(e) => {
+                                        const val = e.target.value === '' ? '' : parseFloat(e.target.value);
+                                        dispatch({ type: 'SET_INPUT', payload: { ...state.input, rhInternal: val } });
+                                    }} 
+                                    step="any"
+                                    min="0"
+                                    max="100"
+                                    className={
+                                        state.input.rhInternal === '' ? 'animate-pulse-border border-blue-400' : 
+                                        (state.input.rhInternal < 0 || state.input.rhInternal > 100) ? 'animate-pulse-error' : ''
+                                    }
                                 />
                             </div>
                             <div>
@@ -116,8 +134,17 @@ const Sidebar: React.FC = () => {
                                         name="tExternal" 
                                         type="number" 
                                         value={state.input.tExternal} 
-                                        onChange={(e) => dispatch({ type: 'SET_INPUT', payload: { ...state.input, [e.target.name]: e.target.value } })} 
-                                        className={!state.input.tExternal ? 'animate-pulse-border border-blue-400' : ''}
+                                        onChange={(e) => {
+                                            const val = e.target.value === '' ? '' : parseFloat(e.target.value);
+                                            dispatch({ type: 'SET_INPUT', payload: { ...state.input, tExternal: val } });
+                                        }} 
+                                        step="any"
+                                        min="-50"
+                                        max="50"
+                                        className={
+                                            state.input.tExternal === '' ? 'animate-pulse-border border-blue-400' : 
+                                            (state.input.tExternal < -50 || state.input.tExternal > 50) ? 'animate-pulse-error' : ''
+                                        }
                                     />
                                     <Button variant="secondary" className="px-2 py-1" onClick={() => dispatch({ type: 'SET_MODAL', payload: { isOpen: true, type: 'tempDatabase' } })}>Baza</Button>
                                  </div>
@@ -131,8 +158,16 @@ const Sidebar: React.FC = () => {
                                     name="roomArea" 
                                     type="number" 
                                     value={state.input.roomArea} 
-                                    onChange={(e) => dispatch({ type: 'SET_INPUT', payload: { ...state.input, [e.target.name]: e.target.value } })} 
-                                    className={!state.input.roomArea ? 'animate-pulse-border border-blue-400' : ''}
+                                    onChange={(e) => {
+                                        const val = e.target.value === '' ? '' : parseFloat(e.target.value);
+                                        dispatch({ type: 'SET_INPUT', payload: { ...state.input, roomArea: val } });
+                                    }} 
+                                    step="any"
+                                    min="0.01"
+                                    className={
+                                        state.input.roomArea === '' ? 'animate-pulse-border border-blue-400' : 
+                                        (state.input.roomArea <= 0) ? 'animate-pulse-error' : ''
+                                    }
                                 />
                             </div>
                         </div>
