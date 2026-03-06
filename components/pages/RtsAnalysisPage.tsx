@@ -164,6 +164,21 @@ const RtsAnalysisPage: React.FC = () => {
                     <SankeyChart />
                 </Card>
 
+                <Card className="bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800 mt-6">
+                    <div className="flex gap-4">
+                        <div className="flex-shrink-0">
+                            <InformationCircleIcon className="w-6 h-6 text-indigo-500" />
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-indigo-800 dark:text-indigo-300 mb-1">Ciepło Jawne vs Ciepło Utajone</h4>
+                            <p className="text-sm text-indigo-700 dark:text-indigo-400 leading-relaxed">
+                                <strong>Ciepło jawne (Sensible Heat)</strong> to energia, która powoduje bezpośredni wzrost temperatury powietrza w pomieszczeniu. Odczuwamy je jako "ciepło" (np. od słońca, urządzeń, oświetlenia). Klimatyzator musi je usunąć, aby obniżyć temperaturę na termometrze.<br/><br/>
+                                <strong>Ciepło utajone (Latent Heat)</strong> to energia związana z wilgocią w powietrzu (parą wodną). Pochodzi głównie od ludzi (oddychanie, pocenie się) oraz z powietrza zewnętrznego (wentylacja, infiltracja). Nie podnosi ono temperatury na termometrze, ale zwiększa uczucie duszności. Klimatyzator usuwa je poprzez wykraplanie wody (osuszanie powietrza).
+                            </p>
+                        </div>
+                    </div>
+                </Card>
+
                 <div className="flex justify-center mt-8">
                     <button 
                         onClick={() => scrollToSegment(segment3Ref)}
