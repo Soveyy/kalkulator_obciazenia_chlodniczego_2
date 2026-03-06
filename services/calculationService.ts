@@ -131,7 +131,7 @@ export function generateTemperatureProfile(tExternalMax: number, month: string, 
     if (!monthData || !monthData.T2m || monthData.T2m.length < 24) {
         const tMin = tExternalMax - 10;
         for (let i = 0; i < 24; i++) {
-            const temp = (tExternalMax + tMin) / 2 - ((tExternalMax - tMin) / 2) * Math.cos((2 * Math.PI * (i - 14)) / 24);
+            const temp = (tExternalMax + tMin) / 2 + ((tExternalMax - tMin) / 2) * Math.cos((2 * Math.PI * (i - 14)) / 24);
             tProfile.push(temp);
         }
         return tProfile;
@@ -294,7 +294,10 @@ export function calculateGainsForMonth(
             
             // Dynamiczne współczynniki zgodnie z instrukcją
             const C_s_air_dynamic = (rho * 1006) / 3600; // Wh/(m3*K)
-            const C_l_air_dynamic = (rho * 2501000) / 3600; // Wh/(m3*(kg/kg))
+            
+            // Ciepło utajone parowania wody zależne od temperatury: h_we = 2501 - 2.36 * t [kJ/kg]
+            const h_we = 2501000 - 2360 * tExt;
+            const C_l_air_dynamic = (rho * h_we) / 3600; // Wh/(m3*(kg/kg))
             
             if (type === 'mechanical' && enabled) {
                 const exchanger = VENTILATION_EXCHANGER_TYPES[exchangerType];

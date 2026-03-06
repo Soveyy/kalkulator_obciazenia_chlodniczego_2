@@ -128,14 +128,14 @@ export const EQUIPMENT_PRESETS: { [key: string]: { label: string, power: number,
     laptop: { label: 'Laptop', power: 60, radiantFraction: 0.25 },
     monitor: { label: 'Monitor', power: 25, radiantFraction: 0.40 },
     printer: { label: 'Drukarka laserowa', power: 100, radiantFraction: 0.30 },
-    tv: { label: 'Telewizor LED', power: 60, radiantFraction: 0.40 },
+    tv: { label: 'Telewizor LED', power: 80, radiantFraction: 0.40 },
     coffee: { label: 'Ekspres do kawy', power: 120, radiantFraction: 0.40 },
     fridge: { label: 'Lodówka', power: 50, radiantFraction: 0.30 },
 };
 
 export const WINDOW_PRESETS: { [key: string]: { u: number, shgc: number } } = {
     custom: { u: 1.1, shgc: 0.6 },
-    modern: { u: 0.9, shgc: 0.5 },
+    modern: { u: 0.9, shgc: 0.45 },
     standard: { u: 1.1, shgc: 0.6 },
     older_double: { u: 1.8, shgc: 0.7 },
     historic: { u: 4.8, shgc: 0.82 }

@@ -158,7 +158,7 @@ const WindowEditModal: React.FC = () => {
             setErrors(prev => prev.filter(e => e !== 'direction'));
         }
 
-        if (name === 'type' && value !== 'custom') {
+        if (name === 'type') {
             const preset = WINDOW_PRESETS[value as keyof typeof WINDOW_PRESETS];
             if (preset) {
                 setWindow(prev => prev ? { ...prev, type: value as Window['type'], u: preset.u, shgc: preset.shgc } : null);
@@ -186,11 +186,7 @@ const WindowEditModal: React.FC = () => {
             return;
         }
         
-        if ((name === 'u' || name === 'shgc') && window?.type !== 'custom') {
-             setWindow(prev => prev ? { ...prev, type: 'custom', [name]: val } : null);
-        } else {
-            setWindow(prev => prev ? { ...prev, [name]: val } : null);
-        }
+        setWindow(prev => prev ? { ...prev, [name]: val } : null);
     };
 
     const handleShadingChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
