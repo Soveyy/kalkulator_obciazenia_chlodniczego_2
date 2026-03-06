@@ -59,13 +59,53 @@ const RtsChart: React.FC = () => {
         
         const { finalGains, instantaneousGains } = state.activeResults;
 
+        const instData = reorderDataForLocalTime(instantaneousGains.clearSky.total, offset);
+        const loadData = reorderDataForLocalTime(finalGains.clearSky.total, offset);
+
+        // Create patterns for storing and releasing energy
+        const createPattern = (color: string, bgColor: string, angle: number) => {
+            const patternCanvas = document.createElement('canvas');
+            patternCanvas.width = 10;
+            patternCanvas.height = 10;
+            const pctx = patternCanvas.getContext('2d');
+            if (!pctx) return color;
+
+            // Background fill
+            pctx.fillStyle = bgColor;
+            pctx.fillRect(0, 0, 10, 10);
+
+            pctx.strokeStyle = color;
+            pctx.lineWidth = 1;
+            pctx.beginPath();
+            if (angle === 45) {
+                pctx.moveTo(0, 10);
+                pctx.lineTo(10, 0);
+                pctx.moveTo(-5, 5);
+                pctx.lineTo(5, -5);
+                pctx.moveTo(5, 15);
+                pctx.lineTo(15, 5);
+            } else {
+                pctx.moveTo(0, 0);
+                pctx.lineTo(10, 10);
+                pctx.moveTo(-5, 5);
+                pctx.lineTo(5, 15);
+                pctx.moveTo(5, -5);
+                pctx.lineTo(15, 5);
+            }
+            pctx.stroke();
+            return ctx.createPattern(patternCanvas, 'repeat') || color;
+        };
+
+        const storePattern = createPattern('rgba(52, 152, 219, 0.3)', 'rgba(52, 152, 219, 0.08)', 45); // Blue crosshatch for storing
+        const releasePattern = createPattern('rgba(231, 76, 60, 0.3)', 'rgba(231, 76, 60, 0.08)', -45); // Red crosshatch for releasing
+
         const datasets = [
             {
                 type: 'line',
                 label: 'Zyski Chwilowe (Instantaneous)',
-                data: reorderDataForLocalTime(instantaneousGains.clearSky.total, offset),
+                data: instData,
                 borderColor: 'rgba(231, 76, 60, 0.8)',
-                backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                backgroundColor: 'transparent',
                 borderWidth: 2,
                 borderDash: [5, 5],
                 fill: false,
@@ -76,11 +116,15 @@ const RtsChart: React.FC = () => {
             {
                 type: 'line',
                 label: 'Obciążenie Chłodnicze (Cooling Load)',
-                data: reorderDataForLocalTime(finalGains.clearSky.total, offset),
+                data: loadData,
                 borderColor: 'rgba(52, 152, 219, 1)',
-                backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                backgroundColor: 'transparent',
                 borderWidth: 3,
-                fill: 0, // Fill to the first dataset (index 0)
+                fill: {
+                    target: 0,
+                    above: releasePattern, // Red when Load > Gains
+                    below: storePattern    // Blue when Load < Gains
+                },
                 tension: 0.4,
                 pointRadius: 0,
                 pointHoverRadius: 6
@@ -122,7 +166,11 @@ const RtsChart: React.FC = () => {
                     },
                     legend: { 
                         position: 'bottom',
-                        labels: { color: textColor, usePointStyle: true, padding: 20 } 
+                        labels: { 
+                            color: textColor, 
+                            usePointStyle: true, 
+                            padding: 20
+                        } 
                     },
                     tooltip: {
                         callbacks: {
@@ -130,7 +178,7 @@ const RtsChart: React.FC = () => {
                                 return `${context.dataset.label}: ${Math.round(context.parsed.y)} W`;
                             },
                             footer: (tooltipItems: any[]) => {
-                                if (tooltipItems.length === 2) {
+                                if (tooltipItems.length >= 2) {
                                     const gain = tooltipItems[0].parsed.y;
                                     const load = tooltipItems[1].parsed.y;
                                     const diff = gain - load;

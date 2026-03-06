@@ -55,6 +55,7 @@ const initialState: State = {
     currentMonth: '7',
     resultMessage: '',
     tExtProfile: [],
+    monthlyPeaks: [],
     chartType: 'line',
     modal: { isOpen: false, type: null, data: null },
     theme: 'light',
@@ -170,6 +171,7 @@ function calculatorReducer(state: State, action: Action): State {
                 currentMonth: action.payload.month,
                 tExtProfile: action.payload.tExtProfile,
                 resultMessage: action.payload.message,
+                monthlyPeaks: action.payload.monthlyPeaks,
                 activeResults: state.isShadingViewActive 
                     ? action.payload.results.withShading 
                     : action.payload.results.withoutShading,
@@ -373,13 +375,22 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
         const resultsWithShading = calculateGainsForMonth(state.windows, state.input, tExtProfile, month, state.allData, state.accumulation, state.internalGains, false);
         const resultsWithoutShading = calculateGainsForMonth(state.windows, state.input, tExtProfile, month, state.allData, state.accumulation, state.internalGains, true);
 
+        const { monthlyPeaks } = calculateWorstMonth(
+            state.windows, 
+            state.allData, 
+            state.input, 
+            state.accumulation, 
+            state.internalGains
+        );
+
         const message = customMessage || state.resultMessage;
 
         dispatch({ type: 'SET_RESULTS', payload: { 
             results: { withShading: resultsWithShading, withoutShading: resultsWithoutShading },
             month: month,
             tExtProfile,
-            message
+            message,
+            monthlyPeaks
         }});
     }, [state.allData, state.windows, state.input, state.accumulation, state.internalGains, state.resultMessage]);
 
@@ -391,7 +402,13 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
         }
         setIsCalculating(true);
         try {
-            const worstMonth = calculateWorstMonth(state.windows, state.allData);
+            const { worstMonth, monthlyPeaks } = calculateWorstMonth(
+                state.windows, 
+                state.allData, 
+                state.input, 
+                state.accumulation, 
+                state.internalGains
+            );
             const monthName = MONTH_NAMES[parseInt(worstMonth, 10) - 1];
             const message = `Miesiąc z największym obciążeniem chłodniczym dla obecnych ustawień: <strong>${monthName}</strong>.`;
 
@@ -404,14 +421,20 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
         } finally {
             setIsCalculating(false);
         }
-    }, [state.allData, state.windows, performCalculation]);
+    }, [state.allData, state.windows, state.input, state.accumulation, state.internalGains, performCalculation]);
     
     // Effect to recalculate automatically on changes and update the message
     useEffect(() => {
         if (initialCalculationDone && state.allData) {
             const handler = setTimeout(() => {
                 // Find the worst month based on current settings
-                const worstMonth = calculateWorstMonth(state.windows, state.allData!);
+                const { worstMonth, monthlyPeaks } = calculateWorstMonth(
+                    state.windows, 
+                    state.allData!, 
+                    state.input, 
+                    state.accumulation, 
+                    state.internalGains
+                );
                 const worstMonthName = MONTH_NAMES[parseInt(worstMonth, 10) - 1];
                 
                 // Only show critical month message

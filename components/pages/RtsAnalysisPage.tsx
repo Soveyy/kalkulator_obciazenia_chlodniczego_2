@@ -1,22 +1,55 @@
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useCalculator } from '../../contexts/CalculatorContext';
 import RtsChart from '../RtsChart';
 import Card from '../ui/Card';
-import { ClockIcon, TrendingDownIcon, LightningBoltIcon, InformationCircleIcon, ArrowDownIcon } from '../Icons';
+import { ClockIcon, TrendingDownIcon, LightningBoltIcon, InformationCircleIcon } from '../Icons';
 import SankeyChart from '../SankeyChart';
 import BreakdownCharts from '../BreakdownCharts';
+import MonthlyLoadChart from '../MonthlyLoadChart';
 
 const RtsAnalysisPage: React.FC = () => {
     const { state } = useCalculator();
+    const segment1Ref = useRef<HTMLDivElement>(null);
     const segment2Ref = useRef<HTMLDivElement>(null);
     const segment3Ref = useRef<HTMLDivElement>(null);
+    const segmentMonthlyRef = useRef<HTMLDivElement>(null);
+    const [activeSection, setActiveSection] = useState<string>('rts');
 
-    const scrollToSegment = (ref: React.RefObject<HTMLDivElement | null>) => {
+    const scrollToSegment = (ref: React.RefObject<HTMLDivElement | null>, sectionId: string) => {
         if (ref.current) {
-            ref.current.scrollIntoView({ behavior: 'smooth' });
+            // Offset for the sticky header
+            const y = ref.current.getBoundingClientRect().top + window.scrollY - 100;
+            window.scrollTo({ top: y, behavior: 'smooth' });
+            setActiveSection(sectionId);
         }
     };
+
+    // Intersection Observer to update active nav pill
+    useEffect(() => {
+        const observerOptions = {
+            root: null,
+            rootMargin: '-120px 0px -40% 0px',
+            threshold: 0
+        };
+
+        const observerCallback = (entries: IntersectionObserverEntry[]) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    setActiveSection(entry.target.id);
+                }
+            });
+        };
+
+        const observer = new IntersectionObserver(observerCallback, observerOptions);
+
+        if (segment1Ref.current) observer.observe(segment1Ref.current);
+        if (segment2Ref.current) observer.observe(segment2Ref.current);
+        if (segment3Ref.current) observer.observe(segment3Ref.current);
+        if (segmentMonthlyRef.current) observer.observe(segmentMonthlyRef.current);
+
+        return () => observer.disconnect();
+    }, []);
 
     if (!state.activeResults) {
         return (
@@ -69,9 +102,37 @@ const RtsAnalysisPage: React.FC = () => {
     const peakReduction = ((maxGain - maxLoad) / maxGain) * 100;
 
     return (
-        <div className="space-y-16 pb-16">
+        <div className="space-y-16 pb-16 relative">
+            {/* Sticky Navigation Menu */}
+            <div className="sticky top-0 z-20 -mx-4 px-4 py-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap gap-2 justify-center">
+                <button 
+                    onClick={() => scrollToSegment(segment1Ref, 'rts')}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeSection === 'rts' ? 'bg-blue-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}
+                >
+                    Wykres RTS
+                </button>
+                <button 
+                    onClick={() => scrollToSegment(segment2Ref, 'sankey')}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeSection === 'sankey' ? 'bg-indigo-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}
+                >
+                    Przepływ Energii
+                </button>
+                <button 
+                    onClick={() => scrollToSegment(segment3Ref, 'breakdown')}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeSection === 'breakdown' ? 'bg-orange-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}
+                >
+                    Udziały Szczytowe
+                </button>
+                <button 
+                    onClick={() => scrollToSegment(segmentMonthlyRef, 'monthly')}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeSection === 'monthly' ? 'bg-emerald-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}
+                >
+                    Analiza Sezonowa
+                </button>
+            </div>
+
             {/* Segment 1: Dynamika Cieplna */}
-            <div className="min-h-[80vh] flex flex-col justify-center space-y-6 relative">
+            <div id="rts" ref={segment1Ref} className="flex flex-col space-y-6 pt-4">
                 <div className="text-center mb-4">
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Dynamika Cieplna (Analiza RTS)</h2>
                     <p className="text-slate-500 dark:text-slate-400">Wpływ bezwładności budynku na szczytowe zapotrzebowanie na chłód</p>
@@ -141,20 +202,10 @@ const RtsAnalysisPage: React.FC = () => {
                         </div>
                     </div>
                 </Card>
-
-                <div className="flex justify-center mt-8">
-                    <button 
-                        onClick={() => scrollToSegment(segment2Ref)}
-                        className="flex flex-col items-center text-slate-400 hover:text-blue-500 transition-colors animate-bounce"
-                    >
-                        <span className="text-sm font-medium mb-2">Poznaj strukturę zysków</span>
-                        <ArrowDownIcon className="w-6 h-6" />
-                    </button>
-                </div>
             </div>
 
             {/* Segment 2: Struktura Obciążenia (Sankey) */}
-            <div ref={segment2Ref} className="min-h-[80vh] flex flex-col justify-center space-y-6 pt-12 relative">
+            <div id="sankey" ref={segment2Ref} className="flex flex-col space-y-6 pt-8">
                 <div className="text-center mb-4">
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Struktura Obciążenia</h2>
                     <p className="text-slate-500 dark:text-slate-400">Przepływ ciepła od źródeł do całkowitego obciążenia chłodniczego</p>
@@ -178,26 +229,32 @@ const RtsAnalysisPage: React.FC = () => {
                         </div>
                     </div>
                 </Card>
-
-                <div className="flex justify-center mt-8">
-                    <button 
-                        onClick={() => scrollToSegment(segment3Ref)}
-                        className="flex flex-col items-center text-slate-400 hover:text-blue-500 transition-colors animate-bounce"
-                    >
-                        <span className="text-sm font-medium mb-2">Szczegółowy podział procentowy</span>
-                        <ArrowDownIcon className="w-6 h-6" />
-                    </button>
-                </div>
             </div>
 
             {/* Segment 3: Udziały Procentowe */}
-            <div ref={segment3Ref} className="min-h-[80vh] flex flex-col justify-center space-y-6 pt-12">
+            <div id="breakdown" ref={segment3Ref} className="flex flex-col space-y-6 pt-8">
                 <div className="text-center mb-4">
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Udziały Procentowe</h2>
                     <p className="text-slate-500 dark:text-slate-400">Szczegółowy podział obciążenia w godzinie szczytowej</p>
                 </div>
 
                 <BreakdownCharts />
+            </div>
+
+            {/* Segment 4: Porównanie Miesięcy */}
+            <div id="monthly" ref={segmentMonthlyRef} className="flex flex-col space-y-6 pt-8">
+                <div className="text-center mb-4">
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Sezonowa Zmienność Obciążenia</h2>
+                    <p className="text-slate-500 dark:text-slate-400">Porównanie szczytowego zapotrzebowania na chłód w okresie letnim</p>
+                </div>
+
+                <Card className="p-6 border-t-4 border-emerald-500 hover:shadow-md transition-shadow">
+                    <MonthlyLoadChart />
+                    <p className="text-xs text-slate-400 mt-4 italic text-center">
+                        Wykres przedstawia maksymalne godzinowe obciążenie chłodnicze [W] dla każdego miesiąca. 
+                        Kolorem czerwonym wyróżniono miesiąc krytyczny.
+                    </p>
+                </Card>
             </div>
         </div>
     );

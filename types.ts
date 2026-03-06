@@ -177,6 +177,7 @@ export interface State {
     currentMonth: string;
     resultMessage: string;
     tExtProfile: number[];
+    monthlyPeaks: { month: string; peak: number }[];
     chartType: 'line' | 'bar';
     modal: { isOpen: boolean; type?: string | null; data?: any };
     theme: 'light' | 'dark';
@@ -202,7 +203,7 @@ export type Action =
     | { type: 'SET_VENTILATION_GAINS'; payload: VentilationGains }
     | { type: 'ADD_EQUIPMENT_ITEM'; payload?: { name: string; power: number } }
     | { type: 'DELETE_EQUIPMENT_ITEM'; payload: number }
-    | { type: 'SET_RESULTS'; payload: { results: { withShading: CalculationResults, withoutShading: CalculationResults }; month: string; tExtProfile: number[], message: string } }
+    | { type: 'SET_RESULTS'; payload: { results: { withShading: CalculationResults, withoutShading: CalculationResults }; month: string; tExtProfile: number[], message: string, monthlyPeaks: { month: string; peak: number }[] } }
     | { type: 'CLEAR_RESULTS' }
     | { type: 'SET_ACTIVE_RESULTS'; payload: CalculationResults }
     | { type: 'SET_SHADING_VIEW'; payload: boolean }

@@ -15,38 +15,62 @@ const NODE_COLORS: Record<string, string> = {
 };
 
 const renderSankeyNode = (props: any) => {
-    const { x, y, width, height, index, payload } = props;
+    const { x, y, width, height, index, payload, totalValue } = props;
     const color = NODE_COLORS[payload.name] || '#3b82f6';
     
-    const isLeft = payload.targetLinks ? payload.targetLinks.length === 0 : x < 100;
-    const isRight = payload.sourceLinks ? payload.sourceLinks.length === 0 : x > 500;
+    // Left nodes (sources) have no target links
+    const isLeft = !payload.targetLinks || payload.targetLinks.length === 0 || x < 150;
+    // Right nodes (final total) have no source links
+    const isRight = !payload.sourceLinks || payload.sourceLinks.length === 0 || x > 450;
+    
+    const isSourceNode = isLeft && !['Ciepło Jawne', 'Ciepło Utajone', 'Całkowite Obciążenie'].includes(payload.name);
     
     return (
         <Layer key={`CustomNode${index}`}>
             <Rectangle x={x} y={y} width={width} height={height} fill={color} fillOpacity="1" />
+            
+            {/* Row 1: Name */}
             <text
-                textAnchor={isLeft ? 'start' : (isRight ? 'end' : 'middle')}
-                x={isLeft ? x + width + 8 : (isRight ? x - 8 : x + width / 2)}
-                y={isLeft || isRight ? y + height / 2 - 8 : y - 16}
-                fontSize="13"
-                fontWeight="600"
+                textAnchor={isLeft ? 'end' : (isRight ? 'start' : 'middle')}
+                x={isLeft ? x - 12 : (isRight ? x + width + 12 : x + width / 2)}
+                y={isLeft || isRight ? y + height / 2 - 14 : y - 20}
+                fontSize="12"
+                fontWeight="700"
                 fill="#333"
                 dominantBaseline="middle"
-                className="dark:fill-slate-200"
+                className="dark:fill-slate-100"
             >
                 {payload.name}
             </text>
+
+            {/* Row 2: Value */}
             <text
-                textAnchor={isLeft ? 'start' : (isRight ? 'end' : 'middle')}
-                x={isLeft ? x + width + 8 : (isRight ? x - 8 : x + width / 2)}
-                y={isLeft || isRight ? y + height / 2 + 8 : y + height + 16}
+                textAnchor={isLeft ? 'end' : (isRight ? 'start' : 'middle')}
+                x={isLeft ? x - 12 : (isRight ? x + width + 12 : x + width / 2)}
+                y={isLeft || isRight ? y + height / 2 + 2 : y + height + 16}
                 fontSize="11"
                 fill="#666"
                 dominantBaseline="middle"
                 className="dark:fill-slate-400"
             >
-                {payload.value} W
+                {Math.round(payload.value)} W
             </text>
+
+            {/* Row 3: Percentage (only for source nodes) */}
+            {isSourceNode && totalValue > 0 && (
+                <text
+                    textAnchor={isLeft ? 'end' : (isRight ? 'start' : 'middle')}
+                    x={isLeft ? x - 12 : (isRight ? x + width + 12 : x + width / 2)}
+                    y={y + height / 2 + 18}
+                    fontSize="10"
+                    fontWeight="600"
+                    fill="#3b82f6"
+                    dominantBaseline="middle"
+                    className="dark:fill-blue-400"
+                >
+                    {((payload.value / totalValue) * 100).toFixed(1)}%
+                </text>
+            )}
         </Layer>
     );
 };
@@ -128,15 +152,18 @@ const SankeyChart: React.FC = () => {
 
     const data = { nodes, links };
 
+    // Calculate total load for percentage calculation
+    const totalInputLoad = Math.round(totalLoad);
+
     return (
         <div className="w-full h-[500px]">
             <ResponsiveContainer width="100%" height="100%">
                 <Sankey
                     data={data}
                     nodePadding={50}
-                    margin={{ top: 20, right: 100, bottom: 20, left: 100 }}
+                    margin={{ top: 40, right: 140, bottom: 40, left: 140 }}
                     link={renderSankeyLink}
-                    node={renderSankeyNode}
+                    node={(props) => renderSankeyNode({ ...props, totalValue: totalInputLoad })}
                 >
                     <Tooltip 
                         formatter={(value: number) => `${value} W`}

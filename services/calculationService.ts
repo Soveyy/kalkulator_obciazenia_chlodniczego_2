@@ -144,35 +144,48 @@ export function generateTemperatureProfile(tExternalMax: number, month: string, 
     return hourlyTemps.map((t: number) => t + delta);
 }
 
-export function calculateWorstMonth(windows: Window[], allData: AllData): string {
-    if (!windows || windows.length === 0) return '7';
-
-    let maxSolarGain = -Infinity;
+export function calculateWorstMonth(
+    windows: Window[], 
+    allData: AllData,
+    input: InputState,
+    accumulation: AccumulationSettings,
+    internalGains: InternalGains
+): { worstMonth: string, monthlyPeaks: { month: string, peak: number }[] } {
+    const monthlyPeaks: { month: string, peak: number }[] = [];
+    let maxPeakLoad = -Infinity;
     let worstMonth = '7';
 
     for (let month = 4; month <= 9; month++) {
-        let monthSolarGain = 0;
         const monthStr = month.toString();
-
-        if (allData.nsrdb[monthStr]) {
-            for (const window of windows) {
-                const area = window.width * window.height;
-                const tiltStr = (window.tilt ?? 90).toString();
-                const dirData = allData.nsrdb[monthStr][window.direction]?.[tiltStr];
-                if (dirData && dirData.Gcs) {
-                    const dailyIrradiance = dirData.Gcs.reduce((sum: number, val: number) => sum + val, 0);
-                    monthSolarGain += dailyIrradiance * area * window.shgc;
-                }
-            }
-        }
         
-        if (monthSolarGain > maxSolarGain) {
-            maxSolarGain = monthSolarGain;
+        // Generate temp profile for this month
+        const tExtMax = parseFloat(input.tExternal) || 32;
+        const tExtProfile = generateTemperatureProfile(tExtMax, monthStr, allData);
+        
+        // Calculate gains for this month
+        const results = calculateGainsForMonth(
+            windows,
+            input,
+            tExtProfile,
+            monthStr,
+            allData,
+            accumulation,
+            internalGains,
+            false // with shading
+        );
+        
+        const totalLoads = results.finalGains.clearSky.total;
+        const peakLoad = Math.max(...totalLoads);
+        
+        monthlyPeaks.push({ month: monthStr, peak: peakLoad });
+
+        if (peakLoad > maxPeakLoad) {
+            maxPeakLoad = peakLoad;
             worstMonth = monthStr;
         }
     }
 
-    return worstMonth;
+    return { worstMonth, monthlyPeaks };
 }
 
 export function calculateGainsForMonth(
