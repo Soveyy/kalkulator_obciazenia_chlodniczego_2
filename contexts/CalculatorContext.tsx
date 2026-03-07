@@ -56,6 +56,9 @@ const initialState: State = {
     resultMessage: '',
     tExtProfile: [],
     monthlyPeaks: [],
+    yearlyMatrix: null,
+    solarMatrix: null,
+    solarInstantMatrix: null,
     chartType: 'line',
     modal: { isOpen: false, type: null, data: null },
     theme: 'light',
@@ -172,6 +175,9 @@ function calculatorReducer(state: State, action: Action): State {
                 tExtProfile: action.payload.tExtProfile,
                 resultMessage: action.payload.message,
                 monthlyPeaks: action.payload.monthlyPeaks,
+                yearlyMatrix: action.payload.yearlyMatrix || state.yearlyMatrix,
+                solarMatrix: action.payload.solarMatrix || state.solarMatrix,
+                solarInstantMatrix: action.payload.solarInstantMatrix || state.solarInstantMatrix,
                 activeResults: state.isShadingViewActive 
                     ? action.payload.results.withShading 
                     : action.payload.results.withoutShading,
@@ -375,7 +381,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
         const resultsWithShading = calculateGainsForMonth(state.windows, state.input, tExtProfile, month, state.allData, state.accumulation, state.internalGains, false);
         const resultsWithoutShading = calculateGainsForMonth(state.windows, state.input, tExtProfile, month, state.allData, state.accumulation, state.internalGains, true);
 
-        const { monthlyPeaks } = calculateWorstMonth(
+        const { monthlyPeaks, yearlyMatrix, solarMatrix, solarInstantMatrix } = calculateWorstMonth(
             state.windows, 
             state.allData, 
             state.input, 
@@ -390,7 +396,10 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             month: month,
             tExtProfile,
             message,
-            monthlyPeaks
+            monthlyPeaks,
+            yearlyMatrix,
+            solarMatrix,
+            solarInstantMatrix
         }});
     }, [state.allData, state.windows, state.input, state.accumulation, state.internalGains, state.resultMessage]);
 
@@ -402,7 +411,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
         }
         setIsCalculating(true);
         try {
-            const { worstMonth, monthlyPeaks } = calculateWorstMonth(
+            const { worstMonth, monthlyPeaks, yearlyMatrix, solarMatrix, solarInstantMatrix } = calculateWorstMonth(
                 state.windows, 
                 state.allData, 
                 state.input, 

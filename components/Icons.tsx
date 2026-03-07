@@ -108,3 +108,6 @@ export const ArrowDownIcon: React.FC<{ className?: string }> = ({ className }) =
     </svg>
 );
 
+export const ZapIcon = LightningBoltIcon;
+export const InfoIcon = InformationCircleIcon;
+

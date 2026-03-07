@@ -7,12 +7,14 @@ import { ClockIcon, TrendingDownIcon, LightningBoltIcon, InformationCircleIcon }
 import SankeyChart from '../SankeyChart';
 import BreakdownCharts from '../BreakdownCharts';
 import MonthlyLoadChart from '../MonthlyLoadChart';
+import SolarHeatMap from '../SolarHeatMap';
 
 const RtsAnalysisPage: React.FC = () => {
     const { state } = useCalculator();
     const segment1Ref = useRef<HTMLDivElement>(null);
     const segment2Ref = useRef<HTMLDivElement>(null);
     const segment3Ref = useRef<HTMLDivElement>(null);
+    const segment4Ref = useRef<HTMLDivElement>(null);
     const segmentMonthlyRef = useRef<HTMLDivElement>(null);
     const [activeSection, setActiveSection] = useState<string>('rts');
 
@@ -46,6 +48,7 @@ const RtsAnalysisPage: React.FC = () => {
         if (segment1Ref.current) observer.observe(segment1Ref.current);
         if (segment2Ref.current) observer.observe(segment2Ref.current);
         if (segment3Ref.current) observer.observe(segment3Ref.current);
+        if (segment4Ref.current) observer.observe(segment4Ref.current);
         if (segmentMonthlyRef.current) observer.observe(segmentMonthlyRef.current);
 
         return () => observer.disconnect();
@@ -70,12 +73,15 @@ const RtsAnalysisPage: React.FC = () => {
     // Calculate metrics
     const totalGains = instantaneousGains?.clearSky?.total || [];
     const totalLoads = finalGains?.clearSky?.total || [];
+    const sensibleLoads = finalGains?.clearSky?.sensible || [];
     
     const maxGain = totalGains.length > 0 ? Math.max(...totalGains) : 0;
     const hourMaxGain = totalGains.indexOf(maxGain);
     
     const maxLoad = totalLoads.length > 0 ? Math.max(...totalLoads) : 0;
     const hourMaxLoad = totalLoads.indexOf(maxLoad);
+
+    const shr = maxLoad > 0 ? sensibleLoads[hourMaxLoad] / maxLoad : 1;
 
     if (hourMaxGain === -1 || hourMaxLoad === -1 || totalLoads.length === 0) {
         return (
@@ -124,6 +130,12 @@ const RtsAnalysisPage: React.FC = () => {
                     Udziały Szczytowe
                 </button>
                 <button 
+                    onClick={() => scrollToSegment(segment4Ref, 'heatmap')}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeSection === 'heatmap' ? 'bg-amber-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}
+                >
+                    Mapa Ciepła
+                </button>
+                <button 
                     onClick={() => scrollToSegment(segmentMonthlyRef, 'monthly')}
                     className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeSection === 'monthly' ? 'bg-emerald-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}
                 >
@@ -138,7 +150,7 @@ const RtsAnalysisPage: React.FC = () => {
                     <p className="text-slate-500 dark:text-slate-400">Wpływ bezwładności budynku na szczytowe zapotrzebowanie na chłód</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                     {/* Bento Grid Cards */}
                     <Card className="flex flex-col justify-between p-5 border-l-4 border-blue-500 hover:shadow-md transition-shadow">
                         <div className="flex justify-between items-start mb-2">
@@ -147,7 +159,7 @@ const RtsAnalysisPage: React.FC = () => {
                         </div>
                         <div>
                             <div className="text-3xl font-bold text-slate-800 dark:text-white">{lagHours} h</div>
-                            <p className="text-xs text-slate-500 mt-1">Przesunięcie fali upału przez strukturę</p>
+                            <p className="text-xs text-slate-500 mt-1">Przesunięcie fali upału</p>
                         </div>
                     </Card>
 
@@ -158,7 +170,18 @@ const RtsAnalysisPage: React.FC = () => {
                         </div>
                         <div>
                             <div className="text-3xl font-bold text-slate-800 dark:text-white">{peakReduction.toFixed(1)}%</div>
-                            <p className="text-xs text-slate-500 mt-1">Tłumienie zysków przez masę termiczną</p>
+                            <p className="text-xs text-slate-500 mt-1">Tłumienie zysków</p>
+                        </div>
+                    </Card>
+
+                    <Card className="flex flex-col justify-between p-5 border-l-4 border-indigo-500 hover:shadow-md transition-shadow">
+                        <div className="flex justify-between items-start mb-2">
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Wskaźnik SHR</span>
+                            <div className="w-6 h-6 rounded-full border-2 border-indigo-500 flex items-center justify-center text-[9px] font-black text-indigo-500">SHR</div>
+                        </div>
+                        <div>
+                            <div className="text-3xl font-bold text-slate-800 dark:text-white">{shr.toFixed(2)}</div>
+                            <p className="text-xs text-slate-500 mt-1">Stosunek ciepła jawnego</p>
                         </div>
                     </Card>
 
@@ -241,7 +264,17 @@ const RtsAnalysisPage: React.FC = () => {
                 <BreakdownCharts />
             </div>
 
-            {/* Segment 4: Porównanie Miesięcy */}
+            {/* Segment 4: Mapa Ciepła */}
+            <div id="heatmap" ref={segment4Ref} className="flex flex-col space-y-6 pt-8">
+                <div className="text-center mb-4">
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Roczna Mapa Ciepła</h2>
+                    <p className="text-slate-500 dark:text-slate-400">Analiza intensywności zysków w skali całego roku</p>
+                </div>
+
+                <SolarHeatMap />
+            </div>
+
+            {/* Segment 5: Porównanie Miesięcy */}
             <div id="monthly" ref={segmentMonthlyRef} className="flex flex-col space-y-6 pt-8">
                 <div className="text-center mb-4">
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Sezonowa Zmienność Obciążenia</h2>

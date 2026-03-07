@@ -150,12 +150,15 @@ export function calculateWorstMonth(
     input: InputState,
     accumulation: AccumulationSettings,
     internalGains: InternalGains
-): { worstMonth: string, monthlyPeaks: { month: string, peak: number }[] } {
+): { worstMonth: string, monthlyPeaks: { month: string, peak: number }[], yearlyMatrix: number[][], solarMatrix: number[][], solarInstantMatrix: number[][] } {
     const monthlyPeaks: { month: string, peak: number }[] = [];
+    const yearlyMatrix: number[][] = [];
+    const solarMatrix: number[][] = [];
+    const solarInstantMatrix: number[][] = [];
     let maxPeakLoad = -Infinity;
     let worstMonth = '7';
 
-    for (let month = 4; month <= 9; month++) {
+    for (let month = 1; month <= 12; month++) {
         const monthStr = month.toString();
         
         // Generate temp profile for this month
@@ -175,17 +178,28 @@ export function calculateWorstMonth(
         );
         
         const totalLoads = results.finalGains.clearSky.total;
-        const peakLoad = Math.max(...totalLoads);
+        const solarLoads = results.loadComponents.solar;
+        const solarInstant = results.components.solarGainsClearSky;
         
-        monthlyPeaks.push({ month: monthStr, peak: peakLoad });
+        // Heat map matrices (all 12 months)
+        yearlyMatrix.push(totalLoads);
+        solarMatrix.push(solarLoads);
+        solarInstantMatrix.push(solarInstant);
 
-        if (peakLoad > maxPeakLoad) {
-            maxPeakLoad = peakLoad;
-            worstMonth = monthStr;
+        // Peak analysis (only April to September)
+        const mNum = parseInt(monthStr, 10);
+        if (mNum >= 4 && mNum <= 9) {
+            const peakLoad = Math.max(...totalLoads);
+            monthlyPeaks.push({ month: monthStr, peak: peakLoad });
+
+            if (peakLoad > maxPeakLoad) {
+                maxPeakLoad = peakLoad;
+                worstMonth = monthStr;
+            }
         }
     }
 
-    return { worstMonth, monthlyPeaks };
+    return { worstMonth, monthlyPeaks, yearlyMatrix, solarMatrix, solarInstantMatrix };
 }
 
 export function calculateGainsForMonth(
