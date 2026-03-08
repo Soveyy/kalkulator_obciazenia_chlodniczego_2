@@ -23,21 +23,6 @@ const VentilationPanel: React.FC = () => {
             (newVentilationGains as any)[name] = checked;
         } else if (type === 'radio') {
             (newVentilationGains as any)[name] = value;
-        } else if (name === 'outdoorMoistureContent') {
-            if (value === '') {
-                newVentilationGains.outdoorMoistureContent = '';
-                setMoistureError(null);
-            } else {
-                const num = parseFloat(value);
-                if (!isNaN(num)) {
-                    newVentilationGains.outdoorMoistureContent = num;
-                    if (num < 0.005 || num > 0.018) {
-                        setMoistureError('Wartość musi być w zakresie 0,005 - 0,018 kg/kg');
-                    } else {
-                        setMoistureError(null);
-                    }
-                }
-            }
         } else if (['airflow', 'naturalVentilationAirflow', 'exteriorWallPerimeter', 'roomHeight'].includes(name)) {
             if (value === '') {
                 (newVentilationGains as any)[name] = '';
@@ -80,36 +65,6 @@ const VentilationPanel: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <Card>
-                <h3 className="font-semibold mb-3">Parametry ogólne</h3>
-                <div className="max-w-md">
-                    <label className="label-style flex items-center font-medium">
-                        Zawartość wilgoci powietrza zewn. (kg/kg):
-                        <Tooltip text="Zawartość wilgoci powietrza zewnętrznego. Używana do obliczenia obciążenia utajonego dla wentylacji i infiltracji." position="top" />
-                    </label>
-                    <div className="relative">
-                        <Input 
-                            name="outdoorMoistureContent" 
-                            type="number" 
-                            value={ventilation.outdoorMoistureContent} 
-                            onChange={handleChange} 
-                            step="0.0001" 
-                            min="0.005" 
-                            max="0.018" 
-                            className={
-                                ventilation.outdoorMoistureContent === '' ? 'animate-pulse-border border-blue-400' : 
-                                (ventilation.outdoorMoistureContent < 0.005 || ventilation.outdoorMoistureContent > 0.018) ? 'animate-pulse-error' : ''
-                            } 
-                        />
-                        {moistureError && (
-                            <p className="text-[10px] text-red-500 mt-1 absolute bg-white dark:bg-slate-900 px-1 rounded border border-red-200 dark:border-red-900/50 z-10 shadow-sm">
-                                {moistureError}
-                            </p>
-                        )}
-                    </div>
-                </div>
-            </Card>
-
             <Card>
                 <h3 className="font-semibold mb-3">Sekcja A: Infiltracja (nieszczelności)</h3>
                 <div className="space-y-4">

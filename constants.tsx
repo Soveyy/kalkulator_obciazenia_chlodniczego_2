@@ -39,17 +39,6 @@ export const CompassArrow: React.FC<{ rotation: number }> = ({ rotation }) => (
 );
 
 
-// Dane temperatur dla Warszawy
-export const AVG_MAX_TEMPERATURES: { [key: number]: number } = {
-    1: -0.1, 2: 1.1, 3: 6.2, 4: 13.5, 5: 19.3, 6: 22.5,
-    7: 24.5, 8: 23.9, 9: 18.5, 10: 12.5, 11: 5.9, 12: 1.3
-};
-
-export const RECORD_TEMPERATURES: { [key: number]: number } = {
-    1: 13.8, 2: 17.2, 3: 22.9, 4: 30.5, 5: 32.8, 6: 36.6,
-    7: 37.0, 8: 37.1, 9: 34.9, 10: 28.3, 11: 19.3, 12: 15.6
-};
-
 // Shading constants
 export const SHADING_TYPE_LABELS: { [key: string]: string } = {
     louvers: 'Żaluzje (poziome)',

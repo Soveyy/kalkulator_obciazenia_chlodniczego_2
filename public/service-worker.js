@@ -5,7 +5,6 @@ const urlsToCache = [
   '/index.html',
   '/index.tsx',
   '/data/baza_danych_NSRDB.json',
-  '/data/baza_danych_PVGIS.json',
   '/data/rts_factors.json',
   '/data/shading_database.json',
   '/icons/icon-192x192.png',

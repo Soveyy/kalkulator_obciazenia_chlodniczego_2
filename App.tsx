@@ -10,7 +10,6 @@ import VentilationPage from './components/pages/VentilationPage';
 import SummaryPage from './components/pages/SummaryPage';
 import RtsAnalysisPage from './components/pages/RtsAnalysisPage';
 import MethodologyModal from './components/modals/MethodologyModal';
-import TempDatabaseModal from './components/modals/TempDatabaseModal';
 import WindowEditModal from './components/modals/WindowEditModal';
 import BulkShadingModal from './components/modals/BulkShadingModal';
 import RtsVisualizerModal from './components/modals/RtsVisualizerModal';
@@ -48,10 +47,10 @@ const AppContent: React.FC = () => {
     };
 
     return (
-      <div className="min-h-screen text-slate-800 dark:text-slate-200 transition-colors duration-300 flex pb-20 lg:pb-0">
+      <div className="min-h-screen text-slate-800 dark:text-slate-200 transition-colors duration-300 flex">
         <Sidebar />
-        <div className="flex-1 flex flex-col">
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 mb-16 lg:mb-20">
+        <div className="flex-1 flex flex-col min-w-0">
+          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-24 lg:pb-24">
             <Header />
             
             {/* Project Progress Bar */}
@@ -102,7 +101,6 @@ const App: React.FC = () => {
     <CalculatorProvider>
       <AppContent />
       <MethodologyModal />
-      <TempDatabaseModal />
       <WindowEditModal />
       <BulkShadingModal />
       <RtsVisualizerModal />

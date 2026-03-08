@@ -2,7 +2,7 @@
 import React from 'react';
 
 const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(({ className = '', children, ...props }, ref) => {
-    const baseClasses = "w-full box-border px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200";
+    const baseClasses = "w-full box-border px-2 py-1.5 lg:px-3 lg:py-2 text-sm lg:text-base border border-slate-300 dark:border-slate-600 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200";
     return <select ref={ref} className={`${baseClasses} ${className}`} {...props}>{children}</select>;
 });
 

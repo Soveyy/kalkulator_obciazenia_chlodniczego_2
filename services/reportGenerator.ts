@@ -216,7 +216,6 @@ export const generatePdfReport = async (state: any) => {
         ['Miesiąc obliczeniowy', MONTH_NAMES[parseInt(currentMonth, 10) - 1]],
         ['Temperatura wewnętrzna', `${input.tInternal} °C`],
         ['Wilgotność wewnętrzna', `${input.rhInternal} %`],
-        ['Temperatura zewn. (projektowa)', `${input.tExternal} °C`],
         ['Powierzchnia pomieszczenia', `${input.roomArea} m²`],
     ];
 
@@ -228,7 +227,6 @@ export const generatePdfReport = async (state: any) => {
         } else {
             allParams.push(['Wydatek powietrza (graw.)', `${vent.naturalVentilationAirflow} m³/h`]);
         }
-        allParams.push(['Zawartość wilgoci zewn.', `${vent.outdoorMoistureContent} kg/kg`]);
     }
     if (vent.includeInfiltration) {
         allParams.push(['Infiltracja', 'Tak']);

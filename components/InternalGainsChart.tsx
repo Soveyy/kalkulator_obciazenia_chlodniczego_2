@@ -26,6 +26,12 @@ const InternalGainsChart: React.FC = () => {
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, [handleFullscreenChange]);
 
+    useEffect(() => {
+        if (chartInstanceRef.current) {
+            chartInstanceRef.current.resize();
+        }
+    }, [isFullscreen]);
+
     const toggleFullscreen = async () => {
         const element = chartContainerRef.current;
         if (!element) return;
@@ -151,7 +157,7 @@ const InternalGainsChart: React.FC = () => {
         } else {
             chartInstanceRef.current = new Chart(ctx, chartConfig);
         }
-    }, [state.activeResults, theme, state.currentMonth, isFullscreen]);
+    }, [state.activeResults, theme, state.currentMonth]);
     
     if (!state.results) {
         return (

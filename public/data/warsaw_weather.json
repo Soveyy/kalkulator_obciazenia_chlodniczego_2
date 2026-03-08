@@ -1,0 +1,67 @@
+{
+  "city": "Warszawa",
+  "station_id": "12375",
+  "description": "Dane projektowe ASHRAE 0.4% (Temp, Range, MCRH) 2010-2025",
+  "monthly_data": {
+    "1": {
+      "peakTemp": 10.8,
+      "dailyRange": 6.3,
+      "mcrh": 63.1
+    },
+    "2": {
+      "peakTemp": 12.4,
+      "dailyRange": 9.6,
+      "mcrh": 55.1
+    },
+    "3": {
+      "peakTemp": 19.2,
+      "dailyRange": 14.1,
+      "mcrh": 38.7
+    },
+    "4": {
+      "peakTemp": 26.7,
+      "dailyRange": 15.1,
+      "mcrh": 28.0
+    },
+    "5": {
+      "peakTemp": 28.0,
+      "dailyRange": 13.3,
+      "mcrh": 32.1
+    },
+    "6": {
+      "peakTemp": 32.0,
+      "dailyRange": 13.5,
+      "mcrh": 36.4
+    },
+    "7": {
+      "peakTemp": 33.1,
+      "dailyRange": 13.8,
+      "mcrh": 32.3
+    },
+    "8": {
+      "peakTemp": 33.4,
+      "dailyRange": 13.8,
+      "mcrh": 30.0
+    },
+    "9": {
+      "peakTemp": 29.1,
+      "dailyRange": 13.9,
+      "mcrh": 35.1
+    },
+    "10": {
+      "peakTemp": 22.0,
+      "dailyRange": 11.9,
+      "mcrh": 52.8
+    },
+    "11": {
+      "peakTemp": 15.3,
+      "dailyRange": 8.3,
+      "mcrh": 66.0
+    },
+    "12": {
+      "peakTemp": 11.6,
+      "dailyRange": 5.5,
+      "mcrh": 70.9
+    }
+  }
+}

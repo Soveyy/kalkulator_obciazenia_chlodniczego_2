@@ -28,6 +28,12 @@ const WindowGainsChart: React.FC = () => {
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, [handleFullscreenChange]);
 
+    useEffect(() => {
+        if (chartInstanceRef.current) {
+            chartInstanceRef.current.resize();
+        }
+    }, [isFullscreen]);
+
     const toggleFullscreen = async () => {
         const element = chartContainerRef.current;
         if (!element) return;
@@ -179,7 +185,7 @@ const WindowGainsChart: React.FC = () => {
             chartInstanceRef.current = new Chart(ctx, chartConfig);
         }
 
-    }, [state.activeResults, theme, showIncidentRadiation, state.currentMonth, isFullscreen]);
+    }, [state.activeResults, theme, showIncidentRadiation, state.currentMonth]);
     
     if (!state.results) {
         return (

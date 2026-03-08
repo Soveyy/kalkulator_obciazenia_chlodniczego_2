@@ -13,7 +13,6 @@ const SummaryPage: React.FC = () => {
             input.projectName.trim() !== '' && 
             input.tInternal !== '' && 
             input.rhInternal !== '' && 
-            input.tExternal !== '' && 
             input.roomArea !== '';
         
         const infiltrationValid = 

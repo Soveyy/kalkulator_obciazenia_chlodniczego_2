@@ -80,12 +80,20 @@
     .chart-container:fullscreen,
     .chart-container:-webkit-full-screen {
         background-color: white;
-        padding: 1rem;
+        width: 100% !important;
+        height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        padding: 1rem !important;
+        box-sizing: border-box !important;
     }
     .dark .chart-container:fullscreen,
     .dark .chart-container:-webkit-full-screen {
         background-color: #1e293b; /* bg-slate-800 */
     }
+
+    /* We will handle rotation via JS/CSS classes more carefully if needed, 
+       but for now let's ensure it doesn't break the layout on exit */
 
     /* Styles for collapsible section */
     .collapsible-content {

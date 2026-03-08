@@ -23,24 +23,47 @@ const HeatGainChart: React.FC = () => {
 
     useEffect(() => {
         document.addEventListener('fullscreenchange', handleFullscreenChange);
-        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+        };
     }, [handleFullscreenChange]);
+
+    useEffect(() => {
+        if (chartInstanceRef.current) {
+            chartInstanceRef.current.resize();
+        }
+    }, [isFullscreen]);
 
     const toggleFullscreen = async () => {
         const element = chartContainerRef.current;
         if (!element) return;
         try {
             if (!document.fullscreenElement) {
-                await element.requestFullscreen();
+                if (element.requestFullscreen) {
+                    await element.requestFullscreen();
+                } else if ((element as any).webkitRequestFullscreen) {
+                    await (element as any).webkitRequestFullscreen();
+                }
+                
+                // Try to lock orientation to landscape on mobile
                 if (window.screen.orientation && window.innerWidth < 1024) {
-                    await (window.screen.orientation as any).lock('landscape').catch((e: any) => console.warn("Screen orientation lock failed:", e));
+                    try {
+                        await (window.screen.orientation as any).lock('landscape');
+                    } catch (e) {
+                        console.warn("Screen orientation lock failed:", e);
+                    }
                 }
             } else {
                 if (document.exitFullscreen) {
-                    if (window.screen.orientation && window.screen.orientation.type.startsWith('landscape')) {
-                        window.screen.orientation.unlock();
-                    }
                     await document.exitFullscreen();
+                } else if ((document as any).webkitExitFullscreen) {
+                    await (document as any).webkitExitFullscreen();
+                }
+                
+                if (window.screen.orientation && window.screen.orientation.unlock) {
+                    window.screen.orientation.unlock();
                 }
             }
         } catch (err) {
@@ -170,66 +193,17 @@ const HeatGainChart: React.FC = () => {
         };
 
         if (chartInstanceRef.current) {
-             // If chart type changed, destroy and recreate
-            if ((chartInstanceRef.current.config as any).type !== chartType) {
-                 chartInstanceRef.current.destroy();
-                 chartInstanceRef.current = new Chart(ctx, chartConfig);
-            } else {
-                // Update existing chart
-                chartInstanceRef.current.data.labels = labels;
-                
-                const currentDatasets = chartInstanceRef.current.data.datasets;
-                
-                // Check if dataset structure is same (count and types match loosely)
-                if (currentDatasets.length === datasets.length) {
-                     datasets.forEach((newDs, i) => {
-                        // Update data in place to allow animation
-                        currentDatasets[i].data = newDs.data;
-                        // Update other properties that might change but are not animating (colors, labels)
-                        currentDatasets[i].label = newDs.label;
-                        currentDatasets[i].backgroundColor = newDs.backgroundColor;
-                        currentDatasets[i].borderColor = newDs.borderColor;
-                     });
-                } else {
-                     // Structure changed completely (e.g. temp profile added/removed), full replacement
-                     chartInstanceRef.current.data.datasets = datasets;
-                }
-
-                // Update scales colors
-                if (chartInstanceRef.current.options.scales) {
-                     if (chartInstanceRef.current.options.scales.x) {
-                        const xScale = chartInstanceRef.current.options.scales.x as any;
-                        xScale.ticks.color = textColor;
-                        xScale.grid.color = gridColor;
-                        xScale.title.color = textColor;
-                     }
-                     if (chartInstanceRef.current.options.scales.yLoad) {
-                        const yLoadScale = chartInstanceRef.current.options.scales.yLoad as any;
-                        yLoadScale.ticks.color = textColor;
-                        yLoadScale.grid.color = gridColor;
-                        yLoadScale.title.color = textColor;
-                     }
-                     if (chartInstanceRef.current.options.scales.yTemp) {
-                        const yTempScale = chartInstanceRef.current.options.scales.yTemp as any;
-                        yTempScale.ticks.color = textColor;
-                        yTempScale.title.color = textColor;
-                     }
-                }
-                if (chartInstanceRef.current.options.plugins) {
-                     if (chartInstanceRef.current.options.plugins.title) {
-                         chartInstanceRef.current.options.plugins.title.color = textColor;
-                     }
-                     if (chartInstanceRef.current.options.plugins.legend && chartInstanceRef.current.options.plugins.legend.labels) {
-                         chartInstanceRef.current.options.plugins.legend.labels.color = textColor;
-                     }
-                }
-                chartInstanceRef.current.update();
-            }
-        } else {
-            chartInstanceRef.current = new Chart(ctx, chartConfig);
+            chartInstanceRef.current.destroy();
         }
+        chartInstanceRef.current = new Chart(ctx, chartConfig);
 
-    }, [state.activeResults, state.chartType, theme, state.tExtProfile, state.currentMonth, isFullscreen]);
+        return () => {
+            if (chartInstanceRef.current) {
+                chartInstanceRef.current.destroy();
+                chartInstanceRef.current = null;
+            }
+        };
+    }, [state.activeResults, state.chartType, theme, state.tExtProfile, state.currentMonth]);
 
     return (
         <Card className="h-[450px] flex flex-col">

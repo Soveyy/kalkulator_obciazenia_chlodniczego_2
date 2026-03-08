@@ -10,16 +10,16 @@ const WindowConfigurator: React.FC = () => {
 
   return (
     <div className="bg-white dark:bg-slate-800 p-5 rounded-lg shadow-md flex flex-col">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
         <h2 className="text-xl font-semibold text-slate-800 dark:text-white">
           Konfiguracja Okien
           {state.windows.length > 0 && <span className="text-base font-normal text-slate-500 dark:text-slate-400 ml-2">({state.windows.length})</span>}
         </h2>
-        <div className="flex gap-2">
-           <Button onClick={() => dispatch({ type: 'SET_MODAL', payload: { isOpen: true, type: 'editWindow', data: null } })} className="py-1.5 px-3 text-sm flex items-center gap-1">
+        <div className="flex gap-2 w-full sm:w-auto">
+           <Button fullWidth onClick={() => dispatch({ type: 'SET_MODAL', payload: { isOpen: true, type: 'editWindow', data: null } })} className="py-1.5 px-3 text-sm flex items-center justify-center gap-1">
               <PlusIcon className="w-4 h-4" /> Dodaj
             </Button>
-           <Button onClick={() => dispatch({ type: 'SET_MODAL', payload: { isOpen: true, type: 'bulkShading' } })} variant="secondary" className="py-1.5 px-3 text-sm">
+           <Button fullWidth variant="secondary" onClick={() => dispatch({ type: 'SET_MODAL', payload: { isOpen: true, type: 'bulkShading' } })} className="py-1.5 px-3 text-sm">
               Wszystkie osłony
            </Button>
         </div>

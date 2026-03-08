@@ -23,18 +23,47 @@ const RtsChart: React.FC = () => {
 
     useEffect(() => {
         document.addEventListener('fullscreenchange', handleFullscreenChange);
-        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+        };
     }, [handleFullscreenChange]);
+
+    useEffect(() => {
+        if (chartInstanceRef.current) {
+            chartInstanceRef.current.resize();
+        }
+    }, [isFullscreen]);
 
     const toggleFullscreen = async () => {
         const element = chartContainerRef.current;
         if (!element) return;
         try {
             if (!document.fullscreenElement) {
-                await element.requestFullscreen();
+                if (element.requestFullscreen) {
+                    await element.requestFullscreen();
+                } else if ((element as any).webkitRequestFullscreen) {
+                    await (element as any).webkitRequestFullscreen();
+                }
+                
+                // Try to lock orientation to landscape on mobile
+                if (window.screen.orientation && window.innerWidth < 1024) {
+                    try {
+                        await (window.screen.orientation as any).lock('landscape');
+                    } catch (e) {
+                        console.warn("Screen orientation lock failed:", e);
+                    }
+                }
             } else {
                 if (document.exitFullscreen) {
                     await document.exitFullscreen();
+                } else if ((document as any).webkitExitFullscreen) {
+                    await (document as any).webkitExitFullscreen();
+                }
+                
+                if (window.screen.orientation && window.screen.orientation.unlock) {
+                    window.screen.orientation.unlock();
                 }
             }
         } catch (err) {
@@ -201,7 +230,13 @@ const RtsChart: React.FC = () => {
         }
         chartInstanceRef.current = new Chart(ctx, chartConfig);
 
-    }, [state.activeResults, theme, state.currentMonth, isFullscreen]);
+        return () => {
+            if (chartInstanceRef.current) {
+                chartInstanceRef.current.destroy();
+                chartInstanceRef.current = null;
+            }
+        };
+    }, [state.activeResults, theme, state.currentMonth]);
     
     if (!state.results) {
         return (

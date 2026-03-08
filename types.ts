@@ -75,7 +75,6 @@ export interface VentilationGains {
     type: 'none' | 'mechanical' | 'natural';
     airflow: number | ''; // m3/h
     exchangerType: 'counterflow_hrv' | 'counterflow_erv' | 'rotary_condensing' | 'rotary_sorption';
-    outdoorMoistureContent: number | ''; // kg/kg
     naturalVentilationAirflow: number | ''; // m3/h
     includeInfiltration: boolean;
     exteriorWallPerimeter: number | ''; // m
@@ -90,7 +89,6 @@ export interface InputState {
     projectName: string;
     tInternal: string;
     rhInternal: string;
-    tExternal: string;
     roomArea: string;
 }
 
@@ -145,10 +143,10 @@ export interface CalculationResults {
 }
 
 export interface AllData {
-    pvgis: any;
     nsrdb: any;
     rts: any;
     shading: any;
+    warsaw_weather: any;
 }
 
 export type ToastType = 'info' | 'success' | 'danger';

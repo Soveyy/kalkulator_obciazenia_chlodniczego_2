@@ -156,21 +156,23 @@ const SankeyChart: React.FC = () => {
     const totalInputLoad = Math.round(totalLoad);
 
     return (
-        <div className="w-full h-[500px]">
-            <ResponsiveContainer width="100%" height="100%">
-                <Sankey
-                    data={data}
-                    nodePadding={50}
-                    margin={{ top: 40, right: 140, bottom: 40, left: 140 }}
-                    link={renderSankeyLink}
-                    node={(props) => renderSankeyNode({ ...props, totalValue: totalInputLoad })}
-                >
-                    <Tooltip 
-                        formatter={(value: number) => `${value} W`}
-                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    />
-                </Sankey>
-            </ResponsiveContainer>
+        <div className="w-full overflow-x-auto pb-4">
+            <div className="min-w-[800px] h-[500px]">
+                <ResponsiveContainer width="100%" height="100%">
+                    <Sankey
+                        data={data}
+                        nodePadding={50}
+                        margin={{ top: 40, right: 140, bottom: 40, left: 140 }}
+                        link={renderSankeyLink}
+                        node={(props) => renderSankeyNode({ ...props, totalValue: totalInputLoad })}
+                    >
+                        <Tooltip 
+                            formatter={(value: number) => `${value} W`}
+                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        />
+                    </Sankey>
+                </ResponsiveContainer>
+            </div>
         </div>
     );
 };

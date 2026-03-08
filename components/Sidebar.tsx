@@ -27,20 +27,19 @@ const Sidebar: React.FC = () => {
                     bg-slate-50 dark:bg-slate-900 p-3 flex flex-col 
                     transform transition-transform duration-300 ease-in-out
                     
-                    fixed inset-x-0 bottom-0 z-40 h-[85vh] w-full rounded-t-2xl shadow-2xl
-                    ${state.isSidebarOpen ? 'translate-y-0' : 'translate-y-full'}
+                    fixed inset-y-0 left-0 z-40 h-screen w-[85vw] max-w-sm shadow-2xl
+                    ${state.isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
                     
-                    lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:w-80 lg:rounded-none lg:shadow-none lg:translate-y-0 lg:translate-x-0 lg:pb-20
+                    lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:w-80 lg:shadow-none lg:translate-x-0 lg:pb-0
                 `}
             >
-                 <div className="w-16 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto mb-2 lg:hidden" aria-hidden="true"></div>
-                 <div className="flex justify-between items-center mb-4">
+                 <div className="flex justify-between items-center mb-4 mt-2 lg:mt-0">
                     <div className="flex items-center gap-2">
                         <h2 className="text-xl font-bold text-slate-800 dark:text-white">Parametry Główne</h2>
                         <span className={`w-2 h-2 rounded-full transition-colors ${useCalculator().progress.base ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-slate-300 dark:bg-slate-600'}`} />
                     </div>
                     <button 
-                        className="lg:hidden p-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
+                        className="lg:hidden p-2 -mr-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
                         onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
                         aria-label="Zamknij konfigurację"
                     >
@@ -125,31 +124,6 @@ const Sidebar: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <label className="label-style flex items-center font-semibold">
-                                    Temperatura zewn. (°C):
-                                    <Tooltip text="Maksymalna projektowana dobowa temperatura zewnętrzna." position="top" />
-                                </label>
-                                 <div className="flex gap-2 items-center">
-                                    <Input 
-                                        name="tExternal" 
-                                        type="number" 
-                                        value={state.input.tExternal} 
-                                        onChange={(e) => {
-                                            const val = e.target.value === '' ? '' : parseFloat(e.target.value);
-                                            dispatch({ type: 'SET_INPUT', payload: { ...state.input, tExternal: val } });
-                                        }} 
-                                        step="any"
-                                        min="-50"
-                                        max="50"
-                                        className={
-                                            state.input.tExternal === '' ? 'animate-pulse-border border-blue-400' : 
-                                            (state.input.tExternal < -50 || state.input.tExternal > 50) ? 'animate-pulse-error' : ''
-                                        }
-                                    />
-                                    <Button variant="secondary" className="px-2 py-1" onClick={() => dispatch({ type: 'SET_MODAL', payload: { isOpen: true, type: 'tempDatabase' } })}>Baza</Button>
-                                 </div>
-                            </div>
-                             <div>
                                 <label className="label-style flex items-center font-semibold">
                                     Powierzchnia (m²):
                                     <Tooltip text="Powierzchnia jest wykorzystywana do obliczania zysków od oświetlenia oraz urządzeń." position="top" />

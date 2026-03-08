@@ -7,7 +7,7 @@ interface CardProps {
 }
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(({ children, className = '', as: Component = 'div' }, ref) => {
-  const baseClasses = "bg-white dark:bg-slate-800 p-5 rounded-lg shadow-md transition-colors duration-300";
+  const baseClasses = "bg-white dark:bg-slate-800 p-4 lg:p-5 rounded-lg shadow-md transition-colors duration-300";
   // Cast to any to resolve TS error: "Type '...' is not assignable to type 'never'"
   const Tag = Component as any;
   return (

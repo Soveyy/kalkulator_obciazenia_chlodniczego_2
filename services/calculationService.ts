@@ -4,6 +4,19 @@ import { PEOPLE_ACTIVITY_LEVELS, LIGHTING_TYPES, VENTILATION_EXCHANGER_TYPES, EQ
 import { SHGC_DIFFUSE_MULTIPLIERS, SHGC_DIRECT_CORRECTION_CURVES } from '../src/config/shgcConfig';
 
 
+const ASHRAE_TEMPERATURE_FRACTIONS = [
+    0.88, 0.92, 0.95, 0.98, 1.00, 0.98, 0.91, 0.74, 0.55, 0.38, 0.23, 0.13,
+    0.05, 0.00, 0.00, 0.06, 0.14, 0.24, 0.39, 0.50, 0.59, 0.68, 0.75, 0.82
+];
+
+export function generateAshraeTemperatureProfile(peakTemp: number, dailyRange: number): number[] {
+    return ASHRAE_TEMPERATURE_FRACTIONS.map(fraction => {
+        // T_hour = T_peak - (Fraction * DailyRange)
+        const temp = peakTemp - (fraction * dailyRange);
+        return Number(temp.toFixed(2));
+    });
+}
+
 function interpolate(x: number, x0: number, y0: number, x1: number, y1: number): number {
     if (x1 === x0) return y0;
     return y0 + (x - x0) * (y1 - y0) / (x1 - x0);
@@ -125,23 +138,21 @@ function isHourActive(hour: number, startHour: number, endHour: number): boolean
     }
 }
 
-export function generateTemperatureProfile(tExternalMax: number, month: string, allData: AllData): number[] {
-    const tProfile: number[] = [];
-    const monthData = allData.pvgis[month] || allData.pvgis['7'];
-    if (!monthData || !monthData.T2m || monthData.T2m.length < 24) {
-        const tMin = tExternalMax - 10;
-        for (let i = 0; i < 24; i++) {
-            const temp = (tExternalMax + tMin) / 2 + ((tExternalMax - tMin) / 2) * Math.cos((2 * Math.PI * (i - 14)) / 24);
-            tProfile.push(temp);
-        }
-        return tProfile;
+export function generateTemperatureProfile(month: string, allData: AllData): number[] {
+    const monthData = allData.warsaw_weather?.monthly_data?.[month];
+    if (monthData) {
+        return generateAshraeTemperatureProfile(monthData.peakTemp, monthData.dailyRange);
     }
     
-    const hourlyTemps = monthData.T2m;
-    const maxTempInProfile = Math.max(...hourlyTemps);
-    const delta = tExternalMax - maxTempInProfile;
-    
-    return hourlyTemps.map((t: number) => t + delta);
+    // Fallback if data is missing
+    const tProfile: number[] = [];
+    const tExternalMax = 32;
+    const tMin = tExternalMax - 10;
+    for (let i = 0; i < 24; i++) {
+        const temp = (tExternalMax + tMin) / 2 + ((tExternalMax - tMin) / 2) * Math.cos((2 * Math.PI * (i - 14)) / 24);
+        tProfile.push(temp);
+    }
+    return tProfile;
 }
 
 export function calculateWorstMonth(
@@ -162,8 +173,7 @@ export function calculateWorstMonth(
         const monthStr = month.toString();
         
         // Generate temp profile for this month
-        const tExtMax = parseFloat(input.tExternal) || 32;
-        const tExtProfile = generateTemperatureProfile(tExtMax, monthStr, allData);
+        const tExtProfile = generateTemperatureProfile(monthStr, allData);
         
         // Calculate gains for this month
         const results = calculateGainsForMonth(
@@ -236,11 +246,15 @@ export function calculateGainsForMonth(
     
     if (internalGains.ventilation) {
         const { 
-            enabled, type, airflow, exchangerType, outdoorMoistureContent, naturalVentilationAirflow,
+            enabled, type, airflow, exchangerType, naturalVentilationAirflow,
             includeInfiltration, exteriorWallPerimeter, roomHeight, buildingStories, tightnessClass, shieldingClass, windSpeed
         } = internalGains.ventilation;
 
-        const wExternal = Number(outdoorMoistureContent) || 0.0125;
+        const monthData = allData.warsaw_weather?.monthly_data?.[month];
+        let wExternal = 0.0125; // fallback
+        if (monthData) {
+            wExternal = getHumidityRatioWithRH(monthData.peakTemp, monthData.mcrh / 100);
+        }
 
         const Q_mech_h = Array(24).fill(0);
         const Q_nat_h = Array(24).fill(0);

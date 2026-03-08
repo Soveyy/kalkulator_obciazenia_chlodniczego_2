@@ -19,7 +19,7 @@ const KPIDashboard: React.FC = () => {
     const textColor = theme === 'dark' ? 'text-white' : 'text-slate-800';
 
     return (
-        <div className={`fixed bottom-0 left-0 w-full z-50 border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] backdrop-blur-sm transition-all duration-300 ${bgColor}`}>
+        <div className={`fixed bottom-0 left-0 lg:left-80 w-full lg:w-[calc(100%-20rem)] z-50 border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] backdrop-blur-sm transition-all duration-300 ${bgColor}`}>
             <div className="max-w-[1920px] mx-auto px-4 py-3 flex items-center justify-between lg:justify-center lg:gap-16">
                 
                 <div className="flex flex-col items-start lg:items-center">

@@ -9,7 +9,7 @@ import LZString from 'lz-string';
 
 const initialState: State = {
     windows: [],
-    input: { projectName: 'Mój Projekt', tInternal: '24', rhInternal: '50', tExternal: '32', roomArea: '' },
+    input: { projectName: 'Mój Projekt', tInternal: '24', rhInternal: '50', roomArea: '' },
     accumulation: {
         include: true,
         thermalMass: 'very_heavy',
@@ -37,7 +37,6 @@ const initialState: State = {
             type: 'none',
             airflow: 150,
             exchangerType: 'counterflow_hrv',
-            outdoorMoistureContent: 0.0115,
             naturalVentilationAirflow: 150,
             includeInfiltration: false,
             exteriorWallPerimeter: '',
@@ -195,7 +194,7 @@ function calculatorReducer(state: State, action: Action): State {
         case 'RECALCULATE_VIEW': {
             if (!state.allData || !state.results) return state;
             const newMonth = action.payload;
-            const tExtProfile = generateTemperatureProfile(parseFloat(state.input.tExternal), newMonth, state.allData);
+            const tExtProfile = generateTemperatureProfile(newMonth, state.allData);
             const resultsWithShading = calculateGainsForMonth(state.windows, state.input, tExtProfile, newMonth, state.allData, state.accumulation, state.internalGains, false);
             const resultsWithoutShading = calculateGainsForMonth(state.windows, state.input, tExtProfile, newMonth, state.allData, state.accumulation, state.internalGains, true);
 
@@ -342,8 +341,8 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
         loadAllData().then(data => {
             dispatch({ type: 'SET_ALL_DATA', payload: data });
         }).catch(err => {
-            console.error(err);
-            dispatch({ type: 'ADD_TOAST', payload: { message: 'Błąd ładowania danych aplikacji.', type: 'danger' } });
+            console.error("Data loading error:", err);
+            dispatch({ type: 'ADD_TOAST', payload: { message: `Błąd ładowania danych aplikacji: ${err.message || 'Nieznany błąd'}`, type: 'danger' } });
         });
     }, []);
 
@@ -359,7 +358,6 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             state.input.projectName.trim() !== '' && 
             state.input.roomArea !== '' && 
             state.input.tInternal !== '' && 
-            state.input.tExternal !== '' && 
             state.input.rhInternal !== '';
             
         const internal = state.internalGains.people.enabled || state.internalGains.lighting.enabled || state.internalGains.equipment.length > 0;
@@ -376,7 +374,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
     const performCalculation = useCallback((month: string, customMessage?: string) => {
         if (!state.allData) return;
 
-        const tExtProfile = generateTemperatureProfile(parseFloat(state.input.tExternal), month, state.allData);
+        const tExtProfile = generateTemperatureProfile(month, state.allData);
             
         const resultsWithShading = calculateGainsForMonth(state.windows, state.input, tExtProfile, month, state.allData, state.accumulation, state.internalGains, false);
         const resultsWithoutShading = calculateGainsForMonth(state.windows, state.input, tExtProfile, month, state.allData, state.accumulation, state.internalGains, true);
