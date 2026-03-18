@@ -158,7 +158,7 @@ export function generateTemperatureProfile(month: string, allData: AllData): num
 export function calculateWorstMonth(
     windows: Window[], 
     allData: AllData,
-    input: InputState,
+    input: Omit<InputState, 'projectName'>,
     accumulation: AccumulationSettings,
     internalGains: InternalGains
 ): { worstMonth: string, monthlyPeaks: { month: string, peak: number }[], yearlyMatrix: number[][], solarMatrix: number[][], solarInstantMatrix: number[][] } {
@@ -214,7 +214,7 @@ export function calculateWorstMonth(
 
 export function calculateGainsForMonth(
     windows: Window[],
-    input: InputState,
+    input: Omit<InputState, 'projectName'>,
     tExtProfile: number[],
     month: string,
     allData: AllData,
@@ -539,6 +539,14 @@ export function calculateGainsForMonth(
     });
 
     const solarLoadFromSolarRTS = accumulation.include ? applyRTS(solarRadiantGains_SolarRTS, rtsFactorsSolar) : solarRadiantGains_SolarRTS;
+    const solarLoadFromNonSolarRTS = accumulation.include ? applyRTS(solarRadiantGains_NonSolarRTS, rtsFactorsNonSolar) : solarRadiantGains_NonSolarRTS;
+    const conductionLoadFromRadiant = accumulation.include ? applyRTS(conductionRadiantGains_NonSolarRTS, rtsFactorsNonSolar) : conductionRadiantGains_NonSolarRTS;
+    const internalLoadFromRadiant = accumulation.include ? applyRTS(internalGainsSensibleRadiant, rtsFactorsNonSolar) : internalGainsSensibleRadiant;
+
+    const rtsPeopleRadiant = accumulation.include ? applyRTS(peopleSensibleRadiant, rtsFactorsNonSolar) : peopleSensibleRadiant;
+    const rtsLightingRadiant = accumulation.include ? applyRTS(lightingSensibleRadiant, rtsFactorsNonSolar) : lightingSensibleRadiant;
+    const rtsEquipmentRadiant = accumulation.include ? applyRTS(equipmentSensibleRadiant, rtsFactorsNonSolar) : equipmentSensibleRadiant;
+
     const nonSolarRadiantTotal = Array(24).fill(0).map((_, h) => 
         internalGainsSensibleRadiant[h] + conductionRadiantGains_NonSolarRTS[h] + solarRadiantGains_NonSolarRTS[h]
     );
@@ -554,25 +562,19 @@ export function calculateGainsForMonth(
 
     // Breakdown for final load
     const windowsLoad = Array(24).fill(0).map((_, h) => {
-        const solarRad = accumulation.include ? applyRTS(solarRadiantGains_SolarRTS, rtsFactorsSolar)[h] : solarRadiantGains_SolarRTS[h];
-        const solarRadNonSolar = accumulation.include ? applyRTS(solarRadiantGains_NonSolarRTS, rtsFactorsNonSolar)[h] : solarRadiantGains_NonSolarRTS[h];
-        const condRad = accumulation.include ? applyRTS(conductionRadiantGains_NonSolarRTS, rtsFactorsNonSolar)[h] : conductionRadiantGains_NonSolarRTS[h];
-        return solarRad + solarRadNonSolar + condRad + solarConvectiveGains[h] + conductionGainsConvective[h];
+        return solarLoadFromSolarRTS[h] + solarLoadFromNonSolarRTS[h] + conductionLoadFromRadiant[h] + solarConvectiveGains[h] + conductionGainsConvective[h];
     });
 
     const peopleLoad = Array(24).fill(0).map((_, h) => {
-        const rad = accumulation.include ? applyRTS(peopleSensibleRadiant, rtsFactorsNonSolar)[h] : peopleSensibleRadiant[h];
-        return rad + peopleSensibleConvective[h];
+        return rtsPeopleRadiant[h] + peopleSensibleConvective[h];
     });
 
     const lightingLoad = Array(24).fill(0).map((_, h) => {
-        const rad = accumulation.include ? applyRTS(lightingSensibleRadiant, rtsFactorsNonSolar)[h] : lightingSensibleRadiant[h];
-        return rad + lightingSensibleConvective[h];
+        return rtsLightingRadiant[h] + lightingSensibleConvective[h];
     });
 
     const equipmentLoad = Array(24).fill(0).map((_, h) => {
-        const rad = accumulation.include ? applyRTS(equipmentSensibleRadiant, rtsFactorsNonSolar)[h] : equipmentSensibleRadiant[h];
-        return rad + equipmentSensibleConvective[h];
+        return rtsEquipmentRadiant[h] + equipmentSensibleConvective[h];
     });
 
     const finalGains = {
@@ -600,69 +602,9 @@ export function calculateGainsForMonth(
         }
     };
 
-    const clearSkyConductionRadiant = [...conductionRadiantGains_NonSolarRTS];
-    const clearSkySolarRadiant_Solar = [...solarRadiantGains_SolarRTS];
-    const clearSkySolarRadiant_NonSolar = [...solarRadiantGains_NonSolarRTS];
-
-    const conductionConvectiveTotal = Array(24).fill(0).map((_, h) => {
-        let sum = 0;
-        windows.forEach(win => {
-            const area = win.width * win.height;
-            const tExt = tExtProfile[h];
-            const conductiveTotal = win.u * area * (tExt - tInternal);
-            const radiativeFractionCond = win.shgc <= 0.55 ? 0.46 : 0.33;
-            sum += conductiveTotal * (1 - radiativeFractionCond);
-        });
-        return sum;
-    });
-
-    const conductionLoadFromRadiant = accumulation.include ? applyRTS(clearSkyConductionRadiant, rtsFactorsNonSolar) : clearSkyConductionRadiant;
-    const loadComponents_conduction = Array(24).fill(0).map((_, h) => conductionConvectiveTotal[h] + conductionLoadFromRadiant[h]);
-    
-    const internalLoadFromRadiant = accumulation.include ? applyRTS(internalGainsSensibleRadiant, rtsFactorsNonSolar) : internalGainsSensibleRadiant;
+    const loadComponents_conduction = Array(24).fill(0).map((_, h) => conductionGainsConvective[h] + conductionLoadFromRadiant[h]);
     const loadComponents_internalSensible = Array(24).fill(0).map((_, h) => internalGainsSensibleConvective[h] + internalLoadFromRadiant[h]);
-    
-    const solarLoadFromNonSolarRTS = accumulation.include ? applyRTS(clearSkySolarRadiant_NonSolar, rtsFactorsNonSolar) : clearSkySolarRadiant_NonSolar;
-    const solarConvectiveTotal = Array(24).fill(0).map((_, h) => {
-        let sum = 0;
-        windows.forEach(win => {
-            const area = win.width * win.height;
-            const tiltStr = (win.tilt ?? 90).toString();
-            const nsrdbDirData = allData.nsrdb[month]?.[win.direction]?.[tiltStr];
-            if(nsrdbDirData) {
-                const shadingFactors = getShadingFactors(win, allData, h, month, isWithoutShading);
-                const correctedSHGC = getCorrectedSHGC(win, nsrdbDirData, h);
-                
-                // Apply overhang shading factor here too for component calculation
-                let beamIrradiance = nsrdbDirData.Gb?.[h] || 0;
-                
-                if (win.overhang?.enabled) {
-                    const beta = nsrdbDirData.solar_altitude?.[h] || 0;
-                    const gamma = nsrdbDirData.gamma?.[h] || 0;
-                    if (beta > 0 && Math.cos(gamma * Math.PI / 180) > -0.01) {
-                         const betaRad = beta * Math.PI / 180;
-                         const gammaRad = gamma * Math.PI / 180;
-                         const tanOmega = Math.tan(betaRad) / Math.cos(gammaRad);
-                         if (tanOmega > 0) {
-                             const shadowLength = win.overhang.depth * tanOmega;
-                             const shadowOnGlass = shadowLength - win.overhang.distanceAbove;
-                             const shadedHeight = Math.max(0, Math.min(win.height, shadowOnGlass));
-                             const factor = shadedHeight / win.height;
-                             beamIrradiance = beamIrradiance * (1 - factor);
-                         }
-                    }
-                }
-
-                const diffuseIrradiance = (nsrdbDirData.Gcs?.[h] || 0) - (nsrdbDirData.Gb?.[h] || 0); // Original beam for diffuse calc
-                const attenuatedBeamGain = (beamIrradiance * correctedSHGC.shgc_direct * area) * shadingFactors.iac_beam;
-                const attenuatedDiffuseGain = (diffuseIrradiance * correctedSHGC.shgc_diffuse * area) * shadingFactors.iac_diff;
-                sum += (attenuatedBeamGain + attenuatedDiffuseGain) * (1 - shadingFactors.fr);
-            }
-        });
-        return sum;
-    });
-
-    const loadComponents_solar = Array(24).fill(0).map((_, h) => solarConvectiveTotal[h] + solarLoadFromSolarRTS[h] + solarLoadFromNonSolarRTS[h]);
+    const loadComponents_solar = Array(24).fill(0).map((_, h) => solarConvectiveGains[h] + solarLoadFromSolarRTS[h] + solarLoadFromNonSolarRTS[h]);
 
     const windowGainsSensible = windowsLoad;
 
@@ -684,8 +626,8 @@ export function calculateGainsForMonth(
         infiltrationLoad,
         components: {
             solarGainsClearSky: componentSolarGains,
-            conductionGainsRadiant: clearSkyConductionRadiant,
-            conductionGainsConvective: Array(24).fill(0).map((_, h) => componentConductionGains[h] - clearSkyConductionRadiant[h]),
+            conductionGainsRadiant: conductionRadiantGains_NonSolarRTS,
+            conductionGainsConvective: conductionGainsConvective,
             internalGainsSensibleRadiant,
             internalGainsSensibleConvective,
             internalGainsLatent

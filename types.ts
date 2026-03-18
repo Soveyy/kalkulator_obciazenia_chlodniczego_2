@@ -92,6 +92,24 @@ export interface InputState {
     roomArea: string;
 }
 
+export interface RoomState {
+    id: string;
+    name: string;
+    windows: Window[];
+    input: Omit<InputState, 'projectName'>;
+    accumulation: AccumulationSettings;
+    internalGains: InternalGains;
+    results: { withShading: CalculationResults, withoutShading: CalculationResults } | null;
+    activeResults: CalculationResults | null;
+    currentMonth: string;
+    resultMessage: string;
+    tExtProfile: number[];
+    monthlyPeaks: { month: string; peak: number }[];
+    yearlyMatrix: number[][] | null;
+    solarMatrix: number[][] | null;
+    solarInstantMatrix: number[][] | null;
+}
+
 export interface CalculationResultData {
     sensible: number[];
     latent: number[];
@@ -164,21 +182,14 @@ export interface SavedProject {
 }
 
 export interface State {
-    windows: Window[];
-    input: InputState;
-    accumulation: AccumulationSettings;
-    internalGains: InternalGains;
+    // Project level
+    projectName: string;
+    rooms: RoomState[];
+    activeRoomId: string;
+    
+    // Global state
     allData: AllData | null;
-    results: { withShading: CalculationResults, withoutShading: CalculationResults } | null;
-    activeResults: CalculationResults | null;
     isShadingViewActive: boolean;
-    currentMonth: string;
-    resultMessage: string;
-    tExtProfile: number[];
-    monthlyPeaks: { month: string; peak: number }[];
-    yearlyMatrix: number[][] | null;
-    solarMatrix: number[][] | null;
-    solarInstantMatrix: number[][] | null;
     chartType: 'line' | 'bar';
     modal: { isOpen: boolean; type?: string | null; data?: any };
     theme: 'light' | 'dark';
@@ -192,6 +203,11 @@ export interface State {
 }
 
 export type Action = 
+    | { type: 'ADD_ROOM' }
+    | { type: 'SWITCH_ROOM'; payload: string }
+    | { type: 'UPDATE_ROOM_NAME'; payload: { id: string; name: string } }
+    | { type: 'DELETE_ROOM'; payload: string }
+    | { type: 'DUPLICATE_ROOM'; payload: string }
     | { type: 'SET_ALL_DATA'; payload: AllData }
     | { type: 'SET_INPUT'; payload: InputState }
     | { type: 'ADD_WINDOW'; payload: Omit<Window, 'id'> }
@@ -209,6 +225,7 @@ export type Action =
     | { type: 'SET_ACTIVE_RESULTS'; payload: CalculationResults }
     | { type: 'SET_SHADING_VIEW'; payload: boolean }
     | { type: 'RECALCULATE_VIEW'; payload: string }
+    | { type: 'RECALCULATE_ALL_ROOMS'; payload: string }
     | { type: 'TOGGLE_CHART_TYPE' }
     | { type: 'SET_MODAL'; payload: { isOpen: boolean; type?: string | null; data?: any } }
     | { type: 'ADD_TOAST'; payload: { message: string; type: 'info' | 'success' | 'danger' } }

@@ -79,6 +79,11 @@ const Sidebar: React.FC = () => {
                     {/* Input Data */}
                     <Card className="!p-4">
                         <div className="space-y-2">
+                            {state.activeRoomId === 'aggregate' && (
+                                <div className="text-sm text-slate-500 dark:text-slate-400 italic mb-2">
+                                    Wybierz konkretne pomieszczenie, aby edytować jego parametry.
+                                </div>
+                            )}
                             <div>
                                 <label className="label-style flex items-center font-semibold">
                                     Temperatura wewnętrzna (°C):
@@ -95,6 +100,7 @@ const Sidebar: React.FC = () => {
                                     step="any"
                                     min="-50"
                                     max="50"
+                                    disabled={state.activeRoomId === 'aggregate'}
                                     className={
                                         state.input.tInternal === '' ? 'animate-pulse-border border-blue-400' : 
                                         (state.input.tInternal < -50 || state.input.tInternal > 50) ? 'animate-pulse-error' : ''
@@ -117,6 +123,7 @@ const Sidebar: React.FC = () => {
                                     step="any"
                                     min="0"
                                     max="100"
+                                    disabled={state.activeRoomId === 'aggregate'}
                                     className={
                                         state.input.rhInternal === '' ? 'animate-pulse-border border-blue-400' : 
                                         (state.input.rhInternal < 0 || state.input.rhInternal > 100) ? 'animate-pulse-error' : ''
@@ -138,6 +145,7 @@ const Sidebar: React.FC = () => {
                                     }} 
                                     step="any"
                                     min="0.01"
+                                    disabled={state.activeRoomId === 'aggregate'}
                                     className={
                                         state.input.roomArea === '' ? 'animate-pulse-border border-blue-400' : 
                                         (state.input.roomArea <= 0) ? 'animate-pulse-error' : ''
@@ -160,6 +168,7 @@ const Sidebar: React.FC = () => {
                                 name="include"
                                 checked={state.accumulation.include}
                                 onChange={(e) => dispatch({ type: 'SET_ACCUMULATION', payload: { ...state.accumulation, [e.target.name]: e.target.checked } })}
+                                disabled={state.activeRoomId === 'aggregate'}
                             />
                             {state.accumulation.include && (
                                 <div className="pl-4 border-l-2 border-slate-200 dark:border-slate-700 space-y-2 mt-2">
@@ -168,7 +177,7 @@ const Sidebar: React.FC = () => {
                                             Masa termiczna budynku:
                                             <Tooltip text="Określa zdolność budynku do magazynowania ciepła. Konstrukcja ciężka wolniej reaguje na zmiany temperatury." position="top" />
                                         </label>
-                                        <Select name="thermalMass" value={state.accumulation.thermalMass} onChange={(e) => dispatch({ type: 'SET_ACCUMULATION', payload: { ...state.accumulation, [e.target.name]: e.target.value as any } })}>
+                                        <Select name="thermalMass" value={state.accumulation.thermalMass} onChange={(e) => dispatch({ type: 'SET_ACCUMULATION', payload: { ...state.accumulation, [e.target.name]: e.target.value as any } })} disabled={state.activeRoomId === 'aggregate'}>
                                             <option value="light">Lekka</option>
                                             <option value="medium">Średnia</option>
                                             <option value="heavy">Ciężka</option>
@@ -180,7 +189,7 @@ const Sidebar: React.FC = () => {
                                             Typ podłogi:
                                             <Tooltip text="Typ wykończenia podłogi wpływa na sposób pochłaniania i oddawania ciepła." position="top" />
                                         </label>
-                                        <Select name="floorType" value={state.accumulation.floorType} onChange={(e) => dispatch({ type: 'SET_ACCUMULATION', payload: { ...state.accumulation, [e.target.name]: e.target.value as any } })}>
+                                        <Select name="floorType" value={state.accumulation.floorType} onChange={(e) => dispatch({ type: 'SET_ACCUMULATION', payload: { ...state.accumulation, [e.target.name]: e.target.value as any } })} disabled={state.activeRoomId === 'aggregate'}>
                                             <option value="panels">Panele / Drewno</option>
                                             <option value="tiles">Płytki / Kamień</option>
                                             <option value="carpet">Wykładzina</option>
@@ -191,7 +200,7 @@ const Sidebar: React.FC = () => {
                                             Procent przeszklenia fasady:
                                             <Tooltip text="Szacowany stosunek powierzchni okien do całkowitej powierzchni fasady. Wpływa na charakterystykę akumulacji ciepła." position="top" />
                                         </label>
-                                        <Select name="glassPercentage" value={state.accumulation.glassPercentage} onChange={(e) => dispatch({ type: 'SET_ACCUMULATION', payload: { ...state.accumulation, [e.target.name]: parseInt(e.target.value) as any } })}>
+                                        <Select name="glassPercentage" value={state.accumulation.glassPercentage} onChange={(e) => dispatch({ type: 'SET_ACCUMULATION', payload: { ...state.accumulation, [e.target.name]: parseInt(e.target.value) as any } })} disabled={state.activeRoomId === 'aggregate'}>
                                             <option value={10}>10%</option>
                                             <option value={50}>50%</option>
                                             <option value={90}>90%</option>

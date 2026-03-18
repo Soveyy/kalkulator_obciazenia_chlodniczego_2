@@ -38,7 +38,7 @@ const pieLabelsPlugin = {
                     if (percent > 4) {
                         const { x, y } = element.tooltipPosition();
                         ctx.fillStyle = '#fff';
-                        ctx.font = 'bold 12px Arial, sans-serif';
+                        ctx.font = 'bold 18px Arial, sans-serif';
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
                         ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
@@ -83,7 +83,7 @@ async function createTempChart(config: any, width: number, height: number): Prom
             transitions: { active: { animation: { duration: 0 } } },
             responsive: false,
             maintainAspectRatio: false,
-            devicePixelRatio: 2, // Keep retina quality
+            devicePixelRatio: 3, // Increased for better quality
             plugins: {
                 ...config.options?.plugins,
                 customCanvasBackgroundColor: {
@@ -97,14 +97,16 @@ async function createTempChart(config: any, width: number, height: number): Prom
     const chart = new Chart(offscreenCanvas, chartConfig);
     await new Promise(resolve => setTimeout(resolve, 50));
     
-    // Export as JPEG with 0.75 quality (significantly smaller than PNG)
-    const dataUrl = chart.canvas.toDataURL('image/jpeg', 0.75);
+    // Export as JPEG with 0.95 quality (higher quality, larger file but still reasonable)
+    const dataUrl = chart.canvas.toDataURL('image/jpeg', 0.95);
     chart.destroy();
     return dataUrl;
 }
 
-export const generatePdfReport = async (state: any) => {
-    const { input, activeResults, currentMonth } = state;
+export const generatePdfReport = async (state: any, activeRoom: any) => {
+    const { input, activeResults, currentMonth, windows, internalGains, accumulation } = activeRoom;
+    const projectName = state.projectName;
+
     if (!activeResults) return;
 
     // Load Fonts
@@ -159,8 +161,8 @@ export const generatePdfReport = async (state: any) => {
             doc.setFont('Roboto', 'normal');
             doc.setTextColor(150);
             doc.text(`Strona ${i} z ${pageCount}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
-            doc.text(`Raport wygenerowany: ${new Date().toLocaleDateString('pl-PL')}`, margin, pageHeight - 10);
-            doc.text(`Projekt: ${input.projectName || 'Bez nazwy'}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+            doc.text(`Raport: ${new Date().toLocaleDateString('pl-PL')} | ${activeRoom.name || 'Pomieszczenie'}`, margin, pageHeight - 10);
+            doc.text(`Projekt: ${projectName || 'Bez nazwy'}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
         }
     };
 
@@ -186,9 +188,9 @@ export const generatePdfReport = async (state: any) => {
     const ventilationSensibleLoadPeak = loadComponents.ventilationSensible[hourTotalCS_UTC] || 0;
     const infiltrationSensibleLoadPeak = loadComponents.infiltrationSensible[hourTotalCS_UTC] || 0;
     
-    const internalLatentAtPeak = state.activeResults.components.internalGainsLatent[hourTotalCS_UTC] || 0;
-    const ventilationLatentAtPeak = state.activeResults.ventilationLoad.latent[hourTotalCS_UTC] || 0;
-    const infiltrationLatentAtPeak = state.activeResults.infiltrationLoad.latent[hourTotalCS_UTC] || 0;
+    const internalLatentAtPeak = activeResults.components.internalGainsLatent[hourTotalCS_UTC] || 0;
+    const ventilationLatentAtPeak = activeResults.ventilationLoad.latent[hourTotalCS_UTC] || 0;
+    const infiltrationLatentAtPeak = activeResults.infiltrationLoad.latent[hourTotalCS_UTC] || 0;
     
     // Daily energy estimation
     const totalKWhCS = finalGains.clearSky.total.reduce((sum: number, val: number) => sum + Math.max(0, val), 0) / 1000;
@@ -205,9 +207,13 @@ export const generatePdfReport = async (state: any) => {
     doc.setFontSize(12);
     doc.setTextColor(100);
     doc.setFont('Roboto', 'normal');
-    doc.text(`Projekt: ${input.projectName || 'Bez nazwy'}`, pageWidth / 2, yPos + 22, { align: 'center' });
+    doc.text(`Projekt: ${projectName || 'Bez nazwy'}`, pageWidth / 2, yPos + 22, { align: 'center' });
+    doc.text(`Pomieszczenie: ${activeRoom.name || 'Bez nazwy'}`, pageWidth / 2, yPos + 30, { align: 'center' });
     
-    yPos += 40;
+    doc.setFontSize(10);
+    doc.text(`Data raportu: ${new Date().toLocaleDateString('pl-PL')}`, pageWidth / 2, yPos + 38, { align: 'center' });
+    
+    yPos += 48;
 
     // 1. Parameters Table
     addHeader('1. Parametry Projektowe');
@@ -219,7 +225,7 @@ export const generatePdfReport = async (state: any) => {
         ['Powierzchnia pomieszczenia', `${input.roomArea} m²`],
     ];
 
-    const vent = state.internalGains.ventilation;
+    const vent = internalGains.ventilation;
     if (vent.enabled) {
         allParams.push(['Typ wentylacji', vent.type === 'mechanical' ? 'Mechaniczna z odzyskiem' : 'Grawitacyjna']);
         if (vent.type === 'mechanical') {
@@ -235,7 +241,7 @@ export const generatePdfReport = async (state: any) => {
         allParams.push(['Klasa szczelności', vent.tightnessClass === 'tight' ? 'Szczelne' : vent.tightnessClass === 'average' ? 'Średnie' : 'Nieszczelne']);
     }
     
-    const acc = state.accumulation;
+    const acc = accumulation;
     if (acc && acc.include) {
         const THERMAL_MASS_TYPES: Record<string, string> = {
             'light': 'Lekka',
@@ -420,7 +426,7 @@ export const generatePdfReport = async (state: any) => {
         'insect_screens': 'Moskitiery'
     };
 
-    const windowsBody = state.windows.map((w: any) => [
+    const windowsBody = windows.map((w: any) => [
         w.direction,
         w.tilt !== undefined ? `${w.tilt}°` : '90°',
         (w.width * w.height).toFixed(2),
@@ -445,8 +451,8 @@ export const generatePdfReport = async (state: any) => {
     });
     yPos = (doc as any).lastAutoTable.finalY + 5;
 
-    if (state.windows.length > 0) {
-        const totalWindowArea = state.windows.reduce((sum: number, w: any) => sum + (w.width * w.height), 0);
+    if (windows.length > 0) {
+        const totalWindowArea = windows.reduce((sum: number, w: any) => sum + (w.width * w.height), 0);
         const wwr = ((totalWindowArea / input.roomArea) * 100).toFixed(1);
         doc.setFontSize(9);
         doc.setFont('Roboto', 'normal');
@@ -471,14 +477,14 @@ export const generatePdfReport = async (state: any) => {
     };
 
     const internalBody = [];
-    const p = state.internalGains.people;
+    const p = internalGains.people;
     if (p.enabled && p.count) {
         internalBody.push(['Ludzie', `${p.count} os.`, ACTIVITY_LEVELS[p.activityLevel] || '-', `${p.startHour}:00 - ${p.endHour}:00`]);
     } else {
         internalBody.push(['Ludzie', 'Brak', '-', '-']);
     }
 
-    const l = state.internalGains.lighting;
+    const l = internalGains.lighting;
     if (l.enabled && l.powerDensity) {
         const lightingName = LIGHTING_TYPES[l.type]?.label || 'Własne';
         internalBody.push([`Oświetlenie - ${lightingName}`, `${l.powerDensity} W/m²`, '-', `${l.startHour}:00 - ${l.endHour}:00`]);
@@ -486,7 +492,7 @@ export const generatePdfReport = async (state: any) => {
         internalBody.push(['Oświetlenie', 'Brak', '-', '-']);
     }
 
-    const eq = state.internalGains.equipment;
+    const eq = internalGains.equipment;
     if (eq && eq.length > 0) {
         eq.forEach((e: any) => {
             if (e.power && e.quantity) {
@@ -533,7 +539,7 @@ export const generatePdfReport = async (state: any) => {
     };
 
     const ventBody = [];
-    const v = state.internalGains.ventilation;
+    const v = internalGains.ventilation;
     
     if (v.enabled && v.type !== 'none') {
         const typeName = VENT_TYPES[v.type] || v.type;
@@ -602,18 +608,18 @@ export const generatePdfReport = async (state: any) => {
                 legend: { 
                     display: true, 
                     position: 'bottom',
-                    labels: { font: { size: 14, family: 'Arial' }, padding: 20 }
+                    labels: { font: { size: 18, family: 'Arial' }, padding: 20 }
                 },
                 title: { 
                     display: true, 
                     text: 'Składowe obciążenia w szczycie', 
-                    font: { size: 18, family: 'Arial' },
+                    font: { size: 22, family: 'Arial' },
                     padding: { bottom: 10 }
                 }
             }
         },
         plugins: [pieLabelsPlugin]
-    }, 800, 800);
+    }, 1000, 1000);
 
     const pieSize = 160; 
     const xOffsetPie = (pageWidth - pieSize) / 2;
@@ -646,7 +652,7 @@ export const generatePdfReport = async (state: any) => {
                 },
                 { 
                     label: 'Temp. Zewnętrzna [°C]', 
-                    data: reorderDataForLocalTime(state.tExtProfile, offset), 
+                    data: reorderDataForLocalTime(activeRoom.tExtProfile, offset), 
                     borderColor: '#94a3b8', 
                     borderWidth: 2,
                     borderDash: [5, 5], 
@@ -661,25 +667,25 @@ export const generatePdfReport = async (state: any) => {
             scales: {
                 y: { 
                     beginAtZero: true,
-                    title: { display: true, text: 'Moc [W]', font: { size: 14, family: 'Arial' } },
-                    ticks: { font: { size: 12, family: 'Arial' } }
+                    title: { display: true, text: 'Moc [W]', font: { size: 18, family: 'Arial' } },
+                    ticks: { font: { size: 16, family: 'Arial' } }
                 },
                 yTemp: { 
                     position: 'right', 
                     grid: { display: false }, 
-                    title: { display: true, text: 'Temp [°C]', font: { size: 14, family: 'Arial' } },
-                    ticks: { font: { size: 12, family: 'Arial' } }
+                    title: { display: true, text: 'Temp [°C]', font: { size: 18, family: 'Arial' } },
+                    ticks: { font: { size: 16, family: 'Arial' } }
                 },
                 x: {
-                    ticks: { font: { size: 10, family: 'Arial' }, maxRotation: 45 }
+                    ticks: { font: { size: 14, family: 'Arial' }, maxRotation: 45 }
                 }
             },
             plugins: { 
-                legend: { labels: { font: { size: 12, family: 'Arial' } } },
-                title: { display: true, text: 'Całkowite obciążenie w czasie', font: { size: 16, family: 'Arial' } }
+                legend: { labels: { font: { size: 16, family: 'Arial' } } },
+                title: { display: true, text: 'Całkowite obciążenie w czasie', font: { size: 20, family: 'Arial' } }
             }
         },
-    }, 1000, 400);
+    }, 1200, 500);
 
     doc.addImage(lineChartImg, 'JPEG', margin, yPos, pageWidth - 2*margin, 70);
     yPos += 80;
@@ -704,20 +710,20 @@ export const generatePdfReport = async (state: any) => {
                 y: { 
                     stacked: true,
                     beginAtZero: true,
-                    title: { display: true, text: 'Moc [W]', font: { size: 14, family: 'Arial' } },
-                    ticks: { font: { size: 12, family: 'Arial' } }
+                    title: { display: true, text: 'Moc [W]', font: { size: 18, family: 'Arial' } },
+                    ticks: { font: { size: 16, family: 'Arial' } }
                 },
                 x: {
                     stacked: true,
-                    ticks: { font: { size: 10, family: 'Arial' }, maxRotation: 45 }
+                    ticks: { font: { size: 14, family: 'Arial' }, maxRotation: 45 }
                 }
             },
             plugins: { 
-                legend: { labels: { font: { size: 10, family: 'Arial' } } },
-                title: { display: true, text: 'Składowe obciążenia w czasie', font: { size: 16, family: 'Arial' } }
+                legend: { labels: { font: { size: 14, family: 'Arial' } } },
+                title: { display: true, text: 'Składowe obciążenia w czasie', font: { size: 20, family: 'Arial' } }
             }
         },
-    }, 1000, 400);
+    }, 1200, 500);
 
     doc.addImage(barChartImg, 'JPEG', margin, yPos, pageWidth - 2*margin, 70);
     yPos += 80;
@@ -733,5 +739,6 @@ export const generatePdfReport = async (state: any) => {
     doc.text(splitDisclaimer, margin, pageHeight - 35);
 
     addFooter();
-    doc.save(`Raport_Zyskow_Ciepla_${new Date().toISOString().slice(0, 10)}.pdf`);
+    const fileName = `Raport_Zyskow_Ciepla_${projectName?.replace(/\s+/g, '_') || 'Projekt'}_${activeRoom.name?.replace(/\s+/g, '_') || 'Pomieszczenie'}.pdf`;
+    doc.save(fileName);
 };

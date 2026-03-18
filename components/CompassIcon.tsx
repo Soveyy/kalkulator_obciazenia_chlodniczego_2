@@ -30,22 +30,22 @@ const DIRECTIONS_META = {
 };
 
 const LABEL_POSITIONS: { [key: string]: { x: number, y: number, dx?: number, dy?: number, fs: number, fsw: number, fss: number } } = {
-    'N':   { x: 200, y: 28,  dy: 18, fs: 28, fsw: 28, fss: 12 },
-    'NNE': { x: 268, y: 52,  dy: 14, fs: 14, fsw: 14, fss: 10 },
-    'NE':  { x: 318, y: 80,  dy: 16, fs: 20, fsw: 20, fss: 10 },
-    'ENE': { x: 345, y: 132, dy: 14, fs: 14, fsw: 14, fss: 10 },
-    'E':   { x: 375, y: 206, dy: 18, fs: 28, fsw: 28, fss: 12 },
-    'ESE': { x: 345, y: 268, dy: 14, fs: 14, fsw: 14, fss: 10 },
-    'SE':  { x: 318, y: 318, dy: 16, fs: 20, fsw: 20, fss: 10 },
-    'SSE': { x: 268, y: 348, dy: 14, fs: 14, fsw: 14, fss: 10 },
-    'S':   { x: 200, y: 382, dy: 18, fs: 28, fsw: 28, fss: 12 },
-    'SSW': { x: 132, y: 348, dy: 14, fs: 14, fsw: 14, fss: 10 },
-    'SW':  { x: 82,  y: 318, dy: 16, fs: 20, fsw: 20, fss: 10 },
-    'WSW': { x: 55,  y: 268, dy: 14, fs: 14, fsw: 14, fss: 10 },
-    'W':   { x: 25,  y: 206, dy: 18, fs: 28, fsw: 28, fss: 12 },
-    'WNW': { x: 55,  y: 132, dy: 14, fs: 14, fsw: 14, fss: 10 },
-    'NW':  { x: 82,  y: 80,  dy: 16, fs: 20, fsw: 20, fss: 10 },
-    'NNW': { x: 132, y: 52,  dy: 14, fs: 14, fsw: 14, fss: 10 },
+    'N':   { x: 200, y: -25, dy: 26, fs: 28, fsw: 28, fss: 16 },
+    'NNE': { x: 274, y: 15,  dy: 18, fs: 14, fsw: 14, fss: 14 },
+    'NE':  { x: 348, y: 45,  dy: 22, fs: 20, fsw: 20, fss: 14 },
+    'ENE': { x: 385, y: 125, dy: 18, fs: 14, fsw: 14, fss: 14 },
+    'E':   { x: 430, y: 192, dy: 26, fs: 28, fsw: 28, fss: 16 },
+    'ESE': { x: 385, y: 275, dy: 18, fs: 14, fsw: 14, fss: 14 },
+    'SE':  { x: 348, y: 355, dy: 22, fs: 20, fsw: 20, fss: 14 },
+    'SSE': { x: 274, y: 385, dy: 18, fs: 14, fsw: 14, fss: 14 },
+    'S':   { x: 200, y: 430, dy: 26, fs: 28, fsw: 28, fss: 16 },
+    'SSW': { x: 126, y: 385, dy: 18, fs: 14, fsw: 14, fss: 14 },
+    'SW':  { x: 52,  y: 355, dy: 22, fs: 20, fsw: 20, fss: 14 },
+    'WSW': { x: 15,  y: 275, dy: 18, fs: 14, fsw: 14, fss: 14 },
+    'W':   { x: -30, y: 192, dy: 26, fs: 28, fsw: 28, fss: 16 },
+    'WNW': { x: 15,  y: 125, dy: 18, fs: 14, fsw: 14, fss: 14 },
+    'NW':  { x: 52,  y: 45,  dy: 22, fs: 20, fsw: 20, fss: 14 },
+    'NNW': { x: 126, y: 15,  dy: 18, fs: 14, fsw: 14, fss: 14 },
 };
 
 
@@ -68,7 +68,7 @@ const CompassIcon: React.FC<CompassIconProps> = ({
             className += "stroke-blue-500 dark:stroke-blue-400";
             strokeWidth = "10";
         } else if (isSelected) {
-            className += "stroke-blue-600 dark:stroke-blue-500";
+            className += "stroke-red-600 dark:stroke-red-600";
             strokeWidth = "8";
         } else {
              switch (type) {
@@ -98,7 +98,7 @@ const CompassIcon: React.FC<CompassIconProps> = ({
         if (isHovered) {
              className += "fill-blue-500 dark:fill-blue-400 font-bold";
         } else if (isSelected) {
-            className += "fill-blue-600 dark:fill-blue-500 font-bold";
+            className += "fill-red-600 dark:fill-red-600 font-bold";
         } else {
              switch (type) {
                 case 'cardinal':
@@ -116,16 +116,20 @@ const CompassIcon: React.FC<CompassIconProps> = ({
     }
 
     return (
-        <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" className={className}>
-             <defs>
-                 <filter id="label-bg" x="-0.1" y="-0.1" width="1.2" height="1.2">
-                    <feFlood floodColor="white" floodOpacity="0.85" result="bg" />
-                    <feMerge>
-                        <feMergeNode in="bg"/>
-                        <feMergeNode in="SourceGraphic"/>
-                    </feMerge>
-                </filter>
-            </defs>
+        <svg viewBox="-60 -60 520 520" xmlns="http://www.w3.org/2000/svg" className={className}>
+            <style>
+                {`
+                    .compass-text-bg {
+                        stroke: white;
+                        stroke-width: 4px;
+                        stroke-linejoin: round;
+                        paint-order: stroke fill;
+                    }
+                    .dark .compass-text-bg {
+                        stroke: #1e293b; /* slate-800 */
+                    }
+                `}
+            </style>
             
             <g transform="translate(200 200)">
                 <g strokeLinecap="round">
@@ -159,7 +163,7 @@ const CompassIcon: React.FC<CompassIconProps> = ({
             
             <circle cx="200" cy="200" r="12" className="fill-slate-700 dark:fill-slate-200" />
             
-            <g fontFamily="Arial, sans-serif" textAnchor="middle" filter="url(#label-bg)">
+            <g fontFamily="Arial, sans-serif" textAnchor="middle">
                 {WINDOW_DIRECTIONS.map(({ value, label }) => {
                     const pos = LABEL_POSITIONS[value];
                     const meta = DIRECTIONS_META[value as keyof typeof DIRECTIONS_META];
@@ -181,9 +185,10 @@ const CompassIcon: React.FC<CompassIconProps> = ({
                                 width="70" 
                                 height="50" 
                                 fill="transparent" 
+                                stroke="none"
                             />
-                            <text x={pos.x} y={pos.y} fontSize={pos.fsw} className={textClass}>{value}</text>
-                            <text x={pos.x} y={pos.y + pos.dy} fontSize={pos.fss} className={textClass}>({angle.toFixed(1)}°)</text>
+                            <text x={pos.x} y={pos.y} fontSize={pos.fsw} className={`${textClass} compass-text-bg`}>{value}</text>
+                            <text x={pos.x} y={pos.y + pos.dy} fontSize={pos.fss} className={`${textClass} compass-text-bg`}>({angle.toFixed(1)} °)</text>
                         </g>
                     )
                 })}

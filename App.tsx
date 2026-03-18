@@ -4,6 +4,7 @@ import { CalculatorProvider, useCalculator } from './contexts/CalculatorContext'
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Tabs from './components/ui/Tabs';
+import RoomTabs from './components/ui/RoomTabs';
 import InternalGainsPage from './components/pages/InternalGainsPage';
 import WindowsPage from './components/pages/WindowsPage';
 import VentilationPage from './components/pages/VentilationPage';
@@ -20,10 +21,16 @@ import ToastContainer from './components/ToastContainer';
 
 import { motion, AnimatePresence } from 'motion/react';
 
+import AggregateAnalysisPage from './components/pages/AggregateAnalysisPage';
+
 const AppContent: React.FC = () => {
     const { state, progress } = useCalculator();
   
     const renderActiveTab = () => {
+      if (state.activeRoomId === 'aggregate') {
+          return <AggregateAnalysisPage key="aggregate" />;
+      }
+
       switch (state.activeTab) {
         case 'internal':
           return <InternalGainsPage key="internal" />;
@@ -54,31 +61,34 @@ const AppContent: React.FC = () => {
             <Header />
             
             {/* Project Progress Bar */}
-            <div className="mb-2">
-                <div className="flex justify-between items-center mb-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        Kompletność danych projektu
-                    </span>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${getProgressColor(progress.total)} text-white`}>
-                        {progress.total}%
-                    </span>
+            {state.activeRoomId !== 'aggregate' && (
+                <div className="mb-2">
+                    <div className="flex justify-between items-center mb-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            Kompletność danych pomieszczenia
+                        </span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${getProgressColor(progress.total)} text-white`}>
+                            {progress.total}%
+                        </span>
+                    </div>
+                    <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${progress.total}%` }}
+                            transition={{ duration: 0.5, ease: "easeOut" }}
+                            className={`h-full ${getProgressColor(progress.total)} shadow-[0_0_10px_rgba(0,0,0,0.1)]`}
+                        />
+                    </div>
                 </div>
-                <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${progress.total}%` }}
-                        transition={{ duration: 0.5, ease: "easeOut" }}
-                        className={`h-full ${getProgressColor(progress.total)} shadow-[0_0_10px_rgba(0,0,0,0.1)]`}
-                    />
-                </div>
-            </div>
+            )}
 
-            <Tabs />
+            <RoomTabs />
+            {state.activeRoomId !== 'aggregate' && <Tabs />}
             
             <div className="relative overflow-hidden min-h-[400px]">
                 <AnimatePresence mode="wait">
                     <motion.div
-                        key={state.activeTab}
+                        key={state.activeRoomId === 'aggregate' ? 'aggregate' : state.activeTab}
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -20 }}
