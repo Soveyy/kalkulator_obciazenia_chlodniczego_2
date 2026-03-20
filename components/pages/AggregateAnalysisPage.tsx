@@ -296,11 +296,15 @@ const AggregateAnalysisPage: React.FC = () => {
                                     onChange={handleMonthChange}
                                     className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                                 >
-                                    {MONTH_NAMES.map((name, index) => (
-                                        <option key={index + 1} value={(index + 1).toString()}>
-                                            {name}
-                                        </option>
-                                    ))}
+                                    {MONTH_NAMES.map((name, index) => {
+                                        const monthNum = index + 1;
+                                        if (monthNum < 5 || monthNum > 9) return null;
+                                        return (
+                                            <option key={monthNum} value={monthNum.toString()}>
+                                                {name}
+                                            </option>
+                                        );
+                                    })}
                                 </select>
                             </div>
                             <button
@@ -317,51 +321,60 @@ const AggregateAnalysisPage: React.FC = () => {
         );
     }
 
+    const month = parseInt(currentMonth, 10);
+    const isSummerTime = (month >= 4 && month <= 10);
+    const offset = isSummerTime ? 2 : 1;
+    const localPeakHour = (aggregateData.peakHour + offset) % 24;
+
     return (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-4 animate-fade-in">
             {/* Month Selector and Info */}
-            <Card className="p-4 border-l-4 border-l-blue-500 bg-blue-50/30 dark:bg-blue-900/10">
+            <Card className="p-3 border-l-4 border-l-blue-500 bg-blue-50/30 dark:bg-blue-900/10">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex-1">
-                        <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1">Wybrany miesiąc obliczeń</h3>
+                        <h3 className="text-xs font-semibold text-blue-800 dark:text-blue-300 mb-0.5">Wybrany miesiąc obliczeń</h3>
                         <div 
-                            className="text-slate-600 dark:text-slate-400 text-sm"
+                            className="text-slate-600 dark:text-slate-400 text-xs"
                             dangerouslySetInnerHTML={{ __html: resultMessage }}
                         />
                     </div>
                     <div className="flex items-center gap-2">
-                        <label htmlFor="global-month-select" className="text-sm font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                        <label htmlFor="global-month-select" className="text-xs font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
                             Zmień miesiąc:
                         </label>
                         <select
                             id="global-month-select"
                             value={currentMonth}
                             onChange={handleMonthChange}
-                            className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2"
+                            className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1.5"
                         >
-                            {MONTH_NAMES.map((name, index) => (
-                                <option key={index + 1} value={(index + 1).toString()}>
-                                    {name}
-                                </option>
-                            ))}
+                            {MONTH_NAMES.map((name, index) => {
+                                const monthNum = index + 1;
+                                if (monthNum < 5 || monthNum > 9) return null;
+                                return (
+                                    <option key={monthNum} value={monthNum.toString()}>
+                                        {name}
+                                    </option>
+                                );
+                            })}
                         </select>
                     </div>
                 </div>
             </Card>
 
             {/* Room Selection */}
-            <Card className="p-4">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-3">
-                    <h3 className="text-sm font-semibold text-slate-800 dark:text-white">Uwzględnione pomieszczenia:</h3>
+            <Card className="p-3">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
+                    <h3 className="text-xs font-semibold text-slate-800 dark:text-white">Uwzględnione pomieszczenia:</h3>
                     
                     <button
                         onClick={handleGenerateReport}
                         disabled={isGeneratingPdf || aggregateData.roomProfiles.length === 0}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium py-1.5 px-3 rounded-lg transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
                     >
                         {isGeneratingPdf ? (
                             <>
-                                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <svg className="animate-spin h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
@@ -369,7 +382,7 @@ const AggregateAnalysisPage: React.FC = () => {
                             </>
                         ) : (
                             <>
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                                 Wygeneruj raport zbiorczy PDF
@@ -377,62 +390,62 @@ const AggregateAnalysisPage: React.FC = () => {
                         )}
                     </button>
                 </div>
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-2">
                     {aggregateData.allRoomsWithResults.map(room => (
-                        <label key={room.id} className={`flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border transition-colors ${!deselectedRoomIds.has(room.id) ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800' : 'bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700 opacity-60 hover:opacity-100'}`}>
+                        <label key={room.id} className={`flex items-center gap-2 cursor-pointer px-2 py-1 rounded-lg border transition-colors ${!deselectedRoomIds.has(room.id) ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800' : 'bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700 opacity-60 hover:opacity-100'}`}>
                             <input 
                                 type="checkbox" 
                                 checked={!deselectedRoomIds.has(room.id)}
                                 onChange={() => toggleRoom(room.id)}
-                                className="rounded text-blue-600 focus:ring-blue-500 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600"
+                                className="rounded text-blue-600 focus:ring-blue-500 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 w-3.5 h-3.5"
                             />
-                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{room.name}</span>
+                            <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{room.name}</span>
                         </label>
                     ))}
                 </div>
             </Card>
 
             {aggregateData.roomProfiles.length === 0 ? (
-                <Card className="p-8 text-center">
-                    <p className="text-slate-500 dark:text-slate-400">Wybierz co najmniej jedno pomieszczenie, aby zobaczyć wyniki analizy zbiorczej.</p>
+                <Card className="p-6 text-center">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Wybierz co najmniej jedno pomieszczenie, aby zobaczyć wyniki analizy zbiorczej.</p>
                 </Card>
             ) : (
                 <>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <Card className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-100 dark:border-blue-800/30">
-                            <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1">Całkowite obciążenie (Peak)</h3>
-                            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                                {Math.round(aggregateData.aggregatePeak)} <span className="text-lg font-normal">W</span>
+                        <Card className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-100 dark:border-blue-800/30">
+                            <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-0.5">Całkowite obciążenie (Peak)</h3>
+                            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                                {Math.round(aggregateData.aggregatePeak)} <span className="text-base font-normal">W</span>
                             </div>
-                            <p className="text-xs text-slate-500 mt-1">
-                                Godzina {String(aggregateData.peakHour).padStart(2, '0')}:00
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                                Godzina {String(localPeakHour).padStart(2, '0')}:00
                             </p>
                         </Card>
 
-                        <Card className="p-4">
-                            <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1">Suma szczytów (niejednoczesna)</h3>
-                            <div className="text-3xl font-bold text-slate-700 dark:text-slate-300">
-                                {Math.round(aggregateData.sumOfPeaks)} <span className="text-lg font-normal">W</span>
+                        <Card className="p-3">
+                            <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-0.5">Suma szczytów (niejednoczesna)</h3>
+                            <div className="text-2xl font-bold text-slate-700 dark:text-slate-300">
+                                {Math.round(aggregateData.sumOfPeaks)} <span className="text-base font-normal">W</span>
                             </div>
-                            <p className="text-xs text-slate-500 mt-1">
+                            <p className="text-[10px] text-slate-500 mt-0.5">
                                 Gdyby każde pomieszczenie chłodzić niezależnie
                             </p>
                         </Card>
 
-                        <Card className="p-4">
-                            <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1">Współczynnik jednoczesności</h3>
-                            <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
-                                {(aggregateData.diversityFactor * 100).toFixed(1)} <span className="text-lg font-normal">%</span>
+                        <Card className="p-3">
+                            <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-0.5">Współczynnik jednoczesności</h3>
+                            <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                                {(aggregateData.diversityFactor * 100).toFixed(1)} <span className="text-base font-normal">%</span>
                             </div>
-                            <p className="text-xs text-slate-500 mt-1">
-                                Zmniejszenie mocy agregatu dzięki różnorodności
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                                proporcja sumy niejednoczesnej obciążenia z całkowitym obciążeniem łącznym
                             </p>
                         </Card>
                     </div>
 
                     <Card className="p-4">
                         <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Zbiorczy profil obciążenia chłodniczego</h3>
-                        <div className="h-80 w-full relative">
+                        <div className="h-[480px] w-full relative">
                             <canvas ref={chartRef}></canvas>
                         </div>
                     </Card>
