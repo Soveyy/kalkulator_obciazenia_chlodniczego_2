@@ -1,13 +1,16 @@
-import React, { useMemo, useEffect, useRef } from 'react';
+import React, { useMemo, useEffect, useRef, useState } from 'react';
 import { useCalculator } from '../../contexts/CalculatorContext';
 import Card from '../ui/Card';
 import Chart from 'chart.js/auto';
 import { MONTH_NAMES } from '../../constants';
+import { generateAggregatePdfReport } from '../../services/aggregateReportGenerator';
 
 const AggregateAnalysisPage: React.FC = () => {
     const { state, theme, dispatch, handleCalculate, isCalculating } = useCalculator();
     const chartRef = useRef<HTMLCanvasElement>(null);
     const chartInstanceRef = useRef<Chart | null>(null);
+    const [deselectedRoomIds, setDeselectedRoomIds] = React.useState<Set<string>>(new Set());
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
     const currentMonth = state.rooms[0]?.currentMonth || '7';
     const resultMessage = state.rooms[0]?.resultMessage || '';
@@ -16,9 +19,36 @@ const AggregateAnalysisPage: React.FC = () => {
         dispatch({ type: 'RECALCULATE_ALL_ROOMS', payload: e.target.value });
     };
 
+    const handleGenerateReport = async () => {
+        if (!aggregateData) return;
+        setIsGeneratingPdf(true);
+        try {
+            await generateAggregatePdfReport(state, aggregateData, currentMonth);
+        } catch (error) {
+            console.error('Błąd podczas generowania raportu:', error);
+            alert('Wystąpił błąd podczas generowania raportu PDF.');
+        } finally {
+            setIsGeneratingPdf(false);
+        }
+    };
+
+    const toggleRoom = (roomId: string) => {
+        setDeselectedRoomIds(prev => {
+            const next = new Set(prev);
+            if (next.has(roomId)) {
+                next.delete(roomId);
+            } else {
+                next.add(roomId);
+            }
+            return next;
+        });
+    };
+
     const aggregateData = useMemo(() => {
-        const roomsWithResults = state.rooms.filter(r => r.activeResults?.finalGains?.clearSky?.total);
-        if (roomsWithResults.length === 0) return null;
+        const allRoomsWithResults = state.rooms.filter(r => r.activeResults?.finalGains?.clearSky?.total);
+        if (allRoomsWithResults.length === 0) return null;
+
+        const roomsWithResults = allRoomsWithResults.filter(r => !deselectedRoomIds.has(r.id));
 
         const hourlyTotal = Array(24).fill(0);
         let sumOfPeaks = 0;
@@ -33,17 +63,19 @@ const AggregateAnalysisPage: React.FC = () => {
             }
             
             return {
+                id: room.id,
                 name: room.name,
                 profile,
                 peak
             };
         });
 
-        const aggregatePeak = Math.max(...hourlyTotal);
-        const peakHour = hourlyTotal.indexOf(aggregatePeak);
+        const aggregatePeak = roomsWithResults.length > 0 ? Math.max(...hourlyTotal) : 0;
+        const peakHour = roomsWithResults.length > 0 ? hourlyTotal.indexOf(aggregatePeak) : 0;
         const diversityFactor = sumOfPeaks > 0 ? aggregatePeak / sumOfPeaks : 1;
 
         return {
+            allRoomsWithResults,
             hourlyTotal,
             aggregatePeak,
             peakHour,
@@ -51,7 +83,7 @@ const AggregateAnalysisPage: React.FC = () => {
             diversityFactor,
             roomProfiles
         };
-    }, [state.rooms]);
+    }, [state.rooms, deselectedRoomIds]);
 
     useEffect(() => {
         if (!chartRef.current || !aggregateData) return;
@@ -317,82 +349,133 @@ const AggregateAnalysisPage: React.FC = () => {
                 </div>
             </Card>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-100 dark:border-blue-800/30">
-                    <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1">Całkowite obciążenie (Peak)</h3>
-                    <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                        {Math.round(aggregateData.aggregatePeak)} <span className="text-lg font-normal">W</span>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-1">
-                        Godzina {String(aggregateData.peakHour).padStart(2, '0')}:00
-                    </p>
-                </Card>
-
-                <Card className="p-4">
-                    <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1">Suma szczytów (niejednoczesna)</h3>
-                    <div className="text-3xl font-bold text-slate-700 dark:text-slate-300">
-                        {Math.round(aggregateData.sumOfPeaks)} <span className="text-lg font-normal">W</span>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-1">
-                        Gdyby każde pomieszczenie chłodzić niezależnie
-                    </p>
-                </Card>
-
-                <Card className="p-4">
-                    <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1">Współczynnik jednoczesności</h3>
-                    <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
-                        {(aggregateData.diversityFactor * 100).toFixed(1)} <span className="text-lg font-normal">%</span>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-1">
-                        Zmniejszenie mocy agregatu dzięki różnorodności
-                    </p>
-                </Card>
-            </div>
-
+            {/* Room Selection */}
             <Card className="p-4">
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Zbiorczy profil obciążenia chłodniczego</h3>
-                <div className="h-80 w-full relative">
-                    <canvas ref={chartRef}></canvas>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-3">
+                    <h3 className="text-sm font-semibold text-slate-800 dark:text-white">Uwzględnione pomieszczenia:</h3>
+                    
+                    <button
+                        onClick={handleGenerateReport}
+                        disabled={isGeneratingPdf || aggregateData.roomProfiles.length === 0}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
+                    >
+                        {isGeneratingPdf ? (
+                            <>
+                                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Generowanie...
+                            </>
+                        ) : (
+                            <>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Wygeneruj raport zbiorczy PDF
+                            </>
+                        )}
+                    </button>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                    {aggregateData.allRoomsWithResults.map(room => (
+                        <label key={room.id} className={`flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border transition-colors ${!deselectedRoomIds.has(room.id) ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800' : 'bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700 opacity-60 hover:opacity-100'}`}>
+                            <input 
+                                type="checkbox" 
+                                checked={!deselectedRoomIds.has(room.id)}
+                                onChange={() => toggleRoom(room.id)}
+                                className="rounded text-blue-600 focus:ring-blue-500 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600"
+                            />
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{room.name}</span>
+                        </label>
+                    ))}
                 </div>
             </Card>
 
-            <Card className="p-4">
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Zestawienie pomieszczeń</h3>
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead className="bg-gray-50 dark:bg-gray-800/50">
-                            <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                    Pomieszczenie
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                    Szczytowe obciążenie
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                    Udział w sumie szczytów
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-                            {aggregateData.roomProfiles.map((room, idx) => (
-                                <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                                        {room.name}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">
-                                        {Math.round(room.peak)} W
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">
-                                        {aggregateData.sumOfPeaks > 0 
-                                            ? ((room.peak / aggregateData.sumOfPeaks) * 100).toFixed(1) 
-                                            : 0}%
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </Card>
+            {aggregateData.roomProfiles.length === 0 ? (
+                <Card className="p-8 text-center">
+                    <p className="text-slate-500 dark:text-slate-400">Wybierz co najmniej jedno pomieszczenie, aby zobaczyć wyniki analizy zbiorczej.</p>
+                </Card>
+            ) : (
+                <>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <Card className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-100 dark:border-blue-800/30">
+                            <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1">Całkowite obciążenie (Peak)</h3>
+                            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                                {Math.round(aggregateData.aggregatePeak)} <span className="text-lg font-normal">W</span>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-1">
+                                Godzina {String(aggregateData.peakHour).padStart(2, '0')}:00
+                            </p>
+                        </Card>
+
+                        <Card className="p-4">
+                            <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1">Suma szczytów (niejednoczesna)</h3>
+                            <div className="text-3xl font-bold text-slate-700 dark:text-slate-300">
+                                {Math.round(aggregateData.sumOfPeaks)} <span className="text-lg font-normal">W</span>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-1">
+                                Gdyby każde pomieszczenie chłodzić niezależnie
+                            </p>
+                        </Card>
+
+                        <Card className="p-4">
+                            <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1">Współczynnik jednoczesności</h3>
+                            <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+                                {(aggregateData.diversityFactor * 100).toFixed(1)} <span className="text-lg font-normal">%</span>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-1">
+                                Zmniejszenie mocy agregatu dzięki różnorodności
+                            </p>
+                        </Card>
+                    </div>
+
+                    <Card className="p-4">
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Zbiorczy profil obciążenia chłodniczego</h3>
+                        <div className="h-80 w-full relative">
+                            <canvas ref={chartRef}></canvas>
+                        </div>
+                    </Card>
+
+                    <Card className="p-4">
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Zestawienie pomieszczeń</h3>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead className="bg-gray-50 dark:bg-gray-800/50">
+                                    <tr>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                            Pomieszczenie
+                                        </th>
+                                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                            Szczytowe obciążenie
+                                        </th>
+                                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                            Udział w sumie szczytów
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+                                    {aggregateData.roomProfiles.map((room, idx) => (
+                                        <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                                {room.name}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">
+                                                {Math.round(room.peak)} W
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">
+                                                {aggregateData.sumOfPeaks > 0 
+                                                    ? ((room.peak / aggregateData.sumOfPeaks) * 100).toFixed(1) 
+                                                    : 0}%
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
+                </>
+            )}
         </div>
     );
 };

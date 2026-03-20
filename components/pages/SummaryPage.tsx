@@ -30,7 +30,7 @@ const SummaryPage: React.FC = () => {
                 <ResultsArea />
                  <div className="text-center mt-6">
                     <Button variant="primary" onClick={handleGenerateReport} disabled={state.isGeneratingReport}>
-                        {state.isGeneratingReport ? 'Generowanie raportu...' : 'Eksportuj do PDF'}
+                        {state.isGeneratingReport ? 'Generowanie raportu...' : 'Wygeneruj raport pomieszczenia PDF'}
                     </Button>
                 </div>
             </>
