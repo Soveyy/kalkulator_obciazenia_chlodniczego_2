@@ -8,9 +8,16 @@ import Checkbox from './ui/Checkbox';
 import Button from './ui/Button';
 import Tooltip from './ui/Tooltip';
 import { XIcon } from './Icons';
+import { HelpCircle, Sparkles } from 'lucide-react';
+import { createTutorial } from '../services/tutorialService';
 
 const Sidebar: React.FC = () => {
-    const { state, dispatch } = useCalculator();
+    const { state, dispatch, progress } = useCalculator();
+
+    const startTour = () => {
+        const tour = createTutorial(() => {});
+        tour.drive();
+    };
     
     return (
         <>
@@ -36,9 +43,10 @@ const Sidebar: React.FC = () => {
                  <div className="flex justify-between items-center mb-4 mt-2 lg:mt-0">
                     <div className="flex items-center gap-2">
                         <h2 className="text-xl font-bold text-slate-800 dark:text-white">Parametry Główne</h2>
-                        <span className={`w-2 h-2 rounded-full transition-colors ${useCalculator().progress.base ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                        <span className={`w-2 h-2 rounded-full transition-colors ${progress.base ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-slate-300 dark:bg-slate-600'}`} />
                     </div>
                     <button 
+                        id="sidebar-toggle"
                         className="lg:hidden p-2 -mr-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
                         onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
                         aria-label="Zamknij konfigurację"
@@ -48,8 +56,41 @@ const Sidebar: React.FC = () => {
                 </div>
 
                 <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-4 pb-4 -mr-2 pr-2">
+                    {/* Tutorial Toggle */}
+                    <Card id="tutorial-toggle-container" className="!p-3 border-blue-100 dark:border-blue-900/30 bg-blue-50/30 dark:bg-blue-900/10">
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="p-1.5 bg-blue-100 dark:bg-blue-900/40 rounded-lg text-blue-600 dark:text-blue-400">
+                                        <HelpCircle size={16} />
+                                    </div>
+                                    <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Tryb Pomocy</span>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        className="sr-only peer"
+                                        checked={state.tutorialMode}
+                                        onChange={(e) => dispatch({ type: 'SET_TUTORIAL_MODE', payload: e.target.checked })}
+                                    />
+                                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                            <Button 
+                                variant="secondary" 
+                                fullWidth 
+                                size="sm"
+                                onClick={startTour}
+                                className="!py-1.5 text-xs flex items-center justify-center gap-2"
+                            >
+                                <Sparkles size={14} />
+                                Uruchom przewodnik
+                            </Button>
+                        </div>
+                    </Card>
+
                     {/* Project Management */}
-                    <Card className="!p-4">
+                    <Card id="project-management" className="!p-4">
                          <div className="space-y-2">
                             <div>
                                 <label className="label-style flex items-center font-semibold">
@@ -77,7 +118,12 @@ const Sidebar: React.FC = () => {
                     </Card>
 
                     {/* Input Data */}
-                    <Card className="!p-4">
+                    <Card id="room-basic-info" className="!p-4 relative overflow-hidden">
+                        {state.tutorialMode && (
+                            <div className="absolute top-0 right-0 p-1">
+                                <Sparkles size={12} className="text-blue-500 animate-pulse" />
+                            </div>
+                        )}
                         <div className="space-y-2">
                             {state.activeRoomId === 'aggregate' && (
                                 <div className="text-sm text-slate-500 dark:text-slate-400 italic mb-2">
@@ -106,6 +152,11 @@ const Sidebar: React.FC = () => {
                                         (state.input.tInternal < -50 || state.input.tInternal > 50) ? 'animate-pulse-error' : ''
                                     }
                                 />
+                                {state.tutorialMode && (
+                                    <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 italic">
+                                        Wskazówka: Zazwyczaj 22-26°C dla komfortu.
+                                    </p>
+                                )}
                             </div>
                             <div>
                                 <label className="label-style flex items-center font-semibold">
@@ -129,6 +180,11 @@ const Sidebar: React.FC = () => {
                                         (state.input.rhInternal < 0 || state.input.rhInternal > 100) ? 'animate-pulse-error' : ''
                                     }
                                 />
+                                {state.tutorialMode && (
+                                    <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 italic">
+                                        Wskazówka: Standardowo 40-60%.
+                                    </p>
+                                )}
                             </div>
                             <div>
                                 <label className="label-style flex items-center font-semibold">
@@ -156,7 +212,7 @@ const Sidebar: React.FC = () => {
                     </Card>
 
                     {/* Accumulation Settings */}
-                    <Card className="!p-4">
+                    <Card id="accumulation-settings" className="!p-4">
                          <h3 className="font-semibold mb-2 flex items-center">
                             Akumulacja Ciepła (RTS)
                             <Tooltip text="Ustawienia dotyczące zdolności budynku do magazynowania i opóźniania oddawania ciepła." position="top" />

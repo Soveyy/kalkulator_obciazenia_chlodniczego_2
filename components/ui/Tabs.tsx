@@ -19,11 +19,12 @@ const Tabs: React.FC = () => {
   ];
 
   return (
-    <div className="mb-4 pt-1">
+    <div className="mb-1 pt-1">
       <nav className="flex space-x-2 overflow-x-auto scrollbar-hide pb-2 pt-1" aria-label="Tabs">
         {tabs.map(tab => (
           <button
             key={tab.id}
+            id={`tab-${tab.id}`}
             onClick={() => dispatch({ type: 'SET_ACTIVE_TAB', payload: tab.id })}
             className={`whitespace-nowrap py-2 px-3 lg:py-3 lg:px-5 rounded-xl font-medium text-xs lg:text-sm transition-all duration-200 flex items-center gap-1.5 lg:gap-2 border
               ${state.activeTab === tab.id

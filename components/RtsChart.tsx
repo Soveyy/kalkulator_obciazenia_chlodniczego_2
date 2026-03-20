@@ -189,7 +189,7 @@ const RtsChart: React.FC = () => {
                 plugins: {
                     title: { 
                         display: true, 
-                        text: 'Analiza Bezwładności Cieplnej (RTS)', 
+                        text: 'Analiza Bezwładności Cieplnej', 
                         color: textColor, 
                         font: { size: 16, weight: 'bold' } 
                     },

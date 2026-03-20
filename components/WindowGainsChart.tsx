@@ -125,7 +125,21 @@ const WindowGainsChart: React.FC = () => {
                 plugins: {
                     title: { display: true, text: 'Obciążenie chłodnicze od okien', color: textColor, font: { size: 16 } },
                     legend: { labels: { color: textColor } },
-                    tooltip: { mode: 'index' },
+                    tooltip: { 
+                        mode: 'index',
+                        callbacks: {
+                            label: function(context: any) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += Math.round(context.parsed.y) + ' W';
+                                }
+                                return label;
+                            }
+                        }
+                    },
                 }
             }
         };

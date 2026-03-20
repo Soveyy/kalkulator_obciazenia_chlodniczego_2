@@ -77,6 +77,8 @@ const initialState: State = {
     isSidebarOpen: false,
     isGeneratingReport: false,
     savedProjects: [],
+    tutorialMode: false,
+    hasSeenWelcome: false,
 };
 
 let toastId = 0;
@@ -396,6 +398,14 @@ function calculatorReducer(state: State, action: Action): State {
             return { ...state, isGeneratingReport: action.payload };
         case 'SET_SAVED_PROJECTS':
             return { ...state, savedProjects: action.payload };
+        case 'SET_TUTORIAL_MODE':
+            localStorage.setItem('hvac_tutorial_mode', JSON.stringify(action.payload));
+            return { ...state, tutorialMode: action.payload };
+        case 'SET_HAS_SEEN_WELCOME':
+            if (action.payload) {
+                localStorage.setItem('hvac_has_seen_welcome', 'true');
+            }
+            return { ...state, hasSeenWelcome: true };
         default:
             return state;
     }
@@ -438,7 +448,18 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
     useEffect(() => {
         const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
         const initialTheme = savedTheme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-        dispatch({ type: 'SET_STATE', payload: { theme: initialTheme }});
+        
+        const savedTutorialMode = localStorage.getItem('hvac_tutorial_mode');
+        const initialTutorialMode = savedTutorialMode ? JSON.parse(savedTutorialMode) : false;
+        
+        const savedHasSeenWelcome = localStorage.getItem('hvac_has_seen_welcome');
+        const initialHasSeenWelcome = savedHasSeenWelcome ? JSON.parse(savedHasSeenWelcome) : false;
+
+        dispatch({ type: 'SET_STATE', payload: { 
+            theme: initialTheme,
+            tutorialMode: initialTutorialMode,
+            hasSeenWelcome: initialHasSeenWelcome
+        }});
         document.documentElement.classList.toggle('dark', initialTheme === 'dark');
     }, []);
     

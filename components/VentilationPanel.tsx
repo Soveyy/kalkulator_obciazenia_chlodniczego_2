@@ -67,6 +67,11 @@ const VentilationPanel: React.FC = () => {
         <div className="space-y-6">
             <Card>
                 <h3 className="font-semibold mb-3">Sekcja A: Infiltracja (nieszczelności)</h3>
+                {state.tutorialMode && (
+                    <p className="text-[10px] text-blue-600 dark:text-blue-400 mb-2 italic">
+                        Infiltracja to niekontrolowany napływ powietrza przez nieszczelności w przegrodach.
+                    </p>
+                )}
                 <div className="space-y-4">
                     <Checkbox id="infiltration_enabled" label="Uwzględniaj infiltrację" name="includeInfiltration" checked={ventilation.includeInfiltration} onChange={handleChange} />
                     {ventilation.includeInfiltration && (
@@ -166,6 +171,11 @@ const VentilationPanel: React.FC = () => {
 
             <Card>
                 <h3 className="font-semibold mb-3">Sekcja B: Typ wentylacji</h3>
+                {state.tutorialMode && (
+                    <p className="text-[10px] text-blue-600 dark:text-blue-400 mb-2 italic">
+                        Wybierz rodzaj wentylacji działającej w pomieszczeniu.
+                    </p>
+                )}
                 <div className="space-y-4">
                     <div className="flex flex-wrap gap-4 mb-4">
                         <label className="flex items-center space-x-2 cursor-pointer">

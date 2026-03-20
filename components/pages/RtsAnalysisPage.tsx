@@ -108,46 +108,46 @@ const RtsAnalysisPage: React.FC = () => {
     const peakReduction = ((maxGain - maxLoad) / maxGain) * 100;
 
     return (
-        <div className="space-y-16 pb-16 relative">
+        <div className="space-y-4 pb-16 relative">
             {/* Sticky Navigation Menu */}
-            <div className="sticky top-0 z-20 -mx-4 px-4 py-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap gap-2 justify-center">
+            <div className="sticky top-0 z-20 -mx-4 px-4 py-1 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap gap-2 justify-center">
                 <button 
                     onClick={() => scrollToSegment(segment1Ref, 'rts')}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeSection === 'rts' ? 'bg-blue-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}
+                    className={`px-8 py-0.5 rounded-full text-sm font-medium transition-colors ${activeSection === 'rts' ? 'bg-blue-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}
                 >
-                    Wykres RTS
+                    Bezwładność Cieplna
                 </button>
                 <button 
                     onClick={() => scrollToSegment(segment2Ref, 'sankey')}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeSection === 'sankey' ? 'bg-indigo-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}
+                    className={`px-8 py-0.5 rounded-full text-sm font-medium transition-colors ${activeSection === 'sankey' ? 'bg-indigo-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}
                 >
                     Przepływ Energii
                 </button>
                 <button 
                     onClick={() => scrollToSegment(segment3Ref, 'breakdown')}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeSection === 'breakdown' ? 'bg-orange-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}
+                    className={`px-8 py-0.5 rounded-full text-sm font-medium transition-colors ${activeSection === 'breakdown' ? 'bg-orange-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}
                 >
                     Udziały Szczytowe
                 </button>
                 <button 
                     onClick={() => scrollToSegment(segment4Ref, 'heatmap')}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeSection === 'heatmap' ? 'bg-amber-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}
+                    className={`px-8 py-0.5 rounded-full text-sm font-medium transition-colors ${activeSection === 'heatmap' ? 'bg-amber-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}
                 >
                     Mapa Ciepła
                 </button>
                 <button 
                     onClick={() => scrollToSegment(segmentMonthlyRef, 'monthly')}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeSection === 'monthly' ? 'bg-emerald-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}
+                    className={`px-8 py-0.5 rounded-full text-sm font-medium transition-colors ${activeSection === 'monthly' ? 'bg-emerald-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}
                 >
                     Analiza Sezonowa
                 </button>
             </div>
 
-            {/* Segment 1: Dynamika Cieplna */}
-            <div id="rts" ref={segment1Ref} className="flex flex-col space-y-6 pt-4">
-                <div className="text-center mb-4">
-                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Dynamika Cieplna (Analiza RTS)</h2>
-                    <p className="text-slate-500 dark:text-slate-400">Wpływ bezwładności budynku na szczytowe zapotrzebowanie na chłód</p>
+            {/* Segment 1: Bezwładność Cieplna */}
+            <div id="rts" ref={segment1Ref} className="flex flex-col space-y-6 pt-0">
+                <div className="text-center mb-1">
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Analiza Bezwładności Cieplnej</h2>
+                    <p className="text-slate-500 dark:text-slate-400">Wpływ masy termicznej budynku na szczytowe zapotrzebowanie na chłód</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -216,7 +216,7 @@ const RtsAnalysisPage: React.FC = () => {
                             <InformationCircleIcon className="w-6 h-6 text-blue-500" />
                         </div>
                         <div>
-                            <h4 className="font-bold text-blue-800 dark:text-blue-300 mb-1">Czym jest Analiza RTS?</h4>
+                            <h4 className="font-bold text-blue-800 dark:text-blue-300 mb-1">Jak masa termiczna wpływa na obciążenie chłodnicze?</h4>
                             <p className="text-sm text-blue-700 dark:text-blue-400 leading-relaxed">
                                 Metoda <strong>Radiant Time Series (RTS)</strong> uwzględnia fakt, że zyski ciepła (szczególnie promieniowanie słoneczne) nie stają się natychmiast obciążeniem chłodniczym. 
                                 Energia ta jest najpierw pochłaniana przez ściany, podłogi i meble, a następnie powoli oddawana do powietrza. 

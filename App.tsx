@@ -22,9 +22,21 @@ import ToastContainer from './components/ToastContainer';
 import { motion, AnimatePresence } from 'motion/react';
 
 import AggregateAnalysisPage from './components/pages/AggregateAnalysisPage';
+import WelcomeModal from './components/WelcomeModal';
+import { createTutorial } from './services/tutorialService';
 
 const AppContent: React.FC = () => {
-    const { state, progress } = useCalculator();
+    const { state, dispatch, progress } = useCalculator();
+
+    const handleWelcomeClose = (startTour: boolean, dontAskAgain: boolean) => {
+        dispatch({ type: 'SET_HAS_SEEN_WELCOME', payload: dontAskAgain });
+        if (startTour) {
+            const tour = createTutorial(() => {
+                // Tour finished
+            });
+            tour.drive();
+        }
+    };
   
     const renderActiveTab = () => {
       if (state.activeRoomId === 'aggregate') {
@@ -55,10 +67,16 @@ const AppContent: React.FC = () => {
 
     return (
       <div className="min-h-screen text-slate-800 dark:text-slate-200 transition-colors duration-300 flex">
+        <WelcomeModal 
+            isOpen={!state.hasSeenWelcome} 
+            onClose={handleWelcomeClose} 
+        />
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-24 lg:pb-24">
-            <Header />
+            <div id="app-header">
+                <Header />
+            </div>
             
             {/* Project Progress Bar */}
             {state.activeRoomId !== 'aggregate' && (
@@ -83,7 +101,11 @@ const AppContent: React.FC = () => {
             )}
 
             <RoomTabs />
-            {state.activeRoomId !== 'aggregate' && <Tabs />}
+            {state.activeRoomId !== 'aggregate' && (
+                <div id="main-tabs">
+                    <Tabs />
+                </div>
+            )}
             
             <div className="relative overflow-hidden min-h-[400px]">
                 <AnimatePresence mode="wait">

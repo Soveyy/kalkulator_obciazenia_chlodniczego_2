@@ -1,0 +1,120 @@
+
+/* Custom styles for driver.js popover */
+.hvac-tutorial-popover {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+  border-radius: 12px !important;
+  padding: 24px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid #cbd5e1 !important;
+  max-width: 350px !important;
+}
+
+.dark .hvac-tutorial-popover {
+  background-color: #0f172a !important;
+  color: #f1f5f9 !important;
+  border-color: #1e293b !important;
+}
+
+.hvac-tutorial-popover .driver-popover-title {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  margin-bottom: 8px !important;
+  color: #2563eb !important;
+}
+
+.dark .hvac-tutorial-popover .driver-popover-title {
+  color: #60a5fa !important;
+}
+
+.hvac-tutorial-popover .driver-popover-description {
+  font-size: 14px !important;
+  line-height: 1.6 !important;
+  color: #475569 !important;
+}
+
+.dark .hvac-tutorial-popover .driver-popover-description {
+  color: #94a3b8 !important;
+}
+
+.hvac-tutorial-popover .driver-popover-footer {
+  margin-top: 20px !important;
+  display: flex !important;
+  gap: 8px !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+.hvac-tutorial-popover .driver-popover-btn {
+  border-radius: 4px !important;
+  padding: 8px 16px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  transition: none !important;
+  text-shadow: none !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  border: 1px solid transparent !important;
+  transform: none !important;
+  backface-visibility: hidden !important;
+  display: inline-block !important;
+  line-height: 1.2 !important;
+  letter-spacing: normal !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  filter: none !important;
+  outline: none !important;
+  background-image: none !important;
+  opacity: 1 !important;
+  text-rendering: geometricPrecision !important;
+}
+
+.hvac-tutorial-popover .driver-popover-next-btn {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+  border: 1px solid #1d4ed8 !important;
+  box-shadow: none !important;
+  text-rendering: optimizeLegibility !important;
+  background-image: none !important;
+}
+
+.hvac-tutorial-popover .driver-popover-next-btn:hover {
+  background-color: #1d4ed8 !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+.hvac-tutorial-popover .driver-popover-prev-btn {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: none !important;
+  text-rendering: optimizeLegibility !important;
+  background-image: none !important;
+}
+
+.dark .hvac-tutorial-popover .driver-popover-prev-btn {
+  background-color: #1e293b !important;
+  color: #cbd5e1 !important;
+  border-color: #334155 !important;
+}
+
+.hvac-tutorial-popover .driver-popover-prev-btn:hover {
+  background-color: #e2e8f0 !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+.dark .hvac-tutorial-popover .driver-popover-prev-btn:hover {
+  background-color: #334155 !important;
+}
+
+.hvac-tutorial-popover .driver-popover-close-btn {
+  color: #94a3b8 !important;
+}
+
+.hvac-tutorial-popover .driver-popover-progress-text {
+  font-size: 11px !important;
+  color: #94a3b8 !important;
+  font-weight: 500 !important;
+}

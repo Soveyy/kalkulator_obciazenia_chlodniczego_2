@@ -102,12 +102,22 @@ const InternalGainsChart: React.FC = () => {
                     tooltip: { 
                         mode: 'index',
                         callbacks: {
+                            label: function(context: any) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += Math.round(context.parsed.y) + ' W';
+                                }
+                                return label;
+                            },
                             footer: (tooltipItems: any[]) => {
                                 let sum = 0;
                                 tooltipItems.forEach(tooltipItem => {
                                     sum += tooltipItem.parsed.y;
                                 });
-                                return 'Suma: ' + sum.toFixed(0) + ' W';
+                                return 'Suma: ' + Math.round(sum) + ' W';
                             },
                         },
                      },

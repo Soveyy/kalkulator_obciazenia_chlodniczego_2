@@ -200,6 +200,8 @@ export interface State {
     isSidebarOpen: boolean;
     isGeneratingReport: boolean;
     savedProjects: SavedProject[];
+    tutorialMode: boolean;
+    hasSeenWelcome: boolean;
 }
 
 export type Action = 
@@ -243,5 +245,7 @@ export type Action =
     | { type: 'SET_SELECTED_DIRECTION', payload: string | null }
     | { type: 'SET_HOVERED_DIRECTION', payload: string | null }
     | { type: 'TOGGLE_SIDEBAR' }
-    | { type: 'SET_GENERATING_REPORT', payload: boolean };
+    | { type: 'SET_GENERATING_REPORT', payload: boolean }
+    | { type: 'SET_TUTORIAL_MODE', payload: boolean }
+    | { type: 'SET_HAS_SEEN_WELCOME', payload: boolean };
 

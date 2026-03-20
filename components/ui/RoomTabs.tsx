@@ -66,7 +66,7 @@ const RoomTabs: React.FC = () => {
     };
 
     return (
-        <div className="mb-0 flex flex-nowrap overflow-x-auto overflow-y-hidden scrollbar-hide gap-2 items-center border-b border-slate-200 dark:border-slate-700 pb-0">
+        <div id="room-tabs-container" className="mb-0 flex flex-nowrap overflow-x-auto overflow-y-hidden scrollbar-hide gap-2 items-center border-b border-slate-200 dark:border-slate-700 pb-0">
             {state.rooms.map(room => (
                 <div
                     key={room.id}

@@ -104,12 +104,22 @@ const VentilationGainsChart: React.FC = () => {
                     tooltip: { 
                         mode: 'index',
                         callbacks: {
+                            label: function(context: any) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y.toFixed(1) + ' W';
+                                }
+                                return label;
+                            },
                             footer: (tooltipItems: any[]) => {
                                 let sum = 0;
                                 tooltipItems.forEach(tooltipItem => {
                                     sum += tooltipItem.parsed.y;
                                 });
-                                return 'Suma: ' + sum.toFixed(0) + ' W';
+                                return 'Suma: ' + sum.toFixed(1) + ' W';
                             },
                         },
                      },
