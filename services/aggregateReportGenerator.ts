@@ -251,7 +251,18 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
             order: 1,
         },
         ...aggregateData.roomProfiles.map((room: any, index: number) => {
-            const colors = ['#f87171', '#34d399', '#fbbf24', '#a78bfa', '#f472b6'];
+            const colors = [
+                '#f87171', // red-400
+                '#34d399', // emerald-400
+                '#fbbf24', // amber-400
+                '#a78bfa', // violet-400
+                '#06b6d4', // cyan-400
+                '#f97316', // orange-400
+                '#ec4899', // pink-400
+                '#14b8a6', // teal-400
+                '#6366f1', // indigo-400
+                '#d946ef', // fuchsia-400
+            ];
             return {
                 label: room.name,
                 data: reorderDataForLocalTime(room.profile, offset),
@@ -392,7 +403,21 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
             const loadComponents = roomState.activeResults.loadComponents;
             
             const maxTotalCS = Math.max(...finalGains.clearSky.total);
-            const hourTotalCS_UTC = finalGains.clearSky.total.indexOf(maxTotalCS);
+            
+            // Find all hours where the room reaches its peak
+            const peakIndices = finalGains.clearSky.total.reduce((acc: number[], val: number, idx: number) => {
+                if (Math.abs(val - maxTotalCS) < 0.1) acc.push(idx);
+                return acc;
+            }, []);
+            
+            // If there's a tie (common for rooms without windows), pick the hour closest to the aggregate peak hour
+            const aggregatePeakHourUTC = aggregateData.peakHour;
+            const hourTotalCS_UTC = peakIndices.length > 0 
+                ? peakIndices.reduce((prev, curr) => 
+                    Math.abs(curr - aggregatePeakHourUTC) < Math.abs(prev - aggregatePeakHourUTC) ? curr : prev
+                  )
+                : finalGains.clearSky.total.indexOf(maxTotalCS);
+
             const hourTotalCS_Local = (hourTotalCS_UTC + offset) % 24;
 
             const solarLoadPeak = loadComponents.solar[hourTotalCS_UTC] || 0;

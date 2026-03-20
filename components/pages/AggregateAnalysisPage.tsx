@@ -127,7 +127,12 @@ const AggregateAnalysisPage: React.FC = () => {
                     '#34d399', // emerald-400
                     '#fbbf24', // amber-400
                     '#a78bfa', // violet-400
-                    '#f472b6', // pink-400
+                    '#06b6d4', // cyan-400
+                    '#f97316', // orange-400
+                    '#ec4899', // pink-400
+                    '#14b8a6', // teal-400
+                    '#6366f1', // indigo-400
+                    '#d946ef', // fuchsia-400
                 ];
                 const color = colors[index % colors.length];
                 return {
