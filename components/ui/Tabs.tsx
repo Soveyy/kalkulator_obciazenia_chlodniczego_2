@@ -19,7 +19,7 @@ const Tabs: React.FC = () => {
   ];
 
   return (
-    <div className="mb-6 pt-4">
+    <div className="mb-4 pt-1">
       <nav className="flex space-x-2 overflow-x-auto scrollbar-hide pb-2 pt-1" aria-label="Tabs">
         {tabs.map(tab => (
           <button

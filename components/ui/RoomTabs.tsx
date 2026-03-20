@@ -17,10 +17,10 @@ const RoomTabs: React.FC = () => {
     }, [editingRoomId]);
 
     const handleAddRoom = () => {
-        if (state.rooms.length < 5) {
+        if (state.rooms.length < 6) {
             dispatch({ type: 'ADD_ROOM' });
         } else {
-            dispatch({ type: 'ADD_TOAST', payload: { message: 'Maksymalna liczba pomieszczeń to 5.', type: 'danger' } });
+            dispatch({ type: 'ADD_TOAST', payload: { message: 'Maksymalna liczba pomieszczeń to 6.', type: 'danger' } });
         }
     };
 
@@ -37,10 +37,10 @@ const RoomTabs: React.FC = () => {
 
     const handleDuplicateRoom = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (state.rooms.length < 5) {
+        if (state.rooms.length < 6) {
             dispatch({ type: 'DUPLICATE_ROOM', payload: id });
         } else {
-            dispatch({ type: 'ADD_TOAST', payload: { message: 'Maksymalna liczba pomieszczeń to 5.', type: 'danger' } });
+            dispatch({ type: 'ADD_TOAST', payload: { message: 'Maksymalna liczba pomieszczeń to 6.', type: 'danger' } });
         }
     };
 
@@ -66,13 +66,13 @@ const RoomTabs: React.FC = () => {
     };
 
     return (
-        <div className="mb-4 flex flex-wrap gap-2 items-center border-b border-slate-200 dark:border-slate-700 pb-2">
+        <div className="mb-0 flex flex-nowrap overflow-x-auto overflow-y-hidden scrollbar-hide gap-2 items-center border-b border-slate-200 dark:border-slate-700 pb-0">
             {state.rooms.map(room => (
                 <div
                     key={room.id}
                     onClick={() => handleSwitchRoom(room.id)}
                     className={`
-                        relative group flex items-center gap-2 px-4 py-2 rounded-t-lg cursor-pointer transition-all border-b-2
+                        relative group flex items-center gap-2 px-4 py-2 rounded-t-lg cursor-pointer transition-all border-b-2 flex-shrink-0
                         ${state.activeRoomId === room.id 
                             ? 'bg-white dark:bg-slate-800 border-blue-500 text-blue-600 dark:text-blue-400 font-semibold' 
                             : 'bg-slate-50 dark:bg-slate-800/50 border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}
@@ -87,7 +87,7 @@ const RoomTabs: React.FC = () => {
                                 onChange={e => setEditName(e.target.value)}
                                 onBlur={saveEdit}
                                 onKeyDown={handleKeyDown}
-                                className="px-2 py-0.5 text-sm border rounded border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white w-32"
+                                className="px-2 py-0.5 text-sm border rounded border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white w-24 sm:w-32"
                             />
                             <button onClick={saveEdit} className="p-1 text-green-600 hover:bg-green-100 rounded dark:hover:bg-green-900/30">
                                 <CheckIcon className="w-4 h-4" />
@@ -95,7 +95,7 @@ const RoomTabs: React.FC = () => {
                         </div>
                     ) : (
                         <>
-                            <span className="text-sm">{room.name}</span>
+                            <span className="text-sm truncate max-w-[80px] sm:max-w-[120px] md:max-w-[150px]">{room.name}</span>
                             <div className={`flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ${state.activeRoomId === room.id ? 'opacity-100' : ''}`}>
                                 <button 
                                     onClick={(e) => startEditing(room.id, room.name, e)}
@@ -104,7 +104,7 @@ const RoomTabs: React.FC = () => {
                                 >
                                     <PencilIcon className="w-3.5 h-3.5" />
                                 </button>
-                                {state.rooms.length < 5 && (
+                                {state.rooms.length < 6 && (
                                     <button 
                                         onClick={(e) => handleDuplicateRoom(room.id, e)}
                                         className="p-1 text-slate-400 hover:text-green-500 rounded hover:bg-slate-200 dark:hover:bg-slate-600"
@@ -128,11 +128,11 @@ const RoomTabs: React.FC = () => {
                 </div>
             ))}
 
-            {state.rooms.length < 5 && (
-                <Tooltip text="Dodaj nowe pomieszczenie (max 5)" position="top">
+            {state.rooms.length < 6 && (
+                <Tooltip text="Dodaj nowe pomieszczenie (max 6)" position="top">
                     <button
                         onClick={handleAddRoom}
-                        className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-slate-700 transition-colors"
+                        className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-slate-700 transition-colors"
                     >
                         <PlusIcon className="w-5 h-5" />
                     </button>
@@ -140,7 +140,7 @@ const RoomTabs: React.FC = () => {
             )}
 
             {state.rooms.length > 1 && (
-                <div className="ml-auto">
+                <div className="ml-auto flex-shrink-0">
                     <button
                         onClick={() => handleSwitchRoom('aggregate')}
                         className={`
