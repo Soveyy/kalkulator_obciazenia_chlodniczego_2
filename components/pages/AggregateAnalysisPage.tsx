@@ -65,6 +65,7 @@ const AggregateAnalysisPage: React.FC = () => {
             return {
                 id: room.id,
                 name: room.name,
+                area: room.input.roomArea,
                 profile,
                 peak
             };
@@ -451,7 +452,7 @@ const AggregateAnalysisPage: React.FC = () => {
                     </div>
 
                     <Card className="p-4">
-                        <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Zbiorczy profil obciążenia chłodniczego</h3>
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Sumaryczny profil obciążenia chłodniczego</h3>
                         <div className="h-[480px] w-full relative">
                             <canvas ref={chartRef}></canvas>
                         </div>

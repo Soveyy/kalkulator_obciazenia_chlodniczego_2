@@ -31,10 +31,10 @@ const pieLabelsPlugin = {
             const meta = chart.getDatasetMeta(i);
             meta.data.forEach((element: any, index: number) => {
                 const labelText = data.labels[index];
-                const percentMatch = labelText.match(/\((\d+)%\)/);
+                const percentMatch = labelText.match(/\(([\d.]+)%\)/);
                 
                 if (percentMatch) {
-                    const percent = parseInt(percentMatch[1], 10);
+                    const percent = parseFloat(percentMatch[1]);
                     if (percent > 4) {
                         const { x, y } = element.tooltipPosition();
                         ctx.fillStyle = '#fff';
@@ -43,7 +43,7 @@ const pieLabelsPlugin = {
                         ctx.textBaseline = 'middle';
                         ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
                         ctx.shadowBlur = 4;
-                        ctx.fillText(`${percent}%`, x, y);
+                        ctx.fillText(`${percent.toFixed(1)}%`, x, y);
                         ctx.shadowBlur = 0;
                     }
                 }
@@ -160,7 +160,7 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
             doc.setFont('Roboto', 'normal');
             doc.setTextColor(150);
             doc.text(`Strona ${i} z ${pageCount}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
-            doc.text(`Raport Zbiorczy: ${new Date().toLocaleDateString('pl-PL')}`, margin, pageHeight - 10);
+            doc.text(`Data wygenerowania: ${new Date().toLocaleDateString('pl-PL')}`, margin, pageHeight - 10);
             doc.text(`Projekt: ${projectName || 'Bez nazwy'}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
         }
     };
@@ -177,72 +177,94 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
     doc.setFontSize(22);
     doc.setFont('Roboto', 'bold');
     doc.setTextColor(30, 41, 59); // slate-800
-    doc.text('Raport Zbiorczy Obciążenia Chłodniczego', margin, yPos);
+    doc.text('Raport Sumaryczny Obciążenia Chłodniczego', pageWidth / 2, yPos, { align: 'center' });
     yPos += 10;
 
-    // Subtitle / Info
-    doc.setFontSize(12);
+    // Subtitle / Info - Centered
+    doc.setFontSize(14);
     doc.setFont('Roboto', 'normal');
     doc.setTextColor(100);
-    doc.text(`Projekt: ${projectName}`, margin, yPos);
-    yPos += 6;
-    doc.text(`Miesiąc analizy zbiorczej: ${MONTH_NAMES[month - 1]}`, margin, yPos);
-    yPos += 6;
-    doc.text(`Data wygenerowania: ${new Date().toLocaleDateString('pl-PL')}`, margin, yPos);
-    yPos += 12;
+    doc.text(`Projekt: ${projectName}`, pageWidth / 2, yPos, { align: 'center' });
+    yPos += 10;
 
-    addHeader('Podsumowanie Całkowite');
-
-    // Key metrics boxes
-    const boxWidth = (pageWidth - 2 * margin - 10) / 3;
-    const boxHeight = 25;
+    // Key metrics boxes (4x1 grid) - Taller and centered
+    const boxWidth = (pageWidth - 2 * margin - 15) / 4;
+    const boxHeight = 32;
+    const gap = 5;
     
-    // Box 1
+    const totalArea = aggregateData.roomProfiles.reduce((sum: number, r: any) => sum + (r.area || 0), 0);
+    const aggregateDensity = totalArea > 0 ? aggregateData.aggregatePeak / totalArea : 0;
+    const sumOfPeaksDensity = totalArea > 0 ? aggregateData.sumOfPeaks / totalArea : 0;
+
+    // Box 1: Całkowite obciążenie
     doc.setFillColor(241, 245, 249); // slate-100
     doc.roundedRect(margin, yPos, boxWidth, boxHeight, 2, 2, 'F');
-    doc.setFontSize(10);
+    doc.setFontSize(8);
     doc.setTextColor(100);
-    doc.text('Całkowite obciążenie (Peak)', margin + 5, yPos + 8);
-    doc.setFontSize(16);
+    doc.text('Obciążenie (Peak)', margin + boxWidth / 2, yPos + 7, { align: 'center' });
+    doc.setFontSize(14);
     doc.setFont('Roboto', 'bold');
     doc.setTextColor(37, 99, 235); // blue-600
-    doc.text(`${(aggregateData.aggregatePeak / 1000).toFixed(2)} kW`, margin + 5, yPos + 18);
+    const peakText = `${(aggregateData.aggregatePeak / 1000).toFixed(2)} kW`;
+    doc.text(peakText, margin + boxWidth / 2, yPos + 17, { align: 'center' });
     
-    // Box 2
-    doc.setFillColor(241, 245, 249);
-    doc.roundedRect(margin + boxWidth + 5, yPos, boxWidth, boxHeight, 2, 2, 'F');
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setFont('Roboto', 'normal');
     doc.setTextColor(100);
-    doc.text('Suma szczytów (niejednoczesna)', margin + boxWidth + 10, yPos + 8);
-    doc.setFontSize(16);
+    doc.text(`(${aggregateDensity.toFixed(1)} W/m²)`, margin + boxWidth / 2, yPos + 26, { align: 'center' });
+    
+    // Box 2: Suma szczytów
+    doc.setFillColor(241, 245, 249);
+    doc.roundedRect(margin + boxWidth + gap, yPos, boxWidth, boxHeight, 2, 2, 'F');
+    doc.setFontSize(8);
+    doc.setFont('Roboto', 'normal');
+    doc.setTextColor(100);
+    doc.text('Suma szczytów', margin + boxWidth + gap + boxWidth / 2, yPos + 7, { align: 'center' });
+    doc.setFontSize(14);
     doc.setFont('Roboto', 'bold');
     doc.setTextColor(51, 65, 85); // slate-700
-    doc.text(`${(aggregateData.sumOfPeaks / 1000).toFixed(2)} kW`, margin + boxWidth + 10, yPos + 18);
-
-    // Box 3
-    doc.setFillColor(241, 245, 249);
-    doc.roundedRect(margin + 2 * boxWidth + 10, yPos, boxWidth, boxHeight, 2, 2, 'F');
-    doc.setFontSize(10);
+    const sumPeaksText = `${(aggregateData.sumOfPeaks / 1000).toFixed(2)} kW`;
+    doc.text(sumPeaksText, margin + boxWidth + gap + boxWidth / 2, yPos + 17, { align: 'center' });
+    
+    doc.setFontSize(9);
     doc.setFont('Roboto', 'normal');
     doc.setTextColor(100);
-    doc.text('Współczynnik jednoczesności', margin + 2 * boxWidth + 15, yPos + 8);
-    doc.setFontSize(16);
+    doc.text(`(${sumOfPeaksDensity.toFixed(1)} W/m²)`, margin + boxWidth + gap + boxWidth / 2, yPos + 26, { align: 'center' });
+
+    // Box 3: Powierzchnia całkowita
+    doc.setFillColor(241, 245, 249);
+    doc.roundedRect(margin + 2 * (boxWidth + gap), yPos, boxWidth, boxHeight, 2, 2, 'F');
+    doc.setFontSize(8);
+    doc.setTextColor(100);
+    doc.text('Powierzchnia całkowita', margin + 2 * (boxWidth + gap) + boxWidth / 2, yPos + 7, { align: 'center' });
+    doc.setFontSize(14);
+    doc.setFont('Roboto', 'bold');
+    doc.setTextColor(15, 118, 110); // teal-700
+    doc.text(`${totalArea.toFixed(1)} m²`, margin + 2 * (boxWidth + gap) + boxWidth / 2, yPos + 17, { align: 'center' });
+
+    // Box 4: Współczynnik jednoczesności
+    doc.setFillColor(241, 245, 249);
+    doc.roundedRect(margin + 3 * (boxWidth + gap), yPos, boxWidth, boxHeight, 2, 2, 'F');
+    doc.setFontSize(8);
+    doc.setFont('Roboto', 'normal');
+    doc.setTextColor(100);
+    doc.text('Wsp. jednoczesności', margin + 3 * (boxWidth + gap) + boxWidth / 2, yPos + 7, { align: 'center' });
+    doc.setFontSize(14);
     doc.setFont('Roboto', 'bold');
     doc.setTextColor(79, 70, 229); // indigo-600
-    doc.text(`${(aggregateData.diversityFactor * 100).toFixed(1)} %`, margin + 2 * boxWidth + 15, yPos + 18);
+    doc.text(`${(aggregateData.diversityFactor * 100).toFixed(1)} %`, margin + 3 * (boxWidth + gap) + boxWidth / 2, yPos + 17, { align: 'center' });
 
-    yPos += boxHeight + 15;
+    yPos += boxHeight + 12;
 
     // Aggregate Chart
-    addHeader('Zbiorczy profil obciążenia chłodniczego');
+    addHeader(`Sumaryczny profil obciążenia chłodniczego - ${MONTH_NAMES[month - 1].toUpperCase()}`);
     
     const labels = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
     
     const datasets = [
         {
             label: 'Całkowite obciążenie (Suma)',
-            data: reorderDataForLocalTime(aggregateData.hourlyTotal, offset),
+            data: reorderDataForLocalTime(aggregateData.hourlyTotal, offset).map(v => v / 1000),
             borderColor: '#3b82f6',
             backgroundColor: 'rgba(59, 130, 246, 0.1)',
             borderWidth: 3,
@@ -265,7 +287,7 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
             ];
             return {
                 label: room.name,
-                data: reorderDataForLocalTime(room.profile, offset),
+                data: reorderDataForLocalTime(room.profile, offset).map(v => v / 1000),
                 borderColor: colors[index % colors.length],
                 backgroundColor: 'transparent',
                 borderWidth: 2,
@@ -283,15 +305,15 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
             plugins: {
                 legend: {
                     position: 'top',
-                    labels: { font: { size: 14, family: 'Arial, sans-serif' }, padding: 20 }
+                    labels: { font: { size: 16, family: 'Arial, sans-serif' }, padding: 20 }
                 }
             },
             scales: {
-                x: { ticks: { font: { size: 12, family: 'Arial, sans-serif' } } },
+                x: { ticks: { font: { size: 14, family: 'Arial, sans-serif' } } },
                 y: { 
                     beginAtZero: true,
-                    title: { display: true, text: 'Obciążenie [kW]', font: { size: 14, weight: 'bold', family: 'Arial, sans-serif' } },
-                    ticks: { font: { size: 12, family: 'Arial, sans-serif' } }
+                    title: { display: true, text: 'Obciążenie [kW]', font: { size: 16, weight: 'bold', family: 'Arial, sans-serif' } },
+                    ticks: { font: { size: 14, family: 'Arial, sans-serif' } }
                 }
             }
         }
@@ -306,21 +328,41 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
     yPos += 15;
 
     // Table of rooms
-    addHeader('Zestawienie pomieszczeń (Miesiąc zbiorczy)');
+    addHeader(`Zestawienie pomieszczeń (Miesiąc: ${MONTH_NAMES[month - 1]})`);
     
     const tableData = aggregateData.roomProfiles.map((room: any) => [
         room.name,
         `${(room.peak / 1000).toFixed(2)} kW`,
+        `${(room.area || 0).toFixed(1)} m²`,
+        `${(room.peak / (room.area || 1)).toFixed(1)} W/m²`,
         `${aggregateData.sumOfPeaks > 0 ? ((room.peak / aggregateData.sumOfPeaks) * 100).toFixed(1) : 0}%`
     ]);
 
     autoTable(doc, {
         startY: yPos,
-        head: [['Pomieszczenie', 'Szczytowe obciążenie', 'Udział w sumie szczytów']],
+        head: [['Pomieszczenie', 'Obciążenie [kW]', 'Pow. [m²]', 'Wskaźnik', 'Udział [%]']],
         body: tableData,
         theme: 'striped',
-        headStyles: { fillColor: [59, 130, 246], font: 'Roboto', fontStyle: 'bold' },
-        styles: { font: 'Roboto', fontSize: 10 },
+        headStyles: { 
+            fillColor: [59, 130, 246], 
+            font: 'Roboto', 
+            fontStyle: 'bold'
+        },
+        styles: { font: 'Roboto', fontSize: 9 },
+        columnStyles: {
+            0: { halign: 'left' },
+            1: { halign: 'right' },
+            2: { halign: 'right' },
+            3: { halign: 'right' },
+            4: { halign: 'right' }
+        },
+        didParseCell: (data) => {
+            // Force header alignment to match column alignment
+            if (data.section === 'head') {
+                if (data.column.index === 0) data.cell.styles.halign = 'left';
+                else data.cell.styles.halign = 'right';
+            }
+        },
         margin: { left: margin, right: margin }
     });
 
@@ -379,10 +421,21 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
         doc.setTextColor(100);
         doc.setFont('Roboto', 'normal');
         doc.text(`W analizowanym miesiącu (${MONTH_NAMES[month - 1]})`, margin + 5, yPos + 8);
-        doc.setFontSize(16);
+        doc.setFontSize(14);
         doc.setFont('Roboto', 'bold');
         doc.setTextColor(37, 99, 235);
-        doc.text(`${(roomProfile.peak / 1000).toFixed(2)} kW`, margin + 5, yPos + 18);
+        const roomPeakText = `${(roomProfile.peak / 1000).toFixed(2)} kW`;
+        doc.text(roomPeakText, margin + 5, yPos + 18);
+        
+        // Measure width while bold font is active
+        const roomPeakTextWidth = doc.getTextWidth(roomPeakText);
+
+        doc.setFontSize(10);
+        doc.setFont('Roboto', 'normal');
+        doc.setTextColor(100);
+        // Align on the same baseline, +8 for horizontal gap
+        // Subtract 0.3 from Y to align baselines optically between 14pt bold and 10pt normal
+        doc.text(`(${(roomProfile.peak / (roomProfile.area || 1)).toFixed(1)} W/m²)`, margin + 5 + roomPeakTextWidth + 8, yPos + 17.7);
 
         doc.setFillColor(254, 242, 242); // red-50
         doc.roundedRect(margin + boxWidth2 + 5, yPos, boxWidth2, boxHeight, 2, 2, 'F');
@@ -390,12 +443,22 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
         doc.setTextColor(100);
         doc.setFont('Roboto', 'normal');
         doc.text(`W najgorszym miesiącu (${MONTH_NAMES[parseInt(worstMonth, 10) - 1]})`, margin + boxWidth2 + 10, yPos + 8);
-        doc.setFontSize(16);
+        doc.setFontSize(14);
         doc.setFont('Roboto', 'bold');
         doc.setTextColor(220, 38, 38); // red-600
-        doc.text(`${(worstMonthPeak / 1000).toFixed(2)} kW`, margin + boxWidth2 + 10, yPos + 18);
+        const worstPeakText = `${(worstMonthPeak / 1000).toFixed(2)} kW`;
+        doc.text(worstPeakText, margin + boxWidth2 + 10, yPos + 18);
+        
+        // Measure width while bold font is active
+        const worstPeakTextWidth = doc.getTextWidth(worstPeakText);
 
-        yPos += boxHeight + 15;
+        doc.setFontSize(10);
+        doc.setFont('Roboto', 'normal');
+        doc.setTextColor(100);
+        // Subtract 0.3 from Y to align baselines optically
+        doc.text(`(${(worstMonthPeak / (roomProfile.area || 1)).toFixed(1)} W/m²)`, margin + boxWidth2 + 10 + worstPeakTextWidth + 8, yPos + 17.7);
+
+        yPos += boxHeight + 12;
 
         // We need the components at the peak hour of the *aggregate month* for this room
         // roomState.activeResults contains the results for the aggregate month (because RECALCULATE_ALL_ROOMS was called)
@@ -450,7 +513,7 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
             const pieChartDataUrl = await createTempChart({
                 type: 'pie',
                 data: {
-                    labels: pieChartValues.map(d => `${d.label} (${Math.round(d.val/totalForPie*100)}%)`),
+                    labels: pieChartValues.map(d => `${d.label} (${(d.val/totalForPie*100).toFixed(1)}%)`),
                     datasets: [{
                         data: pieChartValues.map(d => d.val),
                         backgroundColor: pieChartValues.map(d => d.color),
@@ -519,6 +582,6 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
 
     addFooter();
     
-    const fileName = `Raport_Zbiorczy_${projectName.replace(/\s+/g, '_')}.pdf`;
+    const fileName = `Raport_Sumaryczny_${projectName.replace(/\s+/g, '_')}.pdf`;
     doc.save(fileName);
 };
