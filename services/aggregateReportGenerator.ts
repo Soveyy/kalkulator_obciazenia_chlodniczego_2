@@ -379,11 +379,11 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
         doc.addPage();
         yPos = margin;
 
-        doc.setFontSize(18);
+        doc.setFontSize(16);
         doc.setFont('Roboto', 'bold');
         doc.setTextColor(30, 41, 59);
         doc.text(`Szczegóły: ${roomProfile.name}`, margin, yPos);
-        yPos += 10;
+        yPos += 7;
 
         // Find individual worst month
         let worstMonthPeak = 0;
@@ -414,51 +414,43 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
 
         // Compare aggregate month peak vs individual worst month peak
         const boxWidth2 = (pageWidth - 2 * margin - 5) / 2;
+        const roomBoxHeight = 28;
         
         doc.setFillColor(241, 245, 249);
-        doc.roundedRect(margin, yPos, boxWidth2, boxHeight, 2, 2, 'F');
-        doc.setFontSize(10);
+        doc.roundedRect(margin, yPos, boxWidth2, roomBoxHeight, 2, 2, 'F');
+        doc.setFontSize(9);
         doc.setTextColor(100);
         doc.setFont('Roboto', 'normal');
-        doc.text(`W analizowanym miesiącu (${MONTH_NAMES[month - 1]})`, margin + 5, yPos + 8);
+        doc.text(`W analizowanym miesiącu (${MONTH_NAMES[month - 1]})`, margin + boxWidth2 / 2, yPos + 7, { align: 'center' });
         doc.setFontSize(14);
         doc.setFont('Roboto', 'bold');
         doc.setTextColor(37, 99, 235);
         const roomPeakText = `${(roomProfile.peak / 1000).toFixed(2)} kW`;
-        doc.text(roomPeakText, margin + 5, yPos + 18);
+        doc.text(roomPeakText, margin + boxWidth2 / 2, yPos + 16, { align: 'center' });
         
-        // Measure width while bold font is active
-        const roomPeakTextWidth = doc.getTextWidth(roomPeakText);
-
-        doc.setFontSize(10);
+        doc.setFontSize(9);
         doc.setFont('Roboto', 'normal');
         doc.setTextColor(100);
-        // Align on the same baseline, +8 for horizontal gap
-        // Subtract 0.3 from Y to align baselines optically between 14pt bold and 10pt normal
-        doc.text(`(${(roomProfile.peak / (roomProfile.area || 1)).toFixed(1)} W/m²)`, margin + 5 + roomPeakTextWidth + 8, yPos + 17.7);
+        doc.text(`(${(roomProfile.peak / (roomProfile.area || 1)).toFixed(1)} W/m²)`, margin + boxWidth2 / 2, yPos + 23, { align: 'center' });
 
         doc.setFillColor(254, 242, 242); // red-50
-        doc.roundedRect(margin + boxWidth2 + 5, yPos, boxWidth2, boxHeight, 2, 2, 'F');
-        doc.setFontSize(10);
+        doc.roundedRect(margin + boxWidth2 + 5, yPos, boxWidth2, roomBoxHeight, 2, 2, 'F');
+        doc.setFontSize(9);
         doc.setTextColor(100);
         doc.setFont('Roboto', 'normal');
-        doc.text(`W najgorszym miesiącu (${MONTH_NAMES[parseInt(worstMonth, 10) - 1]})`, margin + boxWidth2 + 10, yPos + 8);
+        doc.text(`W najgorszym miesiącu (${MONTH_NAMES[parseInt(worstMonth, 10) - 1]})`, margin + boxWidth2 + 5 + boxWidth2 / 2, yPos + 7, { align: 'center' });
         doc.setFontSize(14);
         doc.setFont('Roboto', 'bold');
         doc.setTextColor(220, 38, 38); // red-600
         const worstPeakText = `${(worstMonthPeak / 1000).toFixed(2)} kW`;
-        doc.text(worstPeakText, margin + boxWidth2 + 10, yPos + 18);
+        doc.text(worstPeakText, margin + boxWidth2 + 5 + boxWidth2 / 2, yPos + 16, { align: 'center' });
         
-        // Measure width while bold font is active
-        const worstPeakTextWidth = doc.getTextWidth(worstPeakText);
-
-        doc.setFontSize(10);
+        doc.setFontSize(9);
         doc.setFont('Roboto', 'normal');
         doc.setTextColor(100);
-        // Subtract 0.3 from Y to align baselines optically
-        doc.text(`(${(worstMonthPeak / (roomProfile.area || 1)).toFixed(1)} W/m²)`, margin + boxWidth2 + 10 + worstPeakTextWidth + 8, yPos + 17.7);
+        doc.text(`(${(worstMonthPeak / (roomProfile.area || 1)).toFixed(1)} W/m²)`, margin + boxWidth2 + 5 + boxWidth2 / 2, yPos + 23, { align: 'center' });
 
-        yPos += boxHeight + 12;
+        yPos += roomBoxHeight + 12;
 
         // We need the components at the peak hour of the *aggregate month* for this room
         // roomState.activeResults contains the results for the aggregate month (because RECALCULATE_ALL_ROOMS was called)
