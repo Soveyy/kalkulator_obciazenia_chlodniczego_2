@@ -479,7 +479,12 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
     // Check for URL params on mount
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
-        const data = params.get('data');
+        let data = params.get('data');
+        
+        if (!data && window.location.hash.startsWith('#data=')) {
+            data = window.location.hash.replace('#data=', '');
+        }
+
         if (data) {
             try {
                 const decompressed = LZString.decompressFromEncodedURIComponent(data);
@@ -758,14 +763,29 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             dispatch({ type: 'ADD_TOAST', payload: { message: 'Projekt usunięty.', type: 'info' } });
 
         } else if (action.type === 'GENERATE_SHARE_LINK') {
+            // Strip out massive calculated arrays to keep the URL short
+            const strippedRooms = state.rooms.map(room => ({
+                ...room,
+                results: null,
+                activeResults: null,
+                tExtProfile: [],
+                monthlyPeaks: [],
+                yearlyMatrix: null,
+                solarMatrix: null,
+                solarInstantMatrix: null,
+                resultMessage: ''
+            }));
+
             const projectData = {
                 projectName: state.projectName,
-                rooms: state.rooms,
+                rooms: strippedRooms,
                 activeRoomId: state.activeRoomId,
             };
             const json = JSON.stringify(projectData);
             const compressed = LZString.compressToEncodedURIComponent(json);
-            const url = `${window.location.origin}${window.location.pathname}?data=${compressed}`;
+            
+            // Use hash instead of query param to avoid server-side URL length limits
+            const url = `${window.location.origin}${window.location.pathname}#data=${compressed}`;
             
             navigator.clipboard.writeText(url).then(() => {
                 dispatch({ type: 'ADD_TOAST', payload: { message: 'Link skopiowany do schowka!', type: 'success' } });
