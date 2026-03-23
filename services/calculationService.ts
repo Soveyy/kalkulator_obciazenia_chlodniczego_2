@@ -160,7 +160,8 @@ export function calculateWorstMonth(
     allData: AllData,
     input: Omit<InputState, 'projectName'>,
     accumulation: AccumulationSettings,
-    internalGains: InternalGains
+    internalGains: InternalGains,
+    isWithoutShading: boolean = false
 ): { worstMonth: string, monthlyPeaks: { month: string, peak: number }[], yearlyMatrix: number[][], solarMatrix: number[][], solarInstantMatrix: number[][] } {
     const monthlyPeaks: { month: string, peak: number }[] = [];
     const yearlyMatrix: number[][] = [];
@@ -184,7 +185,7 @@ export function calculateWorstMonth(
             allData,
             accumulation,
             internalGains,
-            false // with shading
+            isWithoutShading
         );
         
         const totalLoads = results.finalGains.clearSky.total;

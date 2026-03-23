@@ -357,7 +357,8 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
                     state.allData,
                     roomState.input,
                     roomState.accumulation,
-                    roomState.internalGains
+                    roomState.internalGains,
+                    !state.isShadingViewActive
                 );
                 peaksToUse = calc.monthlyPeaks;
             }

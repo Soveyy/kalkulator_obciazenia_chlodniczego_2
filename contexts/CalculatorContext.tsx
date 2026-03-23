@@ -269,15 +269,32 @@ function calculatorReducer(state: State, action: Action): State {
         case 'CLEAR_RESULTS':
             return updateActiveRoom(state, room => ({ ...room, results: null, activeResults: null, resultMessage: '' }));
         case 'SET_SHADING_VIEW': {
-            const newState = updateActiveRoom(state, room => {
+            if (!state.allData) return { ...state, isShadingViewActive: action.payload };
+
+            const newRooms = state.rooms.map(room => {
                 if (!room.results) return room;
+
+                const { monthlyPeaks, yearlyMatrix, solarMatrix, solarInstantMatrix } = calculateWorstMonth(
+                    room.windows,
+                    state.allData!,
+                    room.input,
+                    room.accumulation,
+                    room.internalGains,
+                    !action.payload
+                );
+
                 return {
                     ...room,
                     activeResults: action.payload ? room.results.withShading : room.results.withoutShading,
+                    monthlyPeaks,
+                    yearlyMatrix,
+                    solarMatrix,
+                    solarInstantMatrix
                 };
             });
             return {
-                ...newState,
+                ...state,
+                rooms: newRooms,
                 isShadingViewActive: action.payload
             };
         }
@@ -572,7 +589,8 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             state.allData, 
             activeRoom.input, 
             activeRoom.accumulation, 
-            activeRoom.internalGains
+            activeRoom.internalGains,
+            !state.isShadingViewActive
         );
 
         const message = customMessage || activeRoom.resultMessage;
@@ -587,7 +605,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             solarMatrix,
             solarInstantMatrix
         }});
-    }, [state.allData, activeRoom.windows, activeRoom.input, state.projectName, activeRoom.accumulation, activeRoom.internalGains, activeRoom.resultMessage]);
+    }, [state.allData, activeRoom.windows, activeRoom.input, state.projectName, activeRoom.accumulation, activeRoom.internalGains, activeRoom.resultMessage, state.isShadingViewActive]);
 
 
     const handleCalculate = useCallback(async () => {
@@ -604,7 +622,8 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                     state.allData!, 
                     room.input, 
                     room.accumulation, 
-                    room.internalGains
+                    room.internalGains,
+                    !state.isShadingViewActive
                 );
             });
 
@@ -675,7 +694,8 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                     state.allData!, 
                     activeRoom.input, 
                     activeRoom.accumulation, 
-                    activeRoom.internalGains
+                    activeRoom.internalGains,
+                    !state.isShadingViewActive
                 );
                 const worstMonthName = MONTH_NAMES[parseInt(worstMonth, 10) - 1];
                 
@@ -687,7 +707,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             }, 500);
             return () => clearTimeout(handler);
         }
-    }, [activeRoom.windows, activeRoom.input, state.projectName, activeRoom.accumulation, activeRoom.internalGains, initialCalculationDone, performCalculation, state.allData, activeRoom.currentMonth]);
+    }, [activeRoom.windows, activeRoom.input, state.projectName, activeRoom.accumulation, activeRoom.internalGains, initialCalculationDone, performCalculation, state.allData, activeRoom.currentMonth, state.isShadingViewActive]);
 
     const handleGenerateReport = async () => {
         if (!activeRoom.activeResults) {
