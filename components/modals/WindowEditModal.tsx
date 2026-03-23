@@ -339,6 +339,11 @@ const WindowEditModal: React.FC = () => {
                             min="0.01"
                             className={`${errors.includes('width') ? 'animate-pulse-error' : ''} ${isNew && !window.width ? 'animate-pulse-border border-blue-400' : ''}`}
                         />
+                        {state.tutorialMode && (
+                            <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 italic">
+                                Wskazówka: Podaj wymiar w świetle muru (całego otworu).
+                            </p>
+                        )}
                     </div>
                     <div>
                         <label className={`label-style ${errors.includes('height') ? 'text-red-500 font-bold' : ''}`}>Wysokość (m):</label>
@@ -380,6 +385,11 @@ const WindowEditModal: React.FC = () => {
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 italic">
                             Wskazówka: Możesz również wybrać kierunek klikając na kompas po prawej stronie.
                         </p>
+                        {state.tutorialMode && (
+                            <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 italic">
+                                Wskazówka: Okna południowe i zachodnie generują największe zyski ciepła latem.
+                            </p>
+                        )}
                     </div>
                     <div>
                         <label className="label-style flex items-center">

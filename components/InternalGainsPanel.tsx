@@ -161,6 +161,11 @@ const InternalGainsPanel: React.FC = () => {
                                         (state.internalGains.people.count < 0) ? 'animate-pulse-error' : ''
                                     }
                                 />
+                                {state.tutorialMode && (
+                                    <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 italic">
+                                        Wskazówka: Dla biur przyjmuje się zazwyczaj 1 osobę na 10 m².
+                                    </p>
+                                )}
                             </div>
                             <div>
                                 <label className="label-style flex items-center font-medium">
@@ -172,6 +177,11 @@ const InternalGainsPanel: React.FC = () => {
                                         <option key={key} value={key}>{value.label}</option>
                                     ))}
                                 </Select>
+                                {state.tutorialMode && (
+                                    <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 italic">
+                                        Wskazówka: Praca fizyczna generuje znacznie więcej ciepła niż biurowa.
+                                    </p>
+                                )}
                             </div>
                             <div className="mt-2">
                                 <TimeRangeSlider 
@@ -216,6 +226,11 @@ const InternalGainsPanel: React.FC = () => {
                                         (state.internalGains.lighting.powerDensity < 0) ? 'animate-pulse-error' : ''
                                     }
                                 />
+                                {state.tutorialMode && (
+                                    <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 italic">
+                                        Wskazówka: Nowoczesne oświetlenie LED to zazwyczaj 5-10 W/m². Starsze świetlówki to 15-20 W/m².
+                                    </p>
+                                )}
                             </div>
                             <div className="mt-2">
                                 <TimeRangeSlider 
@@ -234,6 +249,11 @@ const InternalGainsPanel: React.FC = () => {
             {/* Equipment */}
             <Card className="flex flex-col lg:col-span-2">
                 <h3 className="font-semibold mb-3">Urządzenia</h3>
+                {state.tutorialMode && (
+                    <p className="text-[10px] text-blue-600 dark:text-blue-400 mb-3 italic">
+                        Wskazówka: Komputer biurowy z monitorem to średnio 100-150W. Drukarki pracują sporadycznie, więc ich uśredniona moc jest niższa.
+                    </p>
+                )}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4 lg:flex lg:flex-wrap">
                     {Object.entries(EQUIPMENT_PRESETS).map(([key, preset]) => (
                         <Button key={key} variant="secondary" className="text-xs py-1" onClick={() => addEquipment(key)}>+ {preset.label}</Button>

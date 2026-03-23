@@ -116,6 +116,11 @@ const VentilationPanel: React.FC = () => {
                                     <option value="average">Średnie (2.0 cm²/m²)</option>
                                     <option value="leaky">Nieszczelne (4.0 cm²/m²)</option>
                                 </Select>
+                                {state.tutorialMode && (
+                                    <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 italic">
+                                        Wskazówka: Nowe budynki są zazwyczaj "szczelne", starsze "średnie" lub "nieszczelne".
+                                    </p>
+                                )}
                             </div>
 
                             <div>
@@ -197,6 +202,11 @@ const VentilationPanel: React.FC = () => {
                             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Grawitacyjna</span>
                         </label>
                     </div>
+                    {state.tutorialMode && (
+                        <p className="text-[10px] text-blue-600 dark:text-blue-400 mb-2 italic">
+                            Wskazówka: Wentylacja grawitacyjna to tradycyjne kratki wentylacyjne. Mechaniczna z odzyskiem to rekuperacja.
+                        </p>
+                    )}
 
                     {ventilation.type !== 'none' && (
                         <div className="pl-4 border-l-2 border-slate-200 dark:border-slate-700 space-y-4 mt-4">
@@ -205,6 +215,11 @@ const VentilationPanel: React.FC = () => {
                                     <div>
                                         <label className="label-style font-medium">Strumień powietrza wentylacyjnego (m³/h):</label>
                                         <Input type="number" name="airflow" value={ventilation.airflow} onChange={handleChange} min="0" step="any" />
+                                        {state.tutorialMode && (
+                                            <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 italic">
+                                                Wskazówka: Wymagany strumień to zazwyczaj 20-30 m³/h na osobę lub 0.5-1.0 wymiany na godzinę.
+                                            </p>
+                                        )}
                                     </div>
                                     <div>
                                         <label className="label-style font-medium">Typ wymiennika odzysku ciepła:</label>

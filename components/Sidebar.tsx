@@ -207,6 +207,11 @@ const Sidebar: React.FC = () => {
                                         (state.input.roomArea <= 0) ? 'animate-pulse-error' : ''
                                     }
                                 />
+                                {state.tutorialMode && (
+                                    <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 italic">
+                                        Wskazówka: Powierzchnia podłogi pomieszczenia, potrzebna do przeliczenia zysków na m².
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </Card>
@@ -239,6 +244,11 @@ const Sidebar: React.FC = () => {
                                             <option value="heavy">Ciężka</option>
                                             <option value="very_heavy">Bardzo ciężka</option>
                                         </Select>
+                                        {state.tutorialMode && (
+                                            <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 italic">
+                                                Wskazówka: Typowe polskie murowane budynki to konstrukcje bardzo ciężkie.
+                                            </p>
+                                        )}
                                     </div>
                                      <div>
                                         <label className="label-style flex items-center font-semibold">
