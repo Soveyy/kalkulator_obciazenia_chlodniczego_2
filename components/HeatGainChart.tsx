@@ -140,8 +140,13 @@ const HeatGainChart: React.FC = () => {
                         type: 'linear',
                         display: true,
                         position: 'left',
-                        title: { display: true, text: 'Obciążenie chłodnicze (W)', color: textColor }, 
-                        ticks: { color: textColor }, 
+                        title: { display: true, text: 'Obciążenie chłodnicze (kW)', color: textColor }, 
+                        ticks: { 
+                            color: textColor,
+                            callback: function(value) {
+                                return (Number(value) / 1000).toFixed(2);
+                            }
+                        }, 
                         grid: { color: gridColor }, 
                         stacked: chartType === 'bar'
                     },
@@ -169,7 +174,7 @@ const HeatGainChart: React.FC = () => {
                                     if (context.dataset.yAxisID === 'yTemp') {
                                         label += context.parsed.y.toFixed(1) + ' °C';
                                     } else {
-                                        label += context.parsed.y.toFixed(0) + ' W';
+                                        label += (context.parsed.y / 1000).toFixed(2) + ' kW';
                                     }
                                 }
                                 return label;
@@ -182,7 +187,7 @@ const HeatGainChart: React.FC = () => {
                                             sum += tooltipItem.parsed.y;
                                         }
                                     });
-                                    return 'Suma: ' + sum.toFixed(0) + ' W';
+                                    return 'Suma: ' + (sum / 1000).toFixed(2) + ' kW';
                                 }
                                 return '';
                             },

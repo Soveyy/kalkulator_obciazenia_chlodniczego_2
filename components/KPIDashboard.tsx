@@ -33,7 +33,7 @@ const KPIDashboard: React.FC = () => {
                     <div className="flex flex-col items-start lg:items-center">
                         <span className="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-wider">Szczytowe Obciążenie (Całkowite)</span>
                         <div className={`text-xl md:text-2xl font-bold ${textColor}`}>
-                            {maxLoad.toFixed(0)} <span className="text-sm font-normal text-slate-500">W</span>
+                            {(maxLoad / 1000).toFixed(2)} <span className="text-sm font-normal text-slate-500">kW</span>
                         </div>
                     </div>
                     <div className="h-8 w-px bg-slate-300 dark:bg-slate-600 mx-2"></div>
@@ -67,7 +67,7 @@ const KPIDashboard: React.FC = () => {
                 <div className="flex flex-col items-start lg:items-center">
                     <span className="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-wider">Szczytowe Obciążenie</span>
                     <div className={`text-xl md:text-2xl font-bold ${textColor}`}>
-                        {maxLoad.toFixed(0)} <span className="text-sm font-normal text-slate-500">W</span>
+                        {(maxLoad / 1000).toFixed(2)} <span className="text-sm font-normal text-slate-500">kW</span>
                     </div>
                 </div>
 

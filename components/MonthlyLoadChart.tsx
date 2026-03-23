@@ -40,7 +40,8 @@ const MonthlyLoadChart: React.FC = () => {
                         axisLine={false}
                         tickLine={false}
                         tick={{ fill: '#64748b', fontSize: 12 }}
-                        unit=" W"
+                        unit=" kW"
+                        tickFormatter={(value) => (value / 1000).toFixed(2)}
                     />
                     <Tooltip
                         cursor={false}
@@ -50,7 +51,7 @@ const MonthlyLoadChart: React.FC = () => {
                             boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
                             padding: '12px'
                         }}
-                        formatter={(value: number) => [`${value} W`, 'Szczytowe obciążenie']}
+                        formatter={(value: number) => [`${(value / 1000).toFixed(2)} kW`, 'Szczytowe obciążenie']}
                     />
                     <Bar 
                         dataKey="peak" 
@@ -68,7 +69,7 @@ const MonthlyLoadChart: React.FC = () => {
                             dataKey="peak" 
                             position="top" 
                             style={{ fill: labelColor, fontSize: 13, fontWeight: 800 }}
-                            formatter={(val: number) => `${val} W`}
+                            formatter={(val: number) => `${(val / 1000).toFixed(2)} kW`}
                         />
                     </Bar>
                 </BarChart>

@@ -43,28 +43,28 @@ const PeakSummary: React.FC = () => {
         <Card>
             <h3 className="text-lg font-semibold mb-2 text-slate-800 dark:text-white">Podsumowanie dla: {MONTH_NAMES[month-1]}</h3>
             <p className="text-center font-semibold text-red-500">Maksymalne <strong>całkowite</strong> obciążenie chłodnicze</p>
-            <div className="text-4xl font-bold text-center text-red-500 my-2">{maxTotalCS.toFixed(0)} W</div>
+            <div className="text-4xl font-bold text-center text-red-500 my-2">{(maxTotalCS / 1000).toFixed(2)} kW</div>
             <p className="text-center text-sm text-slate-500 dark:text-slate-400 mb-2">(o godz. {String(hourTotalCS_Local).padStart(2, '0')}:00 {timeZoneNotice})</p>
             
             <div className="mt-4 text-sm text-slate-600 dark:text-slate-300 grid grid-cols-2 gap-x-4">
                 <div>
                     <p className="font-semibold text-orange-500">Obciążenie jawne:</p>
-                    <p className="text-2xl font-bold">{sensibleAtPeak.toFixed(0)} W</p>
+                    <p className="text-2xl font-bold">{(sensibleAtPeak / 1000).toFixed(2)} kW</p>
                     <div className="text-xs pl-2">
-                        <p>→ Słoneczne: {solarLoadPeak.toFixed(0)} W</p>
-                        <p>→ Przewodzenie: {conductionLoadPeak.toFixed(0)} W</p>
-                        <p>→ Wewnętrzne: {internalSensibleLoadPeak.toFixed(0)} W</p>
-                        <p>→ Wentylacja: {ventilationSensibleLoadPeak.toFixed(0)} W</p>
-                        {!isNaturalVentWithInf && <p>→ Infiltracja: {infiltrationSensibleLoadPeak.toFixed(0)} W</p>}
+                        <p>→ Słoneczne: {(solarLoadPeak / 1000).toFixed(2)} kW</p>
+                        <p>→ Przewodzenie: {(conductionLoadPeak / 1000).toFixed(2)} kW</p>
+                        <p>→ Wewnętrzne: {(internalSensibleLoadPeak / 1000).toFixed(2)} kW</p>
+                        <p>→ Wentylacja: {(ventilationSensibleLoadPeak / 1000).toFixed(2)} kW</p>
+                        {!isNaturalVentWithInf && <p>→ Infiltracja: {(infiltrationSensibleLoadPeak / 1000).toFixed(2)} kW</p>}
                     </div>
                 </div>
                  <div>
                     <p className="font-semibold text-blue-500">Obciążenie utajone:</p>
-                     <p className="text-2xl font-bold">{latentAtPeak.toFixed(0)} W</p>
+                     <p className="text-2xl font-bold">{(latentAtPeak / 1000).toFixed(2)} kW</p>
                      <div className="text-xs pl-2">
-                        <p>→ Wewnętrzne: {internalLatentAtPeak.toFixed(0)} W</p>
-                        <p>→ Wentylacja: {ventilationLatentAtPeak.toFixed(0)} W</p>
-                        {!isNaturalVentWithInf && <p>→ Infiltracja: {infiltrationLatentAtPeak.toFixed(0)} W</p>}
+                        <p>→ Wewnętrzne: {(internalLatentAtPeak / 1000).toFixed(2)} kW</p>
+                        <p>→ Wentylacja: {(ventilationLatentAtPeak / 1000).toFixed(2)} kW</p>
+                        {!isNaturalVentWithInf && <p>→ Infiltracja: {(infiltrationLatentAtPeak / 1000).toFixed(2)} kW</p>}
                     </div>
                 </div>
             </div>

@@ -191,7 +191,7 @@ const RtsAnalysisPage: React.FC = () => {
                             <LightningBoltIcon className="w-5 h-5 text-orange-500" />
                         </div>
                         <div>
-                            <div className="text-xl font-bold text-slate-800 dark:text-white">{Math.round(maxGain)} W</div>
+                            <div className="text-xl font-bold text-slate-800 dark:text-white">{(maxGain / 1000).toFixed(2)} kW</div>
                             <p className="text-xs text-slate-500 mt-1">Godzina: {String(localHourMaxGain).padStart(2, '0')}:00</p>
                         </div>
                     </Card>
@@ -202,7 +202,7 @@ const RtsAnalysisPage: React.FC = () => {
                             <LightningBoltIcon className="w-5 h-5 text-red-500" />
                         </div>
                         <div>
-                            <div className="text-xl font-bold text-slate-800 dark:text-white">{Math.round(maxLoad)} W</div>
+                            <div className="text-xl font-bold text-slate-800 dark:text-white">{(maxLoad / 1000).toFixed(2)} kW</div>
                             <p className="text-xs text-slate-500 mt-1">Godzina: {String(localHourMaxLoad).padStart(2, '0')}:00</p>
                         </div>
                     </Card>
@@ -284,7 +284,7 @@ const RtsAnalysisPage: React.FC = () => {
                 <Card className="p-6 border-t-4 border-emerald-500 hover:shadow-md transition-shadow">
                     <MonthlyLoadChart />
                     <p className="text-xs text-slate-400 mt-4 italic text-center">
-                        Wykres przedstawia maksymalne godzinowe obciążenie chłodnicze [W] dla każdego miesiąca. 
+                        Wykres przedstawia maksymalne godzinowe obciążenie chłodnicze [kW] dla każdego miesiąca. 
                         Kolorem czerwonym wyróżniono miesiąc krytyczny.
                     </p>
                 </Card>

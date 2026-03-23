@@ -190,7 +190,7 @@ const AggregateAnalysisPage: React.FC = () => {
                                     label += ': ';
                                 }
                                 if (context.parsed.y !== null) {
-                                    label += Math.round(context.parsed.y) + ' W';
+                                    label += (context.parsed.y / 1000).toFixed(2) + ' kW';
                                 }
                                 return label;
                             }
@@ -225,7 +225,7 @@ const AggregateAnalysisPage: React.FC = () => {
                         ticks: {
                             color: textColor,
                             callback: function(value) {
-                                return value + ' W';
+                                return (Number(value) / 1000).toFixed(2) + ' kW';
                             },
                             font: {
                                 family: "'Inter', sans-serif"
@@ -233,7 +233,7 @@ const AggregateAnalysisPage: React.FC = () => {
                         },
                         title: {
                             display: true,
-                            text: 'Obciążenie chłodnicze [W]',
+                            text: 'Obciążenie chłodnicze [kW]',
                             color: textColor,
                             font: {
                                 family: "'Inter', sans-serif",
@@ -422,7 +422,7 @@ const AggregateAnalysisPage: React.FC = () => {
                         <Card className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-100 dark:border-blue-800/30">
                             <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-0.5">Całkowite obciążenie (Peak)</h3>
                             <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                                {Math.round(aggregateData.aggregatePeak)} <span className="text-lg font-normal">W</span>
+                                {(aggregateData.aggregatePeak / 1000).toFixed(2)} <span className="text-lg font-normal">kW</span>
                             </div>
                             <p className="text-xs text-slate-500 mt-0.5">
                                 Godzina {String(localPeakHour).padStart(2, '0')}:00
@@ -432,7 +432,7 @@ const AggregateAnalysisPage: React.FC = () => {
                         <Card className="p-3">
                             <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-0.5">Suma szczytów (niejednoczesna)</h3>
                             <div className="text-3xl font-bold text-slate-700 dark:text-slate-300">
-                                {Math.round(aggregateData.sumOfPeaks)} <span className="text-lg font-normal">W</span>
+                                {(aggregateData.sumOfPeaks / 1000).toFixed(2)} <span className="text-lg font-normal">kW</span>
                             </div>
                             <p className="text-xs text-slate-500 mt-0.5">
                                 Suma maksymalnych obciążeń wyznaczonych indywidualnie dla każdego pomieszczenia
@@ -481,7 +481,7 @@ const AggregateAnalysisPage: React.FC = () => {
                                                 {room.name}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">
-                                                {Math.round(room.peak)} W
+                                                {(room.peak / 1000).toFixed(2)} kW
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">
                                                 {aggregateData.sumOfPeaks > 0 

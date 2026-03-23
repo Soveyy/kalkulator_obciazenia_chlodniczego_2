@@ -118,8 +118,8 @@ const WindowGainsChart: React.FC = () => {
                 animation: { duration: 500 },
                 scales: {
                     x: { title: { display: true, text: `Godzina (czas lokalny)`, color: textColor }, ticks: { color: textColor }, grid: { color: gridColor } },
-                    yLoad: { position: 'left', title: { display: true, text: 'Obciążenie chłodnicze od okien (W)', color: textColor }, ticks: { color: textColor }, grid: { color: gridColor }, beginAtZero: true },
-                    yRadiation: { position: 'right', title: { display: showIncidentRadiation, text: 'Padające prom. słoneczne (W)', color: textColor }, ticks: { color: textColor }, grid: { drawOnChartArea: false }, display: showIncidentRadiation, beginAtZero: true }
+                    yLoad: { position: 'left', title: { display: true, text: 'Obciążenie chłodnicze od okien (kW)', color: textColor }, ticks: { color: textColor, callback: function(value) { return (Number(value) / 1000).toFixed(2); } }, grid: { color: gridColor }, beginAtZero: true },
+                    yRadiation: { position: 'right', title: { display: showIncidentRadiation, text: 'Padające prom. słoneczne (kW)', color: textColor }, ticks: { color: textColor, callback: function(value) { return (Number(value) / 1000).toFixed(2); } }, grid: { drawOnChartArea: false }, display: showIncidentRadiation, beginAtZero: true }
                 },
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
@@ -134,7 +134,7 @@ const WindowGainsChart: React.FC = () => {
                                     label += ': ';
                                 }
                                 if (context.parsed.y !== null) {
-                                    label += Math.round(context.parsed.y) + ' W';
+                                    label += (context.parsed.y / 1000).toFixed(2) + ' kW';
                                 }
                                 return label;
                             }

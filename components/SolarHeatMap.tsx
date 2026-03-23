@@ -72,7 +72,7 @@ const SolarHeatMap: React.FC = () => {
                         {dataType === 'total' ? <ZapIcon className="w-5 h-5 text-blue-500" /> : <SunIcon className="w-5 h-5 text-orange-500" />}
                         Mapa Ciepła: {getTitle()}
                     </h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Rozkład godzinowy w skali całego roku [W]</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Rozkład godzinowy w skali całego roku [kW]</p>
                 </div>
 
                 <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
@@ -151,7 +151,7 @@ const SolarHeatMap: React.FC = () => {
                                     {MONTH_NAMES[hoveredCell.month]} • {hoveredCell.hour}:00
                                 </span>
                                 <span className="text-lg font-bold">
-                                    {Math.round(hoveredCell.value).toLocaleString()} W
+                                    {(hoveredCell.value / 1000).toFixed(2)} kW
                                 </span>
                             </div>
                             <div className="w-px h-8 bg-white/20" />
@@ -167,12 +167,12 @@ const SolarHeatMap: React.FC = () => {
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1.5">
                         <div className="w-3 h-3 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700" />
-                        <span className="text-[10px] text-slate-500">0 W</span>
+                        <span className="text-[10px] text-slate-500">0 kW</span>
                     </div>
                     <div className="h-2 w-32 rounded-full bg-gradient-to-r from-blue-500 via-yellow-400 to-red-500" />
                     <div className="flex items-center gap-1.5">
                         <div className="w-3 h-3 rounded-full bg-red-500" />
-                        <span className="text-[10px] text-slate-500">{Math.round(maxValue).toLocaleString()} W</span>
+                        <span className="text-[10px] text-slate-500">{(maxValue / 1000).toFixed(2)} kW</span>
                     </div>
                 </div>
 

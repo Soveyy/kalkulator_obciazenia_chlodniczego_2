@@ -206,7 +206,7 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
     doc.setFontSize(16);
     doc.setFont('Roboto', 'bold');
     doc.setTextColor(37, 99, 235); // blue-600
-    doc.text(`${Math.round(aggregateData.aggregatePeak)} W`, margin + 5, yPos + 18);
+    doc.text(`${(aggregateData.aggregatePeak / 1000).toFixed(2)} kW`, margin + 5, yPos + 18);
     
     // Box 2
     doc.setFillColor(241, 245, 249);
@@ -218,7 +218,7 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
     doc.setFontSize(16);
     doc.setFont('Roboto', 'bold');
     doc.setTextColor(51, 65, 85); // slate-700
-    doc.text(`${Math.round(aggregateData.sumOfPeaks)} W`, margin + boxWidth + 10, yPos + 18);
+    doc.text(`${(aggregateData.sumOfPeaks / 1000).toFixed(2)} kW`, margin + boxWidth + 10, yPos + 18);
 
     // Box 3
     doc.setFillColor(241, 245, 249);
@@ -290,7 +290,7 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
                 x: { ticks: { font: { size: 12, family: 'Arial, sans-serif' } } },
                 y: { 
                     beginAtZero: true,
-                    title: { display: true, text: 'Obciążenie [W]', font: { size: 14, weight: 'bold', family: 'Arial, sans-serif' } },
+                    title: { display: true, text: 'Obciążenie [kW]', font: { size: 14, weight: 'bold', family: 'Arial, sans-serif' } },
                     ticks: { font: { size: 12, family: 'Arial, sans-serif' } }
                 }
             }
@@ -310,7 +310,7 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
     
     const tableData = aggregateData.roomProfiles.map((room: any) => [
         room.name,
-        `${Math.round(room.peak)} W`,
+        `${(room.peak / 1000).toFixed(2)} kW`,
         `${aggregateData.sumOfPeaks > 0 ? ((room.peak / aggregateData.sumOfPeaks) * 100).toFixed(1) : 0}%`
     ]);
 
@@ -382,7 +382,7 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
         doc.setFontSize(16);
         doc.setFont('Roboto', 'bold');
         doc.setTextColor(37, 99, 235);
-        doc.text(`${Math.round(roomProfile.peak)} W`, margin + 5, yPos + 18);
+        doc.text(`${(roomProfile.peak / 1000).toFixed(2)} kW`, margin + 5, yPos + 18);
 
         doc.setFillColor(254, 242, 242); // red-50
         doc.roundedRect(margin + boxWidth2 + 5, yPos, boxWidth2, boxHeight, 2, 2, 'F');
@@ -393,7 +393,7 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
         doc.setFontSize(16);
         doc.setFont('Roboto', 'bold');
         doc.setTextColor(220, 38, 38); // red-600
-        doc.text(`${Math.round(worstMonthPeak)} W`, margin + boxWidth2 + 10, yPos + 18);
+        doc.text(`${(worstMonthPeak / 1000).toFixed(2)} kW`, margin + boxWidth2 + 10, yPos + 18);
 
         yPos += boxHeight + 15;
 
@@ -498,7 +498,7 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
                         y: { 
                             stacked: true,
                             beginAtZero: true,
-                            title: { display: true, text: 'Moc [W]', font: { size: 18, family: 'Arial, sans-serif' } },
+                            title: { display: true, text: 'Moc [kW]', font: { size: 18, family: 'Arial, sans-serif' } },
                             ticks: { font: { size: 16, family: 'Arial, sans-serif' } }
                         },
                         x: {

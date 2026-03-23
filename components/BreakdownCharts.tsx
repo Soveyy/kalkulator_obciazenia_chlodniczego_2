@@ -184,7 +184,7 @@ const BreakdownCharts: React.FC = () => {
                                     />
                                 ))}
                             </Pie>
-                            <Tooltip formatter={(value: number) => `${value} W`} />
+                            <Tooltip formatter={(value: number) => `${(value / 1000).toFixed(2)} kW`} />
                             <Legend 
                                 verticalAlign="bottom" 
                                 height={40} 
@@ -226,7 +226,7 @@ const BreakdownCharts: React.FC = () => {
                                     />
                                 ))}
                             </Pie>
-                            <Tooltip formatter={(value: number) => `${value} W`} />
+                            <Tooltip formatter={(value: number) => `${(value / 1000).toFixed(2)} kW`} />
                             <Legend 
                                 verticalAlign="bottom" 
                                 height={40} 

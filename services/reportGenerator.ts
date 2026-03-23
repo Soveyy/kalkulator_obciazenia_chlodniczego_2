@@ -304,7 +304,7 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
     doc.setFontSize(30);
     doc.setFont('Roboto', 'bold');
     doc.setTextColor(220, 38, 38); // Strong Red
-    doc.text(`${maxTotalCS.toFixed(0)} W`, pageWidth / 2, yPos + 22, { align: 'center' });
+    doc.text(`${(maxTotalCS / 1000).toFixed(2)} kW`, pageWidth / 2, yPos + 22, { align: 'center' });
     
     doc.setFontSize(10);
     doc.setFont('Roboto', 'normal');
@@ -367,23 +367,23 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
     yPos += 6;
 
     const sensibleBody = [
-        ['Słoneczne (okna)', `${solarLoadPeak.toFixed(0)} W`],
-        ['Przewodzenie (okna)', `${conductionLoadPeak.toFixed(0)} W`],
-        ['Wewnętrzne (ludzie, sprzęt)', `${internalSensibleLoadPeak.toFixed(0)} W`],
-        ['Wentylacja', `${ventilationSensibleLoadPeak.toFixed(0)} W`],
-        ['Infiltracja', `${infiltrationSensibleLoadPeak.toFixed(0)} W`],
+        ['Słoneczne (okna)', `${(solarLoadPeak / 1000).toFixed(2)} kW`],
+        ['Przewodzenie (okna)', `${(conductionLoadPeak / 1000).toFixed(2)} kW`],
+        ['Wewnętrzne (ludzie, sprzęt)', `${(internalSensibleLoadPeak / 1000).toFixed(2)} kW`],
+        ['Wentylacja', `${(ventilationSensibleLoadPeak / 1000).toFixed(2)} kW`],
+        ['Infiltracja', `${(infiltrationSensibleLoadPeak / 1000).toFixed(2)} kW`],
     ];
 
     const latentBody = [
-        ['Wewnętrzne (ludzie)', `${internalLatentAtPeak.toFixed(0)} W`],
-        ['Wentylacja', `${ventilationLatentAtPeak.toFixed(0)} W`],
-        ['Infiltracja', `${infiltrationLatentAtPeak.toFixed(0)} W`],
+        ['Wewnętrzne (ludzie)', `${(internalLatentAtPeak / 1000).toFixed(2)} kW`],
+        ['Wentylacja', `${(ventilationLatentAtPeak / 1000).toFixed(2)} kW`],
+        ['Infiltracja', `${(infiltrationLatentAtPeak / 1000).toFixed(2)} kW`],
     ];
 
     // Sensible Table
     autoTable(doc, {
         startY: yPos,
-        head: [[`Zyski Jawne (Razem: ${sensibleAtPeak.toFixed(0)} W)`, '']],
+        head: [[`Zyski Jawne (Razem: ${(sensibleAtPeak / 1000).toFixed(2)} kW)`, '']],
         body: sensibleBody,
         theme: 'plain',
         headStyles: { fillColor: [255, 237, 213], textColor: [194, 65, 12], fontStyle: 'bold', font: 'Roboto' },
@@ -398,7 +398,7 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
     // Latent Table
     autoTable(doc, {
         startY: yPos,
-        head: [[`Zyski Utajone (Razem: ${latentAtPeak.toFixed(0)} W)`, '']],
+        head: [[`Zyski Utajone (Razem: ${(latentAtPeak / 1000).toFixed(2)} kW)`, '']],
         body: latentBody,
         theme: 'plain',
         headStyles: { fillColor: [219, 234, 254], textColor: [30, 64, 175], fontStyle: 'bold', font: 'Roboto' },
@@ -641,8 +641,8 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
             labels: hours,
             datasets: [
                 { 
-                    label: 'Obciążenie Chłodnicze [W]', 
-                    data: reorderDataForLocalTime(finalGains.clearSky.total, offset), 
+                    label: 'Obciążenie Chłodnicze [kW]', 
+                    data: reorderDataForLocalTime(finalGains.clearSky.total, offset).map(v => v / 1000), 
                     borderColor: '#ef4444', 
                     backgroundColor: 'rgba(239, 68, 68, 0.1)', 
                     fill: true, 
@@ -667,7 +667,7 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
             scales: {
                 y: { 
                     beginAtZero: true,
-                    title: { display: true, text: 'Moc [W]', font: { size: 18, family: 'Arial' } },
+                    title: { display: true, text: 'Moc [kW]', font: { size: 18, family: 'Arial' } },
                     ticks: { font: { size: 16, family: 'Arial' } }
                 },
                 yTemp: { 
@@ -696,12 +696,12 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
         data: {
             labels: hours,
             datasets: [
-                { label: 'Słoneczne', data: reorderDataForLocalTime(loadComponents.solar, offset), backgroundColor: '#f59e0b', stack: 'a' },
-                { label: 'Przewodzenie', data: reorderDataForLocalTime(loadComponents.conduction, offset), backgroundColor: '#f97316', stack: 'a' },
-                { label: 'Wewn. Jawne', data: reorderDataForLocalTime(loadComponents.internalSensible, offset), backgroundColor: '#ef4444', stack: 'a' },
-                { label: 'Wentylacja', data: reorderDataForLocalTime(loadComponents.ventilationSensible, offset), backgroundColor: '#a855f7', stack: 'a' },
-                { label: 'Infiltracja', data: reorderDataForLocalTime(loadComponents.infiltrationSensible, offset), backgroundColor: '#10b981', stack: 'a' },
-                { label: 'Utajone', data: reorderDataForLocalTime(finalGains.clearSky.latent, offset), backgroundColor: '#3b82f6', stack: 'a' }
+                { label: 'Słoneczne', data: reorderDataForLocalTime(loadComponents.solar, offset).map(v => v / 1000), backgroundColor: '#f59e0b', stack: 'a' },
+                { label: 'Przewodzenie', data: reorderDataForLocalTime(loadComponents.conduction, offset).map(v => v / 1000), backgroundColor: '#f97316', stack: 'a' },
+                { label: 'Wewn. Jawne', data: reorderDataForLocalTime(loadComponents.internalSensible, offset).map(v => v / 1000), backgroundColor: '#ef4444', stack: 'a' },
+                { label: 'Wentylacja', data: reorderDataForLocalTime(loadComponents.ventilationSensible, offset).map(v => v / 1000), backgroundColor: '#a855f7', stack: 'a' },
+                { label: 'Infiltracja', data: reorderDataForLocalTime(loadComponents.infiltrationSensible, offset).map(v => v / 1000), backgroundColor: '#10b981', stack: 'a' },
+                { label: 'Utajone', data: reorderDataForLocalTime(finalGains.clearSky.latent, offset).map(v => v / 1000), backgroundColor: '#3b82f6', stack: 'a' }
             ]
         },
         options: {
@@ -710,7 +710,7 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
                 y: { 
                     stacked: true,
                     beginAtZero: true,
-                    title: { display: true, text: 'Moc [W]', font: { size: 18, family: 'Arial' } },
+                    title: { display: true, text: 'Moc [kW]', font: { size: 18, family: 'Arial' } },
                     ticks: { font: { size: 16, family: 'Arial' } }
                 },
                 x: {

@@ -180,8 +180,8 @@ const RtsChart: React.FC = () => {
                         grid: { color: gridColor } 
                     },
                     y: { 
-                        title: { display: true, text: 'Moc (W)', color: textColor }, 
-                        ticks: { color: textColor }, 
+                        title: { display: true, text: 'Moc (kW)', color: textColor }, 
+                        ticks: { color: textColor, callback: function(value) { return (Number(value) / 1000).toFixed(2); } }, 
                         grid: { color: gridColor },
                         beginAtZero: true
                     }
@@ -204,7 +204,7 @@ const RtsChart: React.FC = () => {
                     tooltip: {
                         callbacks: {
                             label: (context: any) => {
-                                return `${context.dataset.label}: ${Math.round(context.parsed.y)} W`;
+                                return `${context.dataset.label}: ${(context.parsed.y / 1000).toFixed(2)} kW`;
                             },
                             footer: (tooltipItems: any[]) => {
                                 if (tooltipItems.length >= 2) {
@@ -212,9 +212,9 @@ const RtsChart: React.FC = () => {
                                     const load = tooltipItems[1].parsed.y;
                                     const diff = gain - load;
                                     if (diff > 0) {
-                                        return `Magazynowanie energii: ${Math.round(diff)} W`;
+                                        return `Magazynowanie energii: ${(diff / 1000).toFixed(2)} kW`;
                                     } else {
-                                        return `Oddawanie energii: ${Math.round(Math.abs(diff))} W`;
+                                        return `Oddawanie energii: ${(Math.abs(diff) / 1000).toFixed(2)} kW`;
                                     }
                                 }
                                 return '';

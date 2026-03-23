@@ -53,7 +53,7 @@ const renderSankeyNode = (props: any) => {
                 dominantBaseline="middle"
                 className="dark:fill-slate-400"
             >
-                {Math.round(payload.value)} W
+                {(payload.value / 1000).toFixed(2)} kW
             </text>
 
             {/* Row 3: Percentage (only for source nodes) */}
@@ -167,7 +167,7 @@ const SankeyChart: React.FC = () => {
                         node={(props) => renderSankeyNode({ ...props, totalValue: totalInputLoad })}
                     >
                         <Tooltip 
-                            formatter={(value: number) => `${value} W`}
+                            formatter={(value: number) => `${(value / 1000).toFixed(2)} kW`}
                             contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                         />
                     </Sankey>
