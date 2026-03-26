@@ -11,6 +11,7 @@ const initialRoomState: RoomState = {
     id: 'room-1',
     name: 'Pomieszczenie 1',
     windows: [],
+    walls: [],
     input: { tInternal: '24', rhInternal: '50', roomArea: '' },
     accumulation: {
         include: true,
@@ -191,7 +192,32 @@ function calculatorReducer(state: State, action: Action): State {
                 return { ...room, windows: [...room.windows, newWindow] };
             });
         }
-         case 'UPDATE_ALL_SHADING': {
+         case 'ADD_WALL':
+            return updateActiveRoom(state, room => ({
+                ...room,
+                walls: [...room.walls, { ...action.payload, id: Date.now() }]
+            }));
+        case 'UPDATE_WALL':
+            return updateActiveRoom(state, room => ({
+                ...room,
+                walls: room.walls.map(w => w.id === action.payload.id ? action.payload : w)
+            }));
+        case 'DELETE_WALL':
+            return updateActiveRoom(state, room => ({
+                ...room,
+                walls: room.walls.filter(w => w.id !== action.payload)
+            }));
+        case 'DUPLICATE_WALL': {
+            return updateActiveRoom(state, room => {
+                const wallToDuplicate = room.walls.find(w => w.id === action.payload);
+                if (!wallToDuplicate) return room;
+                return {
+                    ...room,
+                    walls: [...room.walls, { ...wallToDuplicate, id: Date.now() }]
+                };
+            });
+        }
+        case 'UPDATE_ALL_SHADING': {
             return updateActiveRoom(state, room => ({
                 ...room,
                 windows: room.windows.map(win => {
@@ -276,6 +302,7 @@ function calculatorReducer(state: State, action: Action): State {
 
                 const { monthlyPeaks, yearlyMatrix, solarMatrix, solarInstantMatrix } = calculateWorstMonth(
                     room.windows,
+                    room.walls,
                     state.allData!,
                     room.input,
                     room.accumulation,
@@ -302,8 +329,8 @@ function calculatorReducer(state: State, action: Action): State {
             if (!state.allData || !activeRoom.results) return state;
             const newMonth = action.payload;
             const tExtProfile = generateTemperatureProfile(newMonth, state.allData);
-            const resultsWithShading = calculateGainsForMonth(activeRoom.windows, activeRoom.input, tExtProfile, newMonth, state.allData, activeRoom.accumulation, activeRoom.internalGains, false);
-            const resultsWithoutShading = calculateGainsForMonth(activeRoom.windows, activeRoom.input, tExtProfile, newMonth, state.allData, activeRoom.accumulation, activeRoom.internalGains, true);
+            const resultsWithShading = calculateGainsForMonth(activeRoom.windows, activeRoom.walls, activeRoom.input, tExtProfile, newMonth, state.allData, activeRoom.accumulation, activeRoom.internalGains, false);
+            const resultsWithoutShading = calculateGainsForMonth(activeRoom.windows, activeRoom.walls, activeRoom.input, tExtProfile, newMonth, state.allData, activeRoom.accumulation, activeRoom.internalGains, true);
 
             const newResults = { withShading: resultsWithShading, withoutShading: resultsWithoutShading };
             
@@ -323,8 +350,8 @@ function calculatorReducer(state: State, action: Action): State {
 
             const newRooms = state.rooms.map(room => {
                 const tExtProfile = generateTemperatureProfile(newMonth, state.allData!);
-                const resultsWithShading = calculateGainsForMonth(room.windows, room.input, tExtProfile, newMonth, state.allData!, room.accumulation, room.internalGains, false);
-                const resultsWithoutShading = calculateGainsForMonth(room.windows, room.input, tExtProfile, newMonth, state.allData!, room.accumulation, room.internalGains, true);
+                const resultsWithShading = calculateGainsForMonth(room.windows, room.walls, room.input, tExtProfile, newMonth, state.allData!, room.accumulation, room.internalGains, false);
+                const resultsWithoutShading = calculateGainsForMonth(room.windows, room.walls, room.input, tExtProfile, newMonth, state.allData!, room.accumulation, room.internalGains, true);
 
                 const newResults = { withShading: resultsWithShading, withoutShading: resultsWithoutShading };
 
@@ -362,6 +389,7 @@ function calculatorReducer(state: State, action: Action): State {
                     id: 'room-1',
                     name: 'Pomieszczenie 1',
                     windows: payload.windows || [],
+                    walls: payload.walls || [],
                     input: {
                         tInternal: payload.input?.tInternal || '24',
                         rhInternal: payload.input?.rhInternal || '50',
@@ -401,6 +429,22 @@ function calculatorReducer(state: State, action: Action): State {
                     solarInstantMatrix: undefined,
                 };
             }
+            
+            if (payload.rooms) {
+                const migratedRooms = payload.rooms.map((room: any) => ({
+                    ...initialRoomState,
+                    ...room,
+                    windows: room.windows || [],
+                    walls: room.walls || [],
+                    internalGains: {
+                        ...initialRoomState.internalGains,
+                        ...room.internalGains,
+                        equipment: room.internalGains?.equipment || []
+                    }
+                }));
+                return { ...state, ...payload, rooms: migratedRooms };
+            }
+            
             return { ...state, ...payload };
         }
         case 'SET_ACTIVE_TAB':
@@ -565,27 +609,29 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             activeRoom.input.tInternal !== '' && 
             activeRoom.input.rhInternal !== '';
             
-        const internal = activeRoom.internalGains.people.enabled || activeRoom.internalGains.lighting.enabled || activeRoom.internalGains.equipment.length > 0;
-        const windows = activeRoom.windows.length > 0;
+        const internal = activeRoom.internalGains.people.enabled || activeRoom.internalGains.lighting.enabled || (activeRoom.internalGains.equipment?.length || 0) > 0;
+        const windows = (activeRoom.windows?.length || 0) > 0;
         const ventilation = activeRoom.internalGains.ventilation.type !== 'none';
+        const walls = (activeRoom.walls?.length || 0) > 0;
         
-        const sections = [base, internal, windows, ventilation];
+        const sections = [base, internal, windows, ventilation, walls];
         const completed = sections.filter(Boolean).length;
         const total = Math.round((completed / sections.length) * 100);
 
-        return { base, internal, windows, ventilation, total };
-    }, [state.projectName, activeRoom.input, activeRoom.internalGains, activeRoom.windows]);
+        return { base, internal, windows, ventilation, walls, total };
+    }, [state.projectName, activeRoom.input, activeRoom.internalGains, activeRoom.windows, activeRoom.walls]);
     
     const performCalculation = useCallback((month: string, customMessage?: string) => {
         if (!state.allData) return;
 
         const tExtProfile = generateTemperatureProfile(month, state.allData);
             
-        const resultsWithShading = calculateGainsForMonth(activeRoom.windows, activeRoom.input, tExtProfile, month, state.allData, activeRoom.accumulation, activeRoom.internalGains, false);
-        const resultsWithoutShading = calculateGainsForMonth(activeRoom.windows, activeRoom.input, tExtProfile, month, state.allData, activeRoom.accumulation, activeRoom.internalGains, true);
+        const resultsWithShading = calculateGainsForMonth(activeRoom.windows || [], activeRoom.walls || [], activeRoom.input, tExtProfile, month, state.allData, activeRoom.accumulation, activeRoom.internalGains, false);
+        const resultsWithoutShading = calculateGainsForMonth(activeRoom.windows || [], activeRoom.walls || [], activeRoom.input, tExtProfile, month, state.allData, activeRoom.accumulation, activeRoom.internalGains, true);
 
         const { monthlyPeaks, yearlyMatrix, solarMatrix, solarInstantMatrix } = calculateWorstMonth(
-            activeRoom.windows, 
+            activeRoom.windows || [], 
+            activeRoom.walls || [],
             state.allData, 
             activeRoom.input, 
             activeRoom.accumulation, 
@@ -605,7 +651,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             solarMatrix,
             solarInstantMatrix
         }});
-    }, [state.allData, activeRoom.windows, activeRoom.input, state.projectName, activeRoom.accumulation, activeRoom.internalGains, activeRoom.resultMessage, state.isShadingViewActive]);
+    }, [state.allData, activeRoom.windows, activeRoom.walls, activeRoom.input, state.projectName, activeRoom.accumulation, activeRoom.internalGains, activeRoom.resultMessage, state.isShadingViewActive]);
 
 
     const handleCalculate = useCallback(async () => {
@@ -618,7 +664,8 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             // First pass: calculate yearly matrices for all rooms to find the building's worst month
             const roomCalculations = state.rooms.map(room => {
                 return calculateWorstMonth(
-                    room.windows, 
+                    room.windows || [], 
+                    room.walls || [],
                     state.allData!, 
                     room.input, 
                     room.accumulation, 
@@ -654,8 +701,8 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             const newRooms = state.rooms.map((room, index) => {
                 const calc = roomCalculations[index];
                 const tExtProfile = generateTemperatureProfile(buildingWorstMonth, state.allData!);
-                const resultsWithShading = calculateGainsForMonth(room.windows, room.input, tExtProfile, buildingWorstMonth, state.allData!, room.accumulation, room.internalGains, false);
-                const resultsWithoutShading = calculateGainsForMonth(room.windows, room.input, tExtProfile, buildingWorstMonth, state.allData!, room.accumulation, room.internalGains, true);
+                const resultsWithShading = calculateGainsForMonth(room.windows || [], room.walls || [], room.input, tExtProfile, buildingWorstMonth, state.allData!, room.accumulation, room.internalGains, false);
+                const resultsWithoutShading = calculateGainsForMonth(room.windows || [], room.walls || [], room.input, tExtProfile, buildingWorstMonth, state.allData!, room.accumulation, room.internalGains, true);
 
                 const newResults = { withShading: resultsWithShading, withoutShading: resultsWithoutShading };
 
@@ -691,6 +738,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                 // Find the worst month based on current settings
                 const { worstMonth, monthlyPeaks } = calculateWorstMonth(
                     activeRoom.windows, 
+                    activeRoom.walls,
                     state.allData!, 
                     activeRoom.input, 
                     activeRoom.accumulation, 
@@ -707,7 +755,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             }, 500);
             return () => clearTimeout(handler);
         }
-    }, [activeRoom.windows, activeRoom.input, state.projectName, activeRoom.accumulation, activeRoom.internalGains, initialCalculationDone, performCalculation, state.allData, activeRoom.currentMonth, state.isShadingViewActive]);
+    }, [activeRoom.windows, activeRoom.walls, activeRoom.input, state.projectName, activeRoom.accumulation, activeRoom.internalGains, initialCalculationDone, performCalculation, state.allData, activeRoom.currentMonth, state.isShadingViewActive]);
 
     const handleGenerateReport = async () => {
         if (!activeRoom.activeResults) {
@@ -821,7 +869,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                 activeRoomId: initialState.activeRoomId,
             }});
             dispatch({ type: 'ADD_TOAST', payload: { message: 'Ustawienia zostały zresetowane.', type: 'info' } });
-        } else if (['SET_INPUT', 'SET_ACCUMULATION', 'SET_INTERNAL_GAINS', 'ADD_WINDOW', 'UPDATE_WINDOW', 'DELETE_WINDOW', 'DUPLICATE_WINDOW', 'UPDATE_ALL_SHADING', 'ADD_EQUIPMENT_ITEM', 'DELETE_EQUIPMENT_ITEM', 'SET_VENTILATION_GAINS'].includes(action.type)) {
+        } else if (['SET_INPUT', 'SET_ACCUMULATION', 'SET_INTERNAL_GAINS', 'ADD_WINDOW', 'UPDATE_WINDOW', 'DELETE_WINDOW', 'DUPLICATE_WINDOW', 'ADD_WALL', 'UPDATE_WALL', 'DELETE_WALL', 'DUPLICATE_WALL', 'UPDATE_ALL_SHADING', 'ADD_EQUIPMENT_ITEM', 'DELETE_EQUIPMENT_ITEM', 'SET_VENTILATION_GAINS'].includes(action.type)) {
              if (initialCalculationDone) {
                  dispatch(action);
              } else {
@@ -835,7 +883,8 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
 
     const legacyState = {
         ...state,
-        windows: activeRoom.windows,
+        windows: activeRoom.windows || [],
+        walls: activeRoom.walls || [],
         input: { ...activeRoom.input, projectName: state.projectName },
         accumulation: activeRoom.accumulation,
         internalGains: activeRoom.internalGains,

@@ -9,7 +9,7 @@ const Header: React.FC = () => {
     return (
         <header className="mb-6">
             <h1 className="text-xl font-bold text-slate-800 dark:text-white text-center mb-4 lg:hidden">
-                Kalkulator obciążenia chłodniczego <span className="text-xs font-normal opacity-50">v0.51</span>
+                Kalkulator obciążenia chłodniczego <span className="text-xs font-normal opacity-50">v0.52</span>
             </h1>
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -26,7 +26,7 @@ const Header: React.FC = () => {
                             Kalkulator obciążenia chłodniczego
                         </h1>
                         <span className="hidden lg:block text-xs font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
-                            v0.51
+                            v0.52
                         </span>
                     </div>
                     <Tooltip text="Pokaż metodologię" position="bottom">

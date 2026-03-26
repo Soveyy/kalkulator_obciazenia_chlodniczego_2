@@ -396,6 +396,7 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
             if (state.allData) {
                 const calc = calculateWorstMonth(
                     roomState.windows,
+                    roomState.walls,
                     state.allData,
                     roomState.input,
                     roomState.accumulation,

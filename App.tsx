@@ -7,11 +7,13 @@ import Tabs from './components/ui/Tabs';
 import RoomTabs from './components/ui/RoomTabs';
 import InternalGainsPage from './components/pages/InternalGainsPage';
 import WindowsPage from './components/pages/WindowsPage';
+import WallsPage from './components/pages/WallsPage';
 import VentilationPage from './components/pages/VentilationPage';
 import SummaryPage from './components/pages/SummaryPage';
 import RtsAnalysisPage from './components/pages/RtsAnalysisPage';
 import MethodologyModal from './components/modals/MethodologyModal';
 import WindowEditModal from './components/modals/WindowEditModal';
+import WallEditModal from './components/modals/WallEditModal';
 import BulkShadingModal from './components/modals/BulkShadingModal';
 import RtsVisualizerModal from './components/modals/RtsVisualizerModal';
 import CompassHelper from './components/CompassHelper';
@@ -48,6 +50,8 @@ const AppContent: React.FC = () => {
           return <InternalGainsPage key="internal" />;
         case 'windows':
           return <WindowsPage key="windows" />;
+        case 'walls':
+          return <WallsPage key="walls" />;
         case 'ventilation':
           return <VentilationPage key="ventilation" />;
         case 'summary':
@@ -134,6 +138,7 @@ const App: React.FC = () => {
       <AppContent />
       <MethodologyModal />
       <WindowEditModal />
+      <WallEditModal />
       <BulkShadingModal />
       <RtsVisualizerModal />
       <ProjectListModal />

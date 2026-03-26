@@ -104,7 +104,7 @@ async function createTempChart(config: any, width: number, height: number): Prom
 }
 
 export const generatePdfReport = async (state: any, activeRoom: any) => {
-    const { input, activeResults, currentMonth, windows, internalGains, accumulation } = activeRoom;
+    const { input, activeResults, currentMonth, windows, walls, internalGains, accumulation } = activeRoom;
     const projectName = state.projectName;
 
     if (!activeResults) return;
@@ -368,7 +368,7 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
 
     const sensibleBody = [
         ['Słoneczne (okna)', `${(solarLoadPeak / 1000).toFixed(2)} kW`],
-        ['Przewodzenie (okna)', `${(conductionLoadPeak / 1000).toFixed(2)} kW`],
+        ['Przewodzenie (okna i ściany)', `${(conductionLoadPeak / 1000).toFixed(2)} kW`],
         ['Wewnętrzne (ludzie, sprzęt)', `${(internalSensibleLoadPeak / 1000).toFixed(2)} kW`],
         ['Wentylacja', `${(ventilationSensibleLoadPeak / 1000).toFixed(2)} kW`],
         ['Infiltracja', `${(infiltrationSensibleLoadPeak / 1000).toFixed(2)} kW`],
@@ -463,10 +463,46 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
         yPos += 5;
     }
 
+    // Tabela 1.5: Ściany
+    doc.setFontSize(10);
+    doc.setFont('Roboto', 'bold');
+    doc.setTextColor(0);
+    doc.text('3.2 Ściany i przegrody nieprzezroczyste', margin, yPos);
+    yPos += 6;
+
+    const WALL_TYPES: Record<string, string> = {
+        'sciana_ocieplona': 'Ściana ocieplona',
+        'sciana_nieocieplona': 'Ściana nieocieplona',
+        'stropodach_ocieplony': 'Stropodach ocieplony'
+    };
+
+    const wallsBody = walls && walls.length > 0 ? walls.map((w: any) => [
+        WALL_TYPES[w.type] || w.type,
+        w.type === 'stropodach_ocieplony' ? '-' : w.direction,
+        w.area.toFixed(2),
+        w.u.toFixed(2)
+    ]) : [];
+
+    if (wallsBody.length === 0) {
+        wallsBody.push(['Brak ścian', '-', '-', '-']);
+    }
+
+    autoTable(doc, {
+        startY: yPos,
+        head: [['Typ przegrody', 'Kierunek', 'Powierzchnia [m²]', 'Wsp. U [W/m²K]']],
+        body: wallsBody,
+        theme: 'grid',
+        headStyles: { fillColor: [241, 245, 249], textColor: 50, fontStyle: 'bold', lineColor: 200, font: 'Roboto' },
+        bodyStyles: { textColor: 50, font: 'Roboto' },
+        styles: { fontSize: 9, cellPadding: 3, font: 'Roboto' },
+        margin: { left: margin, right: margin }
+    });
+    yPos = (doc as any).lastAutoTable.finalY + 10;
+
     // Tabela 2: Zyski wewnętrzne
     doc.setFont('Roboto', 'bold');
     doc.setTextColor(0);
-    doc.text('3.2 Zyski wewnętrzne', margin, yPos);
+    doc.text('3.3 Zyski wewnętrzne', margin, yPos);
     yPos += 6;
 
     const ACTIVITY_LEVELS: Record<string, string> = {
@@ -518,7 +554,7 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
     // Tabela 3: Wentylacja i Infiltracja
     doc.setFont('Roboto', 'bold');
     doc.setTextColor(0);
-    doc.text('3.3 Wentylacja i Infiltracja', margin, yPos);
+    doc.text('3.4 Wentylacja i Infiltracja', margin, yPos);
     yPos += 6;
 
     const VENT_TYPES: Record<string, string> = {

@@ -1,6 +1,6 @@
 
-import { Window, AccumulationSettings, InternalGains, AllData, InputState, CalculationResults, Shading, CalculationResultData } from '../types';
-import { PEOPLE_ACTIVITY_LEVELS, LIGHTING_TYPES, VENTILATION_EXCHANGER_TYPES, EQUIPMENT_PRESETS } from '../constants';
+import { Window, Wall, AccumulationSettings, InternalGains, AllData, InputState, CalculationResults, Shading, CalculationResultData } from '../types';
+import { PEOPLE_ACTIVITY_LEVELS, LIGHTING_TYPES, VENTILATION_EXCHANGER_TYPES, EQUIPMENT_PRESETS, WALL_MATERIALS } from '../constants';
 import { SHGC_DIFFUSE_MULTIPLIERS, SHGC_DIRECT_CORRECTION_CURVES } from '../src/config/shgcConfig';
 
 
@@ -157,6 +157,7 @@ export function generateTemperatureProfile(month: string, allData: AllData): num
 
 export function calculateWorstMonth(
     windows: Window[], 
+    walls: Wall[],
     allData: AllData,
     input: Omit<InputState, 'projectName'>,
     accumulation: AccumulationSettings,
@@ -179,6 +180,7 @@ export function calculateWorstMonth(
         // Calculate gains for this month
         const results = calculateGainsForMonth(
             windows,
+            walls,
             input,
             tExtProfile,
             monthStr,
@@ -215,6 +217,7 @@ export function calculateWorstMonth(
 
 export function calculateGainsForMonth(
     windows: Window[],
+    walls: Wall[],
     input: Omit<InputState, 'projectName'>,
     tExtProfile: number[],
     month: string,
@@ -368,7 +371,7 @@ export function calculateGainsForMonth(
     };
 
     const incidentSolarPower = Array(24).fill(0);
-    if(windows.length > 0) {
+    if(windows && windows.length > 0) {
         windows.forEach(win => {
             const area = win.width * win.height;
             const tiltStr = (win.tilt ?? 90).toString();
@@ -443,30 +446,32 @@ export function calculateGainsForMonth(
         }
     }
     
-    internalGains.equipment.forEach(item => {
-        const startHourUTC = (item.startHour - offset + 24) % 24;
-        const endHourUTC = (item.endHour - offset + 24) % 24;
-        const power = Number(item.power) || 0;
-        const quantity = Number(item.quantity) || 0;
-        
-        // Find if it matches a preset to get its radiant fraction
-        let radiantFraction = 0.4; // Default 40% radiant / 60% convective
-        const preset = Object.values(EQUIPMENT_PRESETS).find(p => p.label === item.name);
-        if (preset) {
-            radiantFraction = preset.radiantFraction;
-        }
-
-        for (let hour = 0; hour < 24; hour++) {
-            if (isHourActive(hour, startHourUTC, endHourUTC)) {
-                const rad = power * quantity * radiantFraction;
-                const conv = power * quantity * (1 - radiantFraction);
-                internalGainsSensibleRadiant[hour] += rad;
-                internalGainsSensibleConvective[hour] += conv;
-                equipmentSensibleRadiant[hour] += rad;
-                equipmentSensibleConvective[hour] += conv;
+    if (internalGains.equipment && internalGains.equipment.length > 0) {
+        internalGains.equipment.forEach(item => {
+            const startHourUTC = (item.startHour - offset + 24) % 24;
+            const endHourUTC = (item.endHour - offset + 24) % 24;
+            const power = Number(item.power) || 0;
+            const quantity = Number(item.quantity) || 0;
+            
+            // Find if it matches a preset to get its radiant fraction
+            let radiantFraction = 0.4; // Default 40% radiant / 60% convective
+            const preset = Object.values(EQUIPMENT_PRESETS).find(p => p.label === item.name);
+            if (preset) {
+                radiantFraction = preset.radiantFraction;
             }
-        }
-    });
+
+            for (let hour = 0; hour < 24; hour++) {
+                if (isHourActive(hour, startHourUTC, endHourUTC)) {
+                    const rad = power * quantity * radiantFraction;
+                    const conv = power * quantity * (1 - radiantFraction);
+                    internalGainsSensibleRadiant[hour] += rad;
+                    internalGainsSensibleConvective[hour] += conv;
+                    equipmentSensibleRadiant[hour] += rad;
+                    equipmentSensibleConvective[hour] += conv;
+                }
+            }
+        });
+    }
 
     const rtsFactorsSolar = getRtsFactors(accumulation, allData, true);
     const rtsFactorsNonSolar = getRtsFactors(accumulation, allData, false);
@@ -544,17 +549,68 @@ export function calculateGainsForMonth(
     const conductionLoadFromRadiant = accumulation.include ? applyRTS(conductionRadiantGains_NonSolarRTS, rtsFactorsNonSolar) : conductionRadiantGains_NonSolarRTS;
     const internalLoadFromRadiant = accumulation.include ? applyRTS(internalGainsSensibleRadiant, rtsFactorsNonSolar) : internalGainsSensibleRadiant;
 
+    const wallConvectiveGains = Array(24).fill(0);
+    const wallRadiantGains = Array(24).fill(0);
+    
+    if (walls && walls.length > 0) {
+        walls.forEach(wall => {
+            const area = wall.area;
+            const U = wall.u;
+            const alpha = WALL_MATERIALS[wall.material || 'brick_red']?.absorptance ?? 0.65;
+            const h_o = 17;
+            const epsilon = 0.9;
+            
+            const isRoof = wall.type === 'stropodach_ocieplony';
+            const delta_R = isRoof ? 63 : 0;
+            const direction = isRoof ? 'S' : wall.direction;
+            const tiltStr = isRoof ? '0' : '90';
+            
+            const nsrdbDirData = allData.nsrdb[month]?.[direction]?.[tiltStr];
+            const ctsCoeffs = allData.cts?.cts_coefficients?.[wall.type] || Array(24).fill(0);
+            
+            const t_e = Array(24).fill(0);
+            for (let h = 0; h < 24; h++) {
+                const I_t = nsrdbDirData?.Gcs?.[h] || 0;
+                const t_o = tExtProfile[h];
+                t_e[h] = t_o + (alpha * I_t) / h_o - (epsilon * delta_R) / h_o;
+            }
+            
+            const q_cond = Array(24).fill(0);
+            for (let n = 0; n < 24; n++) {
+                let sum = 0;
+                for (let j = 0; j < 24; j++) {
+                    const c_j = ctsCoeffs[j] || 0;
+                    const t_e_nj = t_e[(n - j + 24) % 24];
+                    sum += c_j * (t_e_nj - tInternal);
+                }
+                q_cond[n] = U * area * sum;
+                
+                // ASHRAE Table 14:
+                // Walls: 0.46 Radiative, 0.54 Convective
+                // Roofs: 0.60 Radiative, 0.40 Convective
+                const radiativeFraction = isRoof ? 0.60 : 0.46;
+                const convectiveFraction = isRoof ? 0.40 : 0.54;
+                
+                wallConvectiveGains[n] += q_cond[n] * convectiveFraction;
+                wallRadiantGains[n] += q_cond[n] * radiativeFraction;
+            }
+        });
+    }
+
+    const wallRadiantGains_RTS = accumulation.include ? applyRTS(wallRadiantGains, rtsFactorsNonSolar) : wallRadiantGains;
+    const wallsLoad = Array(24).fill(0).map((_, h) => wallConvectiveGains[h] + wallRadiantGains_RTS[h]);
+
     const rtsPeopleRadiant = accumulation.include ? applyRTS(peopleSensibleRadiant, rtsFactorsNonSolar) : peopleSensibleRadiant;
     const rtsLightingRadiant = accumulation.include ? applyRTS(lightingSensibleRadiant, rtsFactorsNonSolar) : lightingSensibleRadiant;
     const rtsEquipmentRadiant = accumulation.include ? applyRTS(equipmentSensibleRadiant, rtsFactorsNonSolar) : equipmentSensibleRadiant;
 
     const nonSolarRadiantTotal = Array(24).fill(0).map((_, h) => 
-        internalGainsSensibleRadiant[h] + conductionRadiantGains_NonSolarRTS[h] + solarRadiantGains_NonSolarRTS[h]
+        internalGainsSensibleRadiant[h] + conductionRadiantGains_NonSolarRTS[h] + solarRadiantGains_NonSolarRTS[h] + wallRadiantGains[h]
     );
     const nonSolarCoolingLoad = accumulation.include ? applyRTS(nonSolarRadiantTotal, rtsFactorsNonSolar) : nonSolarRadiantTotal;
 
     const totalConvectiveLoad = Array(24).fill(0).map((_, h) => 
-        internalGainsSensibleConvective[h] + solarConvectiveGains[h] + conductionGainsConvective[h] + ventilationLoadSensible[h] + infiltrationLoadSensible[h]
+        internalGainsSensibleConvective[h] + solarConvectiveGains[h] + conductionGainsConvective[h] + ventilationLoadSensible[h] + infiltrationLoadSensible[h] + wallConvectiveGains[h]
     );
     
     const sensibleLoad = Array(24).fill(0).map((_, h) => solarLoadFromSolarRTS[h] + nonSolarCoolingLoad[h] + totalConvectiveLoad[h]);
@@ -584,6 +640,7 @@ export function calculateGainsForMonth(
             latent: totalLatentLoad,
             total: sensibleLoad.map((s, h) => s + totalLatentLoad[h]),
             windows: windowsLoad,
+            walls: wallsLoad,
             people: peopleLoad,
             lighting: lightingLoad,
             equipment: equipmentLoad,
@@ -603,7 +660,7 @@ export function calculateGainsForMonth(
         }
     };
 
-    const loadComponents_conduction = Array(24).fill(0).map((_, h) => conductionGainsConvective[h] + conductionLoadFromRadiant[h]);
+    const loadComponents_conduction = Array(24).fill(0).map((_, h) => conductionGainsConvective[h] + conductionLoadFromRadiant[h] + wallsLoad[h]);
     const loadComponents_internalSensible = Array(24).fill(0).map((_, h) => internalGainsSensibleConvective[h] + internalLoadFromRadiant[h]);
     const loadComponents_solar = Array(24).fill(0).map((_, h) => solarConvectiveGains[h] + solarLoadFromSolarRTS[h] + solarLoadFromNonSolarRTS[h]);
 

@@ -1,7 +1,7 @@
 
 import { ChartType } from 'chart.js';
 
-export type AppTab = 'internal' | 'windows' | 'ventilation' | 'summary' | 'rts';
+export type AppTab = 'internal' | 'windows' | 'walls' | 'ventilation' | 'summary' | 'rts';
 
 export interface Shading {
   enabled: boolean;
@@ -16,6 +16,15 @@ export interface Overhang {
     enabled: boolean;
     depth: number;       // Głębokość daszku (PH)
     distanceAbove: number; // Odległość pionowa nad oknem
+}
+
+export interface Wall {
+  id: number;
+  type: 'sciana_ocieplona' | 'sciana_nieocieplona' | 'stropodach_ocieplony';
+  direction: string;
+  u: number;
+  area: number;
+  material?: string;
 }
 
 export interface Window {
@@ -96,6 +105,7 @@ export interface RoomState {
     id: string;
     name: string;
     windows: Window[];
+    walls: Wall[];
     input: Omit<InputState, 'projectName'>;
     accumulation: AccumulationSettings;
     internalGains: InternalGains;
@@ -115,6 +125,7 @@ export interface CalculationResultData {
     latent: number[];
     total: number[];
     windows?: number[];
+    walls?: number[];
     people?: number[];
     lighting?: number[];
     equipment?: number[];
@@ -165,6 +176,7 @@ export interface AllData {
     rts: any;
     shading: any;
     warsaw_weather: any;
+    cts: any;
 }
 
 export type ToastType = 'info' | 'success' | 'danger';
@@ -216,6 +228,10 @@ export type Action =
     | { type: 'UPDATE_WINDOW'; payload: Window }
     | { type: 'DELETE_WINDOW'; payload: number }
     | { type: 'DUPLICATE_WINDOW'; payload: number }
+    | { type: 'ADD_WALL'; payload: Omit<Wall, 'id'> }
+    | { type: 'UPDATE_WALL'; payload: Wall }
+    | { type: 'DELETE_WALL'; payload: number }
+    | { type: 'DUPLICATE_WALL'; payload: number }
     | { type: 'UPDATE_ALL_SHADING'; payload: Partial<Shading> & { enabled: boolean } }
     | { type: 'SET_ACCUMULATION'; payload: AccumulationSettings }
     | { type: 'SET_INTERNAL_GAINS'; payload: InternalGains }

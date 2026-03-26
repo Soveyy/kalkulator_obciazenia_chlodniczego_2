@@ -14,8 +14,9 @@ const Tabs: React.FC = () => {
     { id: 'internal', label: '1. Zyski wewnętrzne', status: progress.internal },
     { id: 'windows', label: '2. Okna', status: progress.windows },
     { id: 'ventilation', label: '3. Wentylacja', status: progress.ventilation },
-    { id: 'summary', label: '4. Podsumowanie', status: progress.total === 100 },
-    { id: 'rts', label: '5. Zaawansowana analiza', status: state.results !== null },
+    { id: 'walls', label: '4. Ściany', status: progress.walls },
+    { id: 'summary', label: '5. Podsumowanie', status: progress.total === 100 },
+    { id: 'rts', label: '6. Zaawansowana analiza', status: state.results !== null },
   ];
 
   return (

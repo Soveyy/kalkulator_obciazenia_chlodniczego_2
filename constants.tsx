@@ -143,3 +143,18 @@ export const VENTILATION_EXCHANGER_TYPES: { [key: string]: { label: string, eta_
     rotary_condensing: { label: 'Obrotowy (Standard / Kondensacyjny)', eta_s: 0.85, eta_l: 0.10, description: 'Latem odzysk wilgoci jest minimalny lub pomijalny.' },
     rotary_sorption: { label: 'Obrotowy (Sorpcyjny / Zeolitowy)', eta_s: 0.85, eta_l: 0.80, description: 'Aktywna adsorpcja wilgoci przez materiał higroskopijny (np. zeolit).' },
 };
+
+export const WALL_MATERIALS: { [key: string]: { label: string, absorptance: number } } = {
+    brick_red: { label: 'Cegła czerwona (Purdue)', absorptance: 0.63 },
+    paint_red: { label: 'Farba czerwona', absorptance: 0.63 },
+    paint_black: { label: 'Farba czarna (matowa)', absorptance: 0.94 },
+    paint_sandstone: { label: 'Farba piaskowa (Sandstone)', absorptance: 0.50 },
+    paint_white: { label: 'Farba biała akrylowa', absorptance: 0.26 },
+    metal_new: { label: 'Blacha ocynkowana (nowa)', absorptance: 0.65 },
+    metal_weathered: { label: 'Blacha ocynkowana (zaśniedziała)', absorptance: 0.80 },
+    shingles_gray: { label: 'Gonty szare', absorptance: 0.82 },
+    shingles_brown: { label: 'Gonty brązowe', absorptance: 0.91 },
+    shingles_black: { label: 'Gonty czarne', absorptance: 0.97 },
+    shingles_white: { label: 'Gonty białe', absorptance: 0.75 },
+    concrete: { label: 'Beton', absorptance: 0.70 },
+};

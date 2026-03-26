@@ -42,18 +42,19 @@ function parseIrradianceData(rawData: any): any {
 export const loadAllData = async (): Promise<AllData> => {
     console.log("Starting to load application data...");
     try {
-        const [nsrdbRaw, rtsData, shadingData, warsawWeather] = await Promise.all([
+        const [nsrdbRaw, rtsData, shadingData, warsawWeather, ctsData] = await Promise.all([
             fetchData('data/baza_danych_NSRDB.json'),
             fetchData('data/rts_factors.json'),
             fetchData('data/shading_database.json'),
             fetchData('data/warsaw_weather.json'),
+            fetchData('data/cts_factors.json'),
         ]);
         console.log("Raw data fetched successfully.");
 
         const nsrdb = parseIrradianceData(nsrdbRaw);
         console.log("Data parsed successfully.");
 
-        return { nsrdb, rts: rtsData, shading: shadingData, warsaw_weather: warsawWeather };
+        return { nsrdb, rts: rtsData, shading: shadingData, warsaw_weather: warsawWeather, cts: ctsData };
     } catch (error) {
         console.error("Failed to load all application data:", error);
         throw error;
