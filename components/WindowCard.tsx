@@ -102,6 +102,9 @@ const WindowCard: React.FC<WindowCardProps> = ({ window }) => {
   const area = (window.width * window.height).toFixed(2);
   const dirLabel = WINDOW_DIRECTIONS.find(d => d.value === window.direction)?.label || window.direction;
 
+  const index = state.windows.findIndex(w => w.id === window.id) + 1;
+  const title = `Okno ${index}`;
+
   const handleEdit = () => dispatch({ type: 'SET_MODAL', payload: { isOpen: true, type: 'editWindow', data: window.id } });
   const handleDuplicate = () => dispatch({ type: 'DUPLICATE_WINDOW', payload: window.id });
   const handleDelete = () => dispatch({ type: 'DELETE_WINDOW', payload: window.id });
@@ -113,7 +116,7 @@ const WindowCard: React.FC<WindowCardProps> = ({ window }) => {
   return (
     <div className={`relative bg-slate-100 dark:bg-slate-700 p-4 rounded-lg shadow-sm flex flex-col min-h-48 transition-all duration-300 ${isNew ? 'ring-2 ring-green-400 ring-offset-2 ring-offset-slate-100 dark:ring-offset-slate-800' : ''} ${isEditing ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-slate-100 dark:ring-offset-slate-800' : ''}`}>
        <CompassArrow rotation={rotation} />
-      <h3 className="font-bold text-lg mb-1 text-slate-800 dark:text-white">Okno {window.id}</h3>
+      <h3 className="font-bold text-lg mb-1 text-slate-800 dark:text-white">{title}</h3>
       <div className="flex-grow text-sm space-y-1 text-slate-600 dark:text-slate-300">
         <p>Kierunek: <strong className="text-slate-800 dark:text-slate-100">{dirLabel.split(' (')[0]}</strong></p>
         <p>Pochylenie: <strong className="text-slate-800 dark:text-slate-100">{window.tilt ?? 90}°</strong></p>

@@ -5,6 +5,7 @@ import Card from './ui/Card';
 
 const NODE_COLORS: Record<string, string> = {
     'Okna': '#f1c40f',
+    'Ściany': '#d35400',
     'Ludzie': '#e67e22',
     'Oświetlenie': '#e74c3c',
     'Sprzęt': '#9b59b6',
@@ -99,6 +100,7 @@ const BreakdownCharts: React.FC = () => {
     }
 
     const windowsLoad = finalGains.clearSky.windows?.[hourMaxLoad] || 0;
+    const wallsLoad = finalGains.clearSky.walls?.[hourMaxLoad] || 0;
     const peopleSensible = finalGains.clearSky.people?.[hourMaxLoad] || 0;
     const lightingLoad = finalGains.clearSky.lighting?.[hourMaxLoad] || 0;
     const equipmentLoad = finalGains.clearSky.equipment?.[hourMaxLoad] || 0;
@@ -109,11 +111,12 @@ const BreakdownCharts: React.FC = () => {
     const ventilationLatent = finalGains.clearSky.ventilationLatent?.[hourMaxLoad] || 0;
     const infiltrationLatent = finalGains.clearSky.infiltrationLatent?.[hourMaxLoad] || 0;
 
-    const totalSensible = windowsLoad + peopleSensible + lightingLoad + equipmentLoad + ventilationSensible + infiltrationSensible;
+    const totalSensible = windowsLoad + wallsLoad + peopleSensible + lightingLoad + equipmentLoad + ventilationSensible + infiltrationSensible;
     const totalLatent = peopleLatent + ventilationLatent + infiltrationLatent;
 
     const sourceData = [
         { name: 'Okna', value: Math.round(windowsLoad) },
+        { name: 'Ściany', value: Math.round(wallsLoad) },
         { name: 'Ludzie', value: Math.round(peopleSensible + peopleLatent) },
         { name: 'Oświetlenie', value: Math.round(lightingLoad) },
         { name: 'Sprzęt', value: Math.round(equipmentLoad) },

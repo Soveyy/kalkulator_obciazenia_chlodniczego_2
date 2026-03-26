@@ -89,7 +89,7 @@ const WindowEditModal: React.FC = () => {
                 setErrors(newErrors);
                 let message = 'Proszę poprawić błędy w formularzu.';
                 if (newErrors.includes('width') || newErrors.includes('height')) message = 'Szerokość i wysokość muszą być większe od 0.';
-                if (newErrors.includes('u')) message = 'Współczynnik U musi być w zakresie 0.05 - 10.';
+                if (newErrors.includes('u')) message = 'wsp. U musi być w zakresie 0.05 - 10.';
                 if (newErrors.includes('shgc')) message = 'Współczynnik SHGC musi być w zakresie 0.05 - 1.';
                 if (newErrors.includes('overhang_depth') || newErrors.includes('overhang_distanceAbove')) message = 'Parametry daszku muszą być większe od 0.';
                 if (newErrors.includes('direction')) message = 'Proszę wybrać kierunek świata.';
@@ -261,7 +261,8 @@ const WindowEditModal: React.FC = () => {
     
     const shadingDb = state.allData?.shading[window.type as keyof typeof state.allData.shading] || state.allData?.shading.standard || {};
     const description = WINDOW_TYPE_DESCRIPTIONS[window.type as keyof typeof WINDOW_TYPE_DESCRIPTIONS];
-    const modalTitle = isNew ? "Dodaj Nowe Okno" : `Edytuj Okno ${window.id}`;
+    const index = state.windows.findIndex(w => w.id === window.id) + 1;
+    const modalTitle = isNew ? "Dodaj Nowe Okno" : `Edytuj Okno ${index}`;
 
     return (
         <Modal 
@@ -296,8 +297,8 @@ const WindowEditModal: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4">
                      <div>
                         <label className={`label-style flex items-center ${errors.includes('u') ? 'text-red-500 font-bold' : ''}`}>
-                            Współczynnik U:
-                            <Tooltip text="Współczynnik przenikania ciepła (W/m²K). Zakres: 0.05 - 10." />
+                            wsp. U:
+                            <Tooltip text="Współczynnik przenikania ciepła [W/m²K]. Typowe wartości U dla okien: WT2021 = 0.90, WT2017 = 1.10, WT2014 = 1.30. Zakres: 0.05 - 10." />
                         </label>
                         <Input 
                             type="number" 

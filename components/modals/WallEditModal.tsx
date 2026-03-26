@@ -3,6 +3,7 @@ import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Select from '../ui/Select';
+import Tooltip from '../ui/Tooltip';
 import { useCalculator } from '../../contexts/CalculatorContext';
 import { Wall } from '../../types';
 import { WINDOW_DIRECTIONS, WALL_MATERIALS } from '../../constants';
@@ -65,7 +66,7 @@ const WallEditModal: React.FC = () => {
                 setErrors(newErrors);
                 let message = 'Proszę poprawić błędy w formularzu.';
                 if (newErrors.includes('area')) message = 'Powierzchnia musi być większa od 0.';
-                if (newErrors.includes('u')) message = 'Współczynnik U musi być w zakresie 0 - 10.';
+                if (newErrors.includes('u')) message = 'wsp. U musi być w zakresie 0 - 10.';
                 if (newErrors.includes('direction')) message = 'Proszę wybrać kierunek świata.';
                 
                 dispatch({ type: 'ADD_TOAST', payload: { message, type: 'danger' } });
@@ -83,10 +84,8 @@ const WallEditModal: React.FC = () => {
 
             if (isNew) {
                 dispatch({ type: 'ADD_WALL', payload: wallToSave });
-                dispatch({ type: 'ADD_TOAST', payload: { message: 'Ściana została dodana.', type: 'success' } });
             } else {
                 dispatch({ type: 'UPDATE_WALL', payload: wallToSave });
-                dispatch({ type: 'ADD_TOAST', payload: { message: 'Ściana została zaktualizowana.', type: 'success' } });
             }
             handleClose();
         }
@@ -95,9 +94,13 @@ const WallEditModal: React.FC = () => {
     if (!isModalOpen || !wall) return null;
 
     const isRoof = wall.type === 'stropodach_ocieplony';
+    const sameTypeWalls = (activeRoom.walls || []).filter(w => (w.type === 'stropodach_ocieplony') === isRoof);
+    const index = sameTypeWalls.findIndex(w => w.id === wall.id) + 1;
+    const title = isRoof ? `Stropodach ${index}` : `Ściana ${index}`;
+    const modalTitle = isNew ? (isRoof ? 'Dodaj Stropodach' : 'Dodaj Ścianę') : `Edytuj ${title}`;
 
     return (
-        <Modal isOpen={isModalOpen} onClose={handleClose} title={isNew ? 'Dodaj Ścianę' : 'Edytuj Ścianę'}>
+        <Modal isOpen={isModalOpen} onClose={handleClose} title={modalTitle}>
             <div className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
@@ -125,12 +128,22 @@ const WallEditModal: React.FC = () => {
                                     setWall({ ...wall, direction: e.target.value });
                                     dispatch({ type: 'SET_SELECTED_DIRECTION', payload: e.target.value });
                                 }}
+                                onMouseLeave={() => dispatch({ type: 'SET_HOVERED_DIRECTION', payload: null })}
                             >
                                 <option value="">Wybierz kierunek...</option>
                                 {WINDOW_DIRECTIONS.map(dir => (
-                                    <option key={dir.value} value={dir.value}>{dir.label}</option>
+                                    <option 
+                                        key={dir.value} 
+                                        value={dir.value}
+                                        onMouseEnter={() => dispatch({ type: 'SET_HOVERED_DIRECTION', payload: dir.value })}
+                                    >
+                                        {dir.label}
+                                    </option>
                                 ))}
                             </Select>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 italic">
+                                Wskazówka: Możesz również wybrać kierunek klikając na kompas po prawej stronie.
+                            </p>
                         </div>
                     )}
 
@@ -148,8 +161,9 @@ const WallEditModal: React.FC = () => {
                     </div>
 
                     <div>
-                        <label className={`block text-sm font-medium mb-1 ${errors.includes('u') ? 'text-red-500' : 'text-slate-700 dark:text-slate-300'}`}>
-                            Współczynnik U (W/m²K)
+                        <label className={`flex items-center text-sm font-medium mb-1 ${errors.includes('u') ? 'text-red-500' : 'text-slate-700 dark:text-slate-300'}`}>
+                            wsp. U (W/m²K)
+                            <Tooltip text="Współczynnik przenikania ciepła [W/m²K]. Typowe wartości U dla ścian: WT2021 = 0.20, WT2017 = 0.23, WT2014 = 0.25. Dla dachów: WT2021 = 0.15, WT2017 = 0.18." />
                         </label>
                         <Input
                             type="number"
@@ -162,8 +176,9 @@ const WallEditModal: React.FC = () => {
                     </div>
 
                     <div className="sm:col-span-2">
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        <label className="flex items-center text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                             Wykończenie zewnętrzne (Absorpcja)
+                            <Tooltip text="Wykończenie zewnętrzne ściany i kolor elewacji jest istotny pod kątem absorpcji promieniowania słonecznego. Im wyższa absorpcja i ciemniejszy kolor, tym bardziej nagrzewa się powierzchnia, co zwiększa zyski ciepła." />
                         </label>
                         <Select
                             value={wall.material || 'brick_red'}

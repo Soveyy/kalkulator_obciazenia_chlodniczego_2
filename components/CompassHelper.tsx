@@ -6,7 +6,7 @@ import CompassIcon from './CompassIcon';
 const CompassHelper: React.FC = () => {
     const { state, dispatch } = useCalculator();
     const { modal: { isOpen, type }, selectedDirection, hoveredDirection } = state;
-    const isVisible = isOpen && type === 'editWindow';
+    const isVisible = isOpen && (type === 'editWindow' || type === 'editWall');
 
     if (!isVisible) return null;
 
