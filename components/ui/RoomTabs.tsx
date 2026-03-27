@@ -144,10 +144,10 @@ const RoomTabs: React.FC = () => {
                     <button
                         onClick={() => handleSwitchRoom('aggregate')}
                         className={`
-                            px-4 py-2 rounded-t-lg cursor-pointer transition-all border-b-2 text-sm font-medium
+                            px-4 py-2 rounded-lg cursor-pointer transition-all border-2 text-sm font-bold
                             ${state.activeRoomId === 'aggregate'
-                                ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-500 text-indigo-700 dark:text-indigo-400'
-                                : 'bg-slate-50 dark:bg-slate-800/50 border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}
+                                ? 'bg-indigo-100 dark:bg-indigo-900/50 border-indigo-700 dark:border-indigo-400 text-indigo-800 dark:text-indigo-200 shadow-md'
+                                : 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-600 dark:border-indigo-500 text-indigo-700 dark:text-indigo-300 animate-breathe hover:bg-indigo-100 dark:hover:bg-indigo-900/40'}
                         `}
                     >
                         Analiza Zbiorcza
