@@ -351,7 +351,7 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
     
     doc.setFont('Roboto', 'normal');
     doc.setTextColor(71, 85, 105);
-    const methodologyText = 'Obliczenia wykorzystują model całkowicie bezchmurnego nieba (Clear Sky) dla wybranego miesiąca. Zgodnie z metodyką RTS (Radiant Time Series), algorytm zakłada, że takie same, ekstremalne warunki pogodowe oraz wewnętrzne profile zysków ciepła powtarzają się przez kilka dni z rzędu, co pozwala na pełne uwzględnienie zjawiska akumulacji ciepła w masie budynku.';
+    const methodologyText = 'Obliczenia wykorzystują model całkowicie bezchmurnego nieba (Clear Sky) dla wybranego miesiąca. Zgodnie z metodyką ASHRAE RTS (Radiant Time Series), algorytm zakłada, że takie same, ekstremalne warunki pogodowe oraz wewnętrzne profile zysków ciepła powtarzają się przez kilka dni z rzędu, co pozwala na pełne uwzględnienie zjawiska akumulacji ciepła w masie budynku.';
     const splitMethodology = doc.splitTextToSize(methodologyText, pageWidth - (2 * margin) - 10);
     doc.text(splitMethodology, margin + 5, yPos + 11);
 
@@ -362,7 +362,7 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
     // Detailed Tables
     doc.setFontSize(11);
     doc.setTextColor(0);
-    doc.text('Szczegółowy bilans mocy w godzinie szczytu:', margin, yPos);
+    doc.text('Szczegółowy bilans obciążenia chłodniczego w godzinie szczytu:', margin, yPos);
     yPos += 6;
 
     const sensibleBody: [string, string][] = [
