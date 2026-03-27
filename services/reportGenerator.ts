@@ -211,9 +211,8 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
     doc.text(`Pomieszczenie: ${activeRoom.name || 'Bez nazwy'}`, pageWidth / 2, yPos + 30, { align: 'center' });
     
     doc.setFontSize(10);
-    doc.text(`Data raportu: ${new Date().toLocaleDateString('pl-PL')}`, pageWidth / 2, yPos + 38, { align: 'center' });
     
-    yPos += 48;
+    yPos += 40;
 
     // 1. Parameters Table
     addHeader('1. Parametry Projektowe');
@@ -290,7 +289,7 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
     yPos = (doc as any).lastAutoTable.finalY + 15;
 
     // 2. Peak Load Results
-    addHeader('2. Wyniki - Szczytowe Obciążenie');
+    addHeader('2. Wyniki - Szczytowe Obciążenie Chłodnicze');
     
     // Highlight Box
     doc.setFillColor(254, 242, 242); // Light red/orange bg
@@ -366,19 +365,29 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
     doc.text('Szczegółowy bilans mocy w godzinie szczytu:', margin, yPos);
     yPos += 6;
 
-    const sensibleBody = [
+    const sensibleBody: [string, string][] = [
         ['Słoneczne (okna)', `${(solarLoadPeak / 1000).toFixed(2)} kW`],
         ['Przewodzenie (okna i ściany)', `${(conductionLoadPeak / 1000).toFixed(2)} kW`],
         ['Wewnętrzne (ludzie, sprzęt)', `${(internalSensibleLoadPeak / 1000).toFixed(2)} kW`],
-        ['Wentylacja', `${(ventilationSensibleLoadPeak / 1000).toFixed(2)} kW`],
-        ['Infiltracja', `${(infiltrationSensibleLoadPeak / 1000).toFixed(2)} kW`],
     ];
 
-    const latentBody = [
+    if (vent.type === 'natural' && vent.includeInfiltration) {
+        sensibleBody.push(['Wentylacja i infiltracja', `${((ventilationSensibleLoadPeak + infiltrationSensibleLoadPeak) / 1000).toFixed(2)} kW`]);
+    } else {
+        sensibleBody.push(['Wentylacja', `${(ventilationSensibleLoadPeak / 1000).toFixed(2)} kW`]);
+        sensibleBody.push(['Infiltracja', `${(infiltrationSensibleLoadPeak / 1000).toFixed(2)} kW`]);
+    }
+
+    const latentBody: [string, string][] = [
         ['Wewnętrzne (ludzie)', `${(internalLatentAtPeak / 1000).toFixed(2)} kW`],
-        ['Wentylacja', `${(ventilationLatentAtPeak / 1000).toFixed(2)} kW`],
-        ['Infiltracja', `${(infiltrationLatentAtPeak / 1000).toFixed(2)} kW`],
     ];
+
+    if (vent.type === 'natural' && vent.includeInfiltration) {
+        latentBody.push(['Wentylacja i infiltracja', `${((ventilationLatentAtPeak + infiltrationLatentAtPeak) / 1000).toFixed(2)} kW`]);
+    } else {
+        latentBody.push(['Wentylacja', `${(ventilationLatentAtPeak / 1000).toFixed(2)} kW`]);
+        latentBody.push(['Infiltracja', `${(infiltrationLatentAtPeak / 1000).toFixed(2)} kW`]);
+    }
 
     // Sensible Table
     autoTable(doc, {
@@ -426,22 +435,31 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
         'insect_screens': 'Moskitiery'
     };
 
+    const WINDOW_TYPES: Record<string, string> = {
+        'modern': '3-szybowe',
+        'standard': '2-szybowe nowe',
+        'older_double': '2-szybowe stare',
+        'historic': '1-szybowe',
+        'custom': 'Niestandardowe'
+    };
+
     const windowsBody = windows.map((w: any) => [
         w.direction,
         w.tilt !== undefined ? `${w.tilt}°` : '90°',
         (w.width * w.height).toFixed(2),
+        WINDOW_TYPES[w.type] || 'Niestandardowe',
         w.u.toFixed(2),
         w.shgc.toFixed(2),
         w.shading.enabled ? SHADING_TYPES[w.shading.type] || 'Tak' : 'Brak'
     ]);
 
     if (windowsBody.length === 0) {
-        windowsBody.push(['Brak okien', '-', '-', '-', '-', '-']);
+        windowsBody.push(['Brak okien', '-', '-', '-', '-', '-', '-']);
     }
 
     autoTable(doc, {
         startY: yPos,
-        head: [['Kierunek', 'Pochylenie', 'Powierzchnia [m²]', 'Wsp. U [W/m²K]', 'Wsp. g', 'Osłona']],
+        head: [['Kierunek', 'Pochylenie', 'Powierzchnia [m²]', 'Typ', 'Wsp. U [W/m²K]', 'Wsp. g', 'Osłona']],
         body: windowsBody,
         theme: 'grid',
         headStyles: { fillColor: [241, 245, 249], textColor: 50, fontStyle: 'bold', lineColor: 200, font: 'Roboto' },
@@ -666,7 +684,7 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
     // --- PAGE 3: Daily Charts ---
     doc.addPage();
     yPos = margin;
-    addHeader('5. Przebieg Dobowy Obciążenia');
+    addHeader('5. Przebieg Dobowy Obciążenia Chłodniczego');
 
     const hours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
 
@@ -718,7 +736,7 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
             },
             plugins: { 
                 legend: { labels: { font: { size: 16, family: 'Arial' } } },
-                title: { display: true, text: 'Całkowite obciążenie w czasie', font: { size: 20, family: 'Arial' } }
+                title: { display: true, text: 'Całkowite obciążenie chłodnicze w czasie', font: { size: 20, family: 'Arial' } }
             }
         },
     }, 1200, 500);
@@ -756,7 +774,7 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
             },
             plugins: { 
                 legend: { labels: { font: { size: 14, family: 'Arial' } } },
-                title: { display: true, text: 'Składowe obciążenia w czasie', font: { size: 20, family: 'Arial' } }
+                title: { display: true, text: 'Składowe obciążenia chłodniczego w czasie', font: { size: 20, family: 'Arial' } }
             }
         },
     }, 1200, 500);
