@@ -80,6 +80,12 @@ const initialState: State = {
     savedProjects: [],
     tutorialMode: false,
     hasSeenWelcome: false,
+    multiSplitConfig: {
+        selectedOutdoorModel: '',
+        roomIndices: {},
+        applyTempCorrection: false,
+        deactivatedRoomIds: []
+    }
 };
 
 let toastId = 0;
@@ -126,10 +132,20 @@ function calculatorReducer(state: State, action: Action): State {
             } else if (state.activeRoomId === 'aggregate' && newRooms.length <= 1) {
                 newActiveRoomId = newRooms[0].id;
             }
+            
+            const newRoomIndices = { ...state.multiSplitConfig?.roomIndices };
+            delete newRoomIndices[action.payload];
+            const newDeactivatedRoomIds = state.multiSplitConfig?.deactivatedRoomIds?.filter(id => id !== action.payload) || [];
+
             return {
                 ...state,
                 rooms: newRooms,
-                activeRoomId: newActiveRoomId
+                activeRoomId: newActiveRoomId,
+                multiSplitConfig: state.multiSplitConfig ? { 
+                    ...state.multiSplitConfig, 
+                    roomIndices: newRoomIndices,
+                    deactivatedRoomIds: newDeactivatedRoomIds
+                } : state.multiSplitConfig
             };
         }
         case 'DUPLICATE_ROOM': {
@@ -467,6 +483,14 @@ function calculatorReducer(state: State, action: Action): State {
                 localStorage.setItem('hvac_has_seen_welcome', 'true');
             }
             return { ...state, hasSeenWelcome: true };
+        case 'UPDATE_MULTI_SPLIT_CONFIG':
+            return {
+                ...state,
+                multiSplitConfig: {
+                    ...(state.multiSplitConfig || { selectedOutdoorModel: '', roomIndices: {}, applyTempCorrection: false, deactivatedRoomIds: [] }),
+                    ...action.payload
+                }
+            };
         default:
             return state;
     }
@@ -782,6 +806,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                 projectName: state.projectName,
                 rooms: state.rooms,
                 activeRoomId: state.activeRoomId,
+                multiSplitConfig: state.multiSplitConfig,
             };
             localStorage.setItem('heatGainProject', JSON.stringify(projectData));
             dispatch({ type: 'ADD_TOAST', payload: { message: 'Projekt zapisany (szybki zapis)!', type: 'success' } });
@@ -802,6 +827,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                 projectName: name,
                 rooms: state.rooms,
                 activeRoomId: state.activeRoomId,
+                multiSplitConfig: state.multiSplitConfig,
             };
             
             const newProject: SavedProject = {
@@ -848,6 +874,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                 projectName: state.projectName,
                 rooms: strippedRooms,
                 activeRoomId: state.activeRoomId,
+                multiSplitConfig: state.multiSplitConfig,
             };
             const json = JSON.stringify(projectData);
             const compressed = LZString.compressToEncodedURIComponent(json);
@@ -867,6 +894,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                 projectName: initialState.projectName,
                 rooms: initialState.rooms,
                 activeRoomId: initialState.activeRoomId,
+                multiSplitConfig: initialState.multiSplitConfig,
             }});
             dispatch({ type: 'ADD_TOAST', payload: { message: 'Ustawienia zostały zresetowane.', type: 'info' } });
         } else if (['SET_INPUT', 'SET_ACCUMULATION', 'SET_INTERNAL_GAINS', 'ADD_WINDOW', 'UPDATE_WINDOW', 'DELETE_WINDOW', 'DUPLICATE_WINDOW', 'ADD_WALL', 'UPDATE_WALL', 'DELETE_WALL', 'DUPLICATE_WALL', 'UPDATE_ALL_SHADING', 'ADD_EQUIPMENT_ITEM', 'DELETE_EQUIPMENT_ITEM', 'SET_VENTILATION_GAINS'].includes(action.type)) {

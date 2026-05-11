@@ -18,39 +18,47 @@ const MethodologyModal: React.FC = () => {
             footer={<Button onClick={handleClose}>Zamknij</Button>}
         >
             <div className="text-sm text-slate-700 dark:text-slate-300 space-y-4">
-                <p>Kalkulator wykorzystuje zaawansowane, zgodne ze standardami inżynierskimi metody do symulacji zysków ciepła. Poniższe punkty szczegółowo opisują proces obliczeniowy.</p>
-                <ol className="list-decimal list-inside space-y-3">
+                <p>
+                    Kalkulator wykorzystuje rygorystyczne, zgodne ze światowymi standardami inżynierskimi metody symulacji i określania obciążeń chłodniczych (bazujące na wytycznych <strong>ASHRAE</strong>). Poniższe punkty szczegółowo opisują ujęte parametry i proces obliczeniowy zaimplementowany w aplikacji.
+                </p>
+                <ol className="list-decimal list-inside space-y-4">
                     <li>
-                        <strong className="font-semibold text-slate-800 dark:text-slate-100">Podstawa Klimatyczna</strong>
-                        <p className="mt-1">Obliczenia opierają się na danych klimatycznych dla lokalizacji Warszawa (52.23°N, 21.01°E). Kalkulator wykorzystuje dane z bazy NSRDB (National Solar Radiation Database), które reprezentują teoretyczne, maksymalne nasłonecznienie w idealnych, bezchmurnych warunkach (Clear Sky). Jest to standardowe podejście przy projektowaniu systemów klimatyzacji, zapewniające odpowiedni zapas mocy w najbardziej upalne dni.</p>
+                        <strong className="font-semibold text-slate-800 dark:text-slate-100">Podstawa Klimatyczna i Zjawiska Słoneczne (Clear Sky Model)</strong>
+                        <p className="mt-1 pl-4 border-l-2 border-slate-200 dark:border-slate-700">
+                            Obliczenia bazują na profilach klimatycznych i geometrycznym położeniu Słońca dla referencyjnej lokalizacji w Polsce. Stosowany jest model całkowicie bezchmurnego nieba (Clear Sky), gwarantujący najwyższe teoretyczne natężenie promieniowania słonecznego w cyklu dobowym. Stanowi to bezpieczny margines projektowy przy doborze mocy klimatyzatorów na najbardziej ekstremalne, letnie fale upałów.
+                        </p>
                     </li>
                     <li>
-                        <strong className="font-semibold text-slate-800 dark:text-slate-100">Zyski Ciepła Zewnętrzne (Przez Okna)</strong>
-                        <p className="mt-1">Kalkulacje zysków od słońca opierają się na dynamicznym współczynniku SHGC, który zmienia się w zależności od kąta padania promieni słonecznych. Zyski ciepła od różnicy temperatur (przewodzenie) są również uwzględniane.</p>
+                        <strong className="font-semibold text-slate-800 dark:text-slate-100">Przegrody Przezroczyste (Zyski od Okien i Osłon)</strong>
+                        <p className="mt-1 pl-4 border-l-2 border-slate-200 dark:border-slate-700">
+                            Zyski przez oszklenie wyliczane są jako suma przewodzenia (w zależności od wsp. U i różnicy temperatur) oraz bardzo dynamicznych krótkofalowych zysków słonecznych (SHGC / wsp. g). System w każdej z 24 godzin wylicza kąt padania promieni świetlnych względem fasady, rozróżniając promieniowanie bezpośrednie i rozproszone. Kalkulator zaawansowanie modeluje skuteczność wybranych osłon okiennych (np. jasne rolety zewnętrzne działają zupełnie inaczej niż ciemne zasłony wewnętrzne). Dodatkowo zaimplementowano algorytmy geometrycznego rzucania cienia przez nawisy i daszki, drastycznie zmniejszające obciążenie.
+                        </p>
                     </li>
                     <li>
-                        <strong className="font-semibold text-slate-800 dark:text-slate-100">Zyski Ciepła Wewnętrzne</strong>
-                        <p className="mt-1">Kalkulator umożliwia dodanie zysków wewnętrznych od ludzi, oświetlenia i sprzętu, zgodnie z danymi z normy ASHRAE. Zyski te dzielone są na:</p>
-                        <ul className="list-disc list-inside pl-4 mt-2 space-y-1">
-                            <li><strong className="font-medium">Ciepło jawne (sensible heat):</strong> Podnoszące temperaturę powietrza. Jest ono dalej dzielone na część radiacyjną (opóźnioną) i konwekcyjną (natychmiastową).</li>
-                            <li><strong className="font-medium">Ciepło utajone (latent heat):</strong> Związane z wilgocią (np. od ludzi), które jest natychmiastowym obciążeniem dla systemu klimatyzacji, ale nie podnosi temperatury w pomieszczeniu.</li>
-                        </ul>
+                        <strong className="font-semibold text-slate-800 dark:text-slate-100">Przegrody Nieprzezroczyste (Ściany Zewnętrzne i Stropodachy)</strong>
+                        <p className="mt-1 pl-4 border-l-2 border-slate-200 dark:border-slate-700">
+                            Wpływ przegród masywnych obliczany jest na bazie tzw. temperatury słoneczno-powietrznej (Sol-Air Temperature). Oznacza to, że uwzględniana jest nie tylko sucha różnica temperatur między zewnątrz a wewnątrz budynku, lecz także intensywne nagrzewanie się fasady i dachu z powodu pochłaniania promieni słonecznych. Współczynnik absorpcji zależy bezpośrednio od wybranego koloru elewacji.
+                        </p>
                     </li>
                     <li>
-                        <strong className="font-semibold text-slate-800 dark:text-slate-100">Model Akumulacji Ciepła (Metoda RTS)</strong>
-                        <p className="mt-1">Aby precyzyjnie symulować, jak zyski ciepła przekładają się na faktyczne obciążenie chłodnicze, kalkulator implementuje Metodę Szeregów Czasowych Promieniowania <strong className="font-medium">(Radiant Time Series - RTS)</strong>, opisaną w standardach ASHRAE.</p>
-                        <ul className="list-disc list-inside pl-4 mt-2 space-y-1">
-                            <li><strong className="font-medium">Fizyczna zasada:</strong> Zyski o charakterze radiacyjnym (od słońca, oświetlenia, ludzi, sprzętu, a także część zysków od przewodzenia) są najpierw absorbowane przez masę termiczną budynku (ściany, strop, meble), a następnie stopniowo uwalniane do pomieszczenia z opóźnieniem.</li>
-                            <li><strong className="font-medium">Implementacja matematyczna:</strong> Algorytm rozkłada obliczone zyski radiacyjne z każdej godziny na 24 kolejne godziny. Współczynniki użyte do tego rozkładu w czasie (RTS factors) pochodzą bezpośrednio z opracowań ASHRAE.</li>
-                        </ul>
+                        <strong className="font-semibold text-slate-800 dark:text-slate-100">Zyski Wewnętrzne (Ludzie, Oświetlenie, Sprzęt)</strong>
+                        <p className="mt-1 pl-4 border-l-2 border-slate-200 dark:border-slate-700">
+                            Ciepło generowane z wnętrza w podziale na stopień aktywności, rodzaj zastosowanego światła czy klasy poboru urządzeń biurowych/serwerowych. Zyski od domowników czy biura dzielone są termodynamicznie w czasie na ciepło <strong>jawne</strong> (sensible - błyskawicznie lub radiacyjnie podnoszące docelową temperaturę) oraz ciepło <strong>utajone</strong> (latent - zbytnia produkcja wilgoci, z którą również sprawnie musi poradzić sobie system klimatyzacji poprzez kondensację w parowniku).
+                        </p>
+                    </li>
+                    <li>
+                        <strong className="font-semibold text-slate-800 dark:text-slate-100">Cyrkulacja Powietrza (Wentylacja i Infiltracja)</strong>
+                        <p className="mt-1 pl-4 border-l-2 border-slate-200 dark:border-slate-700">
+                            System rozdziela wymianę powietrza na sterowaną wymianę przez centrale nawiewne ze sprawnościowymi wymiennikami ciepła/odzyskiem (rekuperacja) oraz na niekontrolowany, naturalny strumień powietrza zewnętrznego zaciąganego przy wentylacji grawitacyjnej (wyliczany z kubatury układu) lub infiltrujący poprzez rozszczelnienia stolarki i konstrukcji. Obliczane są różnice entalpii, aby uzyskać dokładne składowe jawne i utajone wywołane świeżym nawiewanymi woluminami powietrza.
+                        </p>
+                    </li>
+                    <li>
+                        <strong className="font-semibold text-slate-800 dark:text-slate-100">Zaawansowany Model Akumulacji Ciepła (ASHRAE Radiant Time Series - RTS)</strong>
+                        <p className="mt-1 pl-4 border-l-2 border-slate-200 dark:border-slate-700">
+                            Jest to kluczowy, najbardziej precyzyjny aspekt w branżowym profesjonalnym doborze urządzeń chłodzących, który <strong>zapobiega drastycznemu i kosztownemu przewymiarowaniu klimatyzatorów</strong>. Metoda RTS matematychnie filtruje konwekcyjne obciążenia od ułamków radiacyjnych. Na podstawie pojemności cieplnej wyposażenia budynku (masywności, od konstrukcji lekkich do ciężkiego żelbetu), promieniowanie pochłaniane jest pierwotnie przez mury, posadzki dając opóźniony wyrzut w strefie przebywania. Używając tablicowych czynników czasu promieniowania (Radiant Time Factors), proces uwalniania zysków ciepła przesuwa się nierzadko o kilka do kilkunastu godzin poza główny szczyt solarny, znacznie wypłaszczając krzywą realnego wymaganego chłodu u zbiegu doby.
+                        </p>
                     </li>
                 </ol>
-                <hr className="my-4 border-slate-200 dark:border-slate-700" />
-                <strong className="font-semibold text-slate-800 dark:text-slate-100">Główne Założenia i Ograniczenia:</strong>
-                <ul className="list-disc list-inside pl-4 mt-2 space-y-1">
-                    <li>Model nie uwzględnia zysków/strat przez ściany nieprzezroczyste, dach, podłogę na gruncie oraz infiltrację/wentylację.</li>
-                    <li>Kalkulator jest w fazie aktywnego rozwoju.</li>
-                </ul>
             </div>
         </Modal>
     );

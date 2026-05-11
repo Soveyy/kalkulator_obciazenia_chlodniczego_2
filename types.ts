@@ -193,11 +193,19 @@ export interface SavedProject {
     data: any;
 }
 
+export interface MultiSplitConfig {
+    selectedOutdoorModel: string;
+    roomIndices: Record<string, number>;
+    applyTempCorrection: boolean;
+    deactivatedRoomIds?: string[];
+}
+
 export interface State {
     // Project level
     projectName: string;
     rooms: RoomState[];
     activeRoomId: string;
+    multiSplitConfig?: MultiSplitConfig;
     
     // Global state
     allData: AllData | null;
@@ -263,5 +271,6 @@ export type Action =
     | { type: 'TOGGLE_SIDEBAR' }
     | { type: 'SET_GENERATING_REPORT', payload: boolean }
     | { type: 'SET_TUTORIAL_MODE', payload: boolean }
-    | { type: 'SET_HAS_SEEN_WELCOME', payload: boolean };
+    | { type: 'SET_HAS_SEEN_WELCOME', payload: boolean }
+    | { type: 'UPDATE_MULTI_SPLIT_CONFIG', payload: Partial<MultiSplitConfig> };
 

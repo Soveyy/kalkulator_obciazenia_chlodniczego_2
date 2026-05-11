@@ -4,6 +4,7 @@ import Card from '../ui/Card';
 import Chart from 'chart.js/auto';
 import { MONTH_NAMES } from '../../constants';
 import { generateAggregatePdfReport } from '../../services/aggregateReportGenerator';
+import MultiSplitCalculator from '../MultiSplitCalculator';
 
 const AggregateAnalysisPage: React.FC = () => {
     const { state, theme, dispatch, handleCalculate, isCalculating } = useCalculator();
@@ -468,33 +469,70 @@ const AggregateAnalysisPage: React.FC = () => {
                                             Pomieszczenie
                                         </th>
                                         <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                            Szczytowe obciążenie
+                                            Obciążenie maksymalne [kW]
                                         </th>
                                         <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                            Udział w sumie szczytów
+                                            Obciążenie jednoczesne [kW]
+                                        </th>
+                                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                            Udział w sumie [%]
                                         </th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-                                    {aggregateData.roomProfiles.map((room, idx) => (
-                                        <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                                                {room.name}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">
-                                                {(room.peak / 1000).toFixed(2)} kW
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">
-                                                {aggregateData.sumOfPeaks > 0 
-                                                    ? ((room.peak / aggregateData.sumOfPeaks) * 100).toFixed(1) 
-                                                    : 0}%
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {(() => {
+                                        const profiles = aggregateData.roomProfiles;
+                                        const peakHour = aggregateData.peakHour;
+                                        const totalPeakRounded = Number((aggregateData.aggregatePeak / 1000).toFixed(2));
+                                        
+                                        const roundedValues = profiles.map(p => Number((p.profile[peakHour] / 1000).toFixed(2)));
+                                        const currentSum = roundedValues.reduce((a, b) => a + b, 0);
+                                        const diff = Number((totalPeakRounded - currentSum).toFixed(2));
+
+                                        return profiles.map((room, idx) => {
+                                            const baseVal = roundedValues[idx];
+                                            // Apply diff to the first room with non-zero load
+                                            const isAdjustmentTarget = diff !== 0 && room.profile[peakHour] > 0 && idx === profiles.findIndex(p => p.profile[peakHour] > 0);
+                                            const displayVal = isAdjustmentTarget ? (baseVal + diff).toFixed(2) : baseVal.toFixed(2);
+                                            const share = aggregateData.aggregatePeak > 0 
+                                                ? ((room.profile[peakHour] / aggregateData.aggregatePeak) * 100).toFixed(1) 
+                                                : "0.0";
+
+                                            return (
+                                                <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                                        {room.name}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">
+                                                        {(room.peak / 1000).toFixed(2)} kW
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-900 dark:text-white font-medium">
+                                                        {displayVal} kW
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">
+                                                        {share}%
+                                                    </td>
+                                                </tr>
+                                            );
+                                        });
+                                    })()}
                                 </tbody>
                             </table>
                         </div>
                     </Card>
+
+                        <MultiSplitCalculator 
+                            rooms={aggregateData.roomProfiles.map(room => ({
+                                id: room.id,
+                                name: room.name,
+                                peakLoadAtAggregate: room.profile[aggregateData.peakHour],
+                                individualPeakLoad: room.peak
+                            }))}
+                            aggregatePeak={aggregateData.aggregatePeak}
+                            tExt={state.rooms[0]?.tExtProfile?.[aggregateData.peakHour] || 35}
+                            tInternal={parseFloat(state.rooms[0]?.input?.tInternal || '24')}
+                            rhInternal={parseFloat(state.rooms[0]?.input?.rhInternal || '50')}
+                        />
                 </>
             )}
         </div>
