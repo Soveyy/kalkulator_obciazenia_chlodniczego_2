@@ -198,6 +198,7 @@ export interface MultiSplitConfig {
     roomIndices: Record<string, number>;
     applyTempCorrection: boolean;
     deactivatedRoomIds?: string[];
+    roomOrder?: string[];
 }
 
 export interface State {

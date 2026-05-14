@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Card from './ui/Card';
 import { useCalculator } from '../contexts/CalculatorContext';
-import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronsUpDown, GripVertical, Info } from 'lucide-react';
+import { Reorder } from 'motion/react';
 
 interface RoomData {
     id: string;
@@ -32,7 +33,7 @@ interface OutdoorUnit {
 const MultiSplitCalculator: React.FC<MultiSplitCalculatorProps> = ({ rooms, aggregatePeak, tExt, tInternal, rhInternal }) => {
     const { state, dispatch } = useCalculator();
     const config = state.multiSplitConfig || { selectedOutdoorModel: '', roomIndices: {}, applyTempCorrection: false, deactivatedRoomIds: [] };
-    const { selectedOutdoorModel, roomIndices, applyTempCorrection, deactivatedRoomIds = [] } = config;
+    const { selectedOutdoorModel, roomIndices, applyTempCorrection, deactivatedRoomIds = [], roomOrder = [] } = config;
     
     const [db, setDb] = useState<Record<string, OutdoorUnit> | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -200,6 +201,17 @@ const MultiSplitCalculator: React.FC<MultiSplitCalculatorProps> = ({ rooms, aggr
         });
     };
 
+    const handleReorder = (newIds: string[]) => {
+        // Clear active sort when manually reordering
+        if (sortConfig.key) {
+            setSortConfig({ key: null, direction: 'desc' });
+        }
+        dispatch({
+            type: 'UPDATE_MULTI_SPLIT_CONFIG',
+            payload: { roomOrder: newIds }
+        });
+    };
+
     const calculationResults = useMemo(() => {
         const prepareRoomInfo = (room: RoomData) => {
             const index = roomIndices[room.id] || 0;
@@ -309,7 +321,7 @@ const MultiSplitCalculator: React.FC<MultiSplitCalculatorProps> = ({ rooms, aggr
             }
         }
 
-        // Apply sorting
+        // Apply sorting or manual order
         if (sortConfig.key) {
             const { key, direction } = sortConfig;
             return [...finalResults].sort((a, b) => {
@@ -320,8 +332,20 @@ const MultiSplitCalculator: React.FC<MultiSplitCalculatorProps> = ({ rooms, aggr
             });
         }
 
+        // Apply manual order if exists
+        if (roomOrder.length > 0) {
+            const orderMap = new Map(roomOrder.map((id, index) => [id, index]));
+            // Only reorder if all room IDs are present in the order list, otherwise fall back or handle partial
+            // Actually, we can just sort by the index in orderMap
+            return [...finalResults].sort((a, b) => {
+                const indexA = orderMap.has(a.id) ? orderMap.get(a.id)! : 999;
+                const indexB = orderMap.has(b.id) ? orderMap.get(b.id)! : 999;
+                return indexA - indexB;
+            });
+        }
+
         return finalResults;
-    }, [activeOutdoorUnit, rooms, roomIndices, correctionFactor, deactivatedRoomIds, aggregatePeak, sortConfig]);
+    }, [activeOutdoorUnit, rooms, roomIndices, correctionFactor, deactivatedRoomIds, aggregatePeak, sortConfig, roomOrder]);
 
     const sumOfSelectedIndices = rooms.reduce((sum, room) => {
         if (deactivatedRoomIds.includes(room.id)) return sum;
@@ -478,9 +502,10 @@ const MultiSplitCalculator: React.FC<MultiSplitCalculatorProps> = ({ rooms, aggr
             </div>
 
             <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed">
                     <thead className="bg-gray-50 dark:bg-gray-800/50">
                         <tr>
+                            <th scope="col" className="w-10 px-4 py-3"></th>
                             <th scope="col" className="w-10 px-4 py-3"></th>
                             <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                 Pomieszczenie
@@ -491,6 +516,12 @@ const MultiSplitCalculator: React.FC<MultiSplitCalculatorProps> = ({ rooms, aggr
                                 onClick={() => toggleSort('individualPeakLoad')}
                             >
                                 <div className="flex items-center justify-end gap-1">
+                                    <div className="group relative">
+                                        <Info size={14} className="text-slate-400 cursor-help" />
+                                        <div className="absolute top-full right-0 mt-2 w-64 p-2 bg-slate-800 text-white text-[10px] rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 normal-case font-normal text-left">
+                                            obciążenie maksymalne - maksymalne, indywidualne obciążenie chłodnicze pomieszczenia w ciągu doby, występujące w jego własnej godzinie szczytu
+                                        </div>
+                                    </div>
                                     Obciążenie maksymalne [kW]
                                     {sortConfig.key === 'individualPeakLoad' ? (
                                         sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
@@ -505,6 +536,12 @@ const MultiSplitCalculator: React.FC<MultiSplitCalculatorProps> = ({ rooms, aggr
                                 onClick={() => toggleSort('requiredPeakKw')}
                             >
                                 <div className="flex items-center justify-end gap-1">
+                                    <div className="group relative">
+                                        <Info size={14} className="text-slate-400 cursor-help" />
+                                        <div className="absolute top-full right-0 mt-2 w-64 p-2 bg-slate-800 text-white text-[10px] rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 normal-case font-normal text-left">
+                                            obciążenie jednoczesne - obciążenie chłodnicze pomieszczenia występujące w godzinie, w której suma obciążeń wszystkich pomieszczeń podłączonych do tego agregatu osiąga swoje maksimum
+                                        </div>
+                                    </div>
                                     Obciążenie jednoczesne [kW]
                                     {sortConfig.key === 'requiredPeakKw' ? (
                                         sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
@@ -524,9 +561,24 @@ const MultiSplitCalculator: React.FC<MultiSplitCalculatorProps> = ({ rooms, aggr
                             </th>
                         </tr>
                     </thead>
-                    <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+                    <Reorder.Group 
+                        as="tbody" 
+                        axis="y" 
+                        values={calculationResults.map(r => r.id)} 
+                        onReorder={handleReorder}
+                        className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800"
+                    >
                         {calculationResults.map((room) => (
-                            <tr key={room.id} className={`${room.bgClass} ${room.isDeactivated ? 'opacity-40' : ''} transition-all`}>
+                            <Reorder.Item 
+                                key={room.id} 
+                                value={room.id}
+                                as="tr"
+                                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                className={`${room.bgClass} ${room.isDeactivated ? 'opacity-40' : ''} transition-all hover:bg-slate-50 dark:hover:bg-slate-800/30 touch-none`}
+                            >
+                                <td className="px-4 py-3 cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 transition-colors">
+                                    <GripVertical size={16} />
+                                </td>
                                 <td className="px-4 py-3 whitespace-nowrap">
                                     <input 
                                         type="checkbox" 
@@ -549,7 +601,7 @@ const MultiSplitCalculator: React.FC<MultiSplitCalculatorProps> = ({ rooms, aggr
                                     <select
                                         value={room.index || ''}
                                         onChange={(e) => handleIndexChange(room.id, e.target.value)}
-                                        className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-20 ml-auto p-1 text-sm text-right"
+                                        className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-20 ml-auto p-1 text-sm text-right cursor-default"
                                     >
                                         <option value="0">-</option>
                                         {availableIndices.map(idx => (
@@ -563,14 +615,14 @@ const MultiSplitCalculator: React.FC<MultiSplitCalculatorProps> = ({ rooms, aggr
                                 <td className={`px-4 py-3 whitespace-nowrap text-sm text-right ${room.colorClass}`}>
                                     {room.index > 0 && room.requiredPeakKw > 0 && room.realCapacityKw > 0 ? room.ratio.toFixed(1) + '%' : '-'}
                                 </td>
-                            </tr>
+                            </Reorder.Item>
                         ))}
-                    </tbody>
+                    </Reorder.Group>
                 </table>
             </div>
 
             <div className="mt-6">
-                <div className="flex flex-wrap gap-4 text-xs font-medium mb-3">
+                <div className="flex flex-wrap gap-4 text-xs font-medium">
                     <div className="flex items-center gap-2 px-2 py-1 rounded bg-green-50 dark:bg-green-900/10 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800">
                         <span className="w-2 h-2 rounded-full bg-green-500"></span> 
                         Optymalny (90% - 150%)
@@ -588,9 +640,6 @@ const MultiSplitCalculator: React.FC<MultiSplitCalculatorProps> = ({ rooms, aggr
                         Przewymiarowanie (&gt; 150%)
                     </div>
                 </div>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed italic">
-                    * Progi doboru uwzględniają specyfikę systemów Multi-Split: rzadkie występowanie jednoczesnego szczytowego zapotrzebowania we wszystkich pomieszczeniach oraz możliwość dynamicznego przekierowania mocy przez agregat.
-                </p>
             </div>
 
             {selectedOutdoorModel && sumOfSelectedIndices > 0 && calculationResults.every(r => r.index === 0 || r.realCapacityKw === 0) && (
