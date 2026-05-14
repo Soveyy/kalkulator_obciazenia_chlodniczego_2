@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Card from './ui/Card';
 import { useCalculator } from '../contexts/CalculatorContext';
+import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 
 interface RoomData {
     id: string;
@@ -35,6 +36,7 @@ const MultiSplitCalculator: React.FC<MultiSplitCalculatorProps> = ({ rooms, aggr
     
     const [db, setDb] = useState<Record<string, OutdoorUnit> | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [sortConfig, setSortConfig] = useState<{ key: 'individualPeakLoad' | 'requiredPeakKw' | null, direction: 'asc' | 'desc' }>({ key: null, direction: 'desc' });
 
     // Stull WB Calculation
     const calculateWBStull = (t: number, rh: number): number => {
@@ -189,6 +191,15 @@ const MultiSplitCalculator: React.FC<MultiSplitCalculatorProps> = ({ rooms, aggr
         });
     };
 
+    const toggleSort = (key: 'individualPeakLoad' | 'requiredPeakKw') => {
+        setSortConfig(prev => {
+            if (prev.key === key) {
+                return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+            }
+            return { key, direction: 'desc' };
+        });
+    };
+
     const calculationResults = useMemo(() => {
         const prepareRoomInfo = (room: RoomData) => {
             const index = roomIndices[room.id] || 0;
@@ -225,78 +236,92 @@ const MultiSplitCalculator: React.FC<MultiSplitCalculatorProps> = ({ rooms, aggr
             }
         }
 
+        let finalResults;
         if (!activeOutdoorUnit) {
-            return baseResults;
-        }
-        
-        const currentSelection: { roomId: string, index: number }[] = [];
-        baseResults.forEach(room => {
-            if (room.index > 0 && !room.isDeactivated) {
-                currentSelection.push({ roomId: room.id, index: room.index });
+            finalResults = baseResults;
+        } else {
+            const currentSelection: { roomId: string, index: number }[] = [];
+            baseResults.forEach(room => {
+                if (room.index > 0 && !room.isDeactivated) {
+                    currentSelection.push({ roomId: room.id, index: room.index });
+                }
+            });
+
+            if (currentSelection.length === 0) {
+                finalResults = baseResults;
+            } else {
+                const selectedIndicesSorted = currentSelection.map(s => s.index).sort((a, b) => a - b);
+                const match = activeOutdoorUnit.combinations.find(comb => {
+                    if (comb.indoorUnits.length !== selectedIndicesSorted.length) return false;
+                    const combIndicesSorted = [...comb.indoorUnits].sort((a, b) => a - b);
+                    return combIndicesSorted.every((val, index) => val === selectedIndicesSorted[index]);
+                });
+
+                const capacityPool: Record<number, number[]> = {};
+                if (match) {
+                    match.indoorUnits.forEach((unit, i) => {
+                        if (!capacityPool[unit]) capacityPool[unit] = [];
+                        capacityPool[unit].push(match.indoorCapacities[i]);
+                    });
+                }
+
+                finalResults = baseResults.map(room => {
+                    let realCapacityKw = 0;
+                    if (match && room.index > 0 && !room.isDeactivated) {
+                        const caps = capacityPool[room.index];
+                        if (caps && caps.length > 0) {
+                            realCapacityKw = caps.shift()! * correctionFactor;
+                        }
+                    }
+
+                    let ratio = 0;
+                    if (room.requiredPeakKw > 0) {
+                        ratio = (realCapacityKw / room.requiredPeakKw) * 100;
+                    }
+
+                    let colorClass = 'text-slate-500';
+                    let bgClass = '';
+                    
+                    if (room.index > 0 && room.requiredPeakKw > 0 && !room.isDeactivated) {
+                        if (ratio >= 90 && ratio <= 150) {
+                            colorClass = 'text-green-600 font-bold';
+                            bgClass = 'bg-green-50 dark:bg-green-900/10';
+                        } else if (ratio >= 75 && ratio < 90) {
+                            colorClass = 'text-orange-500 font-bold';
+                            bgClass = 'bg-orange-50 dark:bg-orange-900/10';
+                        } else if (ratio > 150) {
+                            colorClass = 'text-blue-600 font-bold';
+                            bgClass = 'bg-blue-50 dark:bg-blue-900/10';
+                        } else {
+                            colorClass = 'text-red-600 font-bold';
+                            bgClass = 'bg-red-50 dark:bg-red-900/10';
+                        }
+                    }
+
+                    return {
+                        ...room,
+                        realCapacityKw,
+                        ratio,
+                        colorClass,
+                        bgClass
+                    };
+                });
             }
-        });
-
-        if (currentSelection.length === 0) {
-            return baseResults;
         }
 
-        const selectedIndicesSorted = currentSelection.map(s => s.index).sort((a, b) => a - b);
-        const match = activeOutdoorUnit.combinations.find(comb => {
-            if (comb.indoorUnits.length !== selectedIndicesSorted.length) return false;
-            const combIndicesSorted = [...comb.indoorUnits].sort((a, b) => a - b);
-            return combIndicesSorted.every((val, index) => val === selectedIndicesSorted[index]);
-        });
-
-        const capacityPool: Record<number, number[]> = {};
-        if (match) {
-            match.indoorUnits.forEach((unit, i) => {
-                if (!capacityPool[unit]) capacityPool[unit] = [];
-                capacityPool[unit].push(match.indoorCapacities[i]);
+        // Apply sorting
+        if (sortConfig.key) {
+            const { key, direction } = sortConfig;
+            return [...finalResults].sort((a, b) => {
+                const valA = a[key];
+                const valB = b[key];
+                if (direction === 'asc') return valA - valB;
+                return valB - valA;
             });
         }
 
-        return baseResults.map(room => {
-            let realCapacityKw = 0;
-            if (match && room.index > 0 && !room.isDeactivated) {
-                const caps = capacityPool[room.index];
-                if (caps && caps.length > 0) {
-                    realCapacityKw = caps.shift()! * correctionFactor;
-                }
-            }
-
-            let ratio = 0;
-            if (room.requiredPeakKw > 0) {
-                ratio = (realCapacityKw / room.requiredPeakKw) * 100;
-            }
-
-            let colorClass = 'text-slate-500';
-            let bgClass = '';
-            
-            if (room.index > 0 && room.requiredPeakKw > 0 && !room.isDeactivated) {
-                if (ratio >= 90 && ratio <= 150) {
-                    colorClass = 'text-green-600 font-bold';
-                    bgClass = 'bg-green-50 dark:bg-green-900/10';
-                } else if (ratio >= 75 && ratio < 90) {
-                    colorClass = 'text-orange-500 font-bold';
-                    bgClass = 'bg-orange-50 dark:bg-orange-900/10';
-                } else if (ratio > 150) {
-                    colorClass = 'text-blue-600 font-bold';
-                    bgClass = 'bg-blue-50 dark:bg-blue-900/10';
-                } else {
-                    colorClass = 'text-red-600 font-bold';
-                    bgClass = 'bg-red-50 dark:bg-red-900/10';
-                }
-            }
-
-            return {
-                ...room,
-                realCapacityKw,
-                ratio,
-                colorClass,
-                bgClass
-            };
-        });
-    }, [activeOutdoorUnit, rooms, roomIndices, correctionFactor, deactivatedRoomIds, aggregatePeak]);
+        return finalResults;
+    }, [activeOutdoorUnit, rooms, roomIndices, correctionFactor, deactivatedRoomIds, aggregatePeak, sortConfig]);
 
     const sumOfSelectedIndices = rooms.reduce((sum, room) => {
         if (deactivatedRoomIds.includes(room.id)) return sum;
@@ -460,11 +485,33 @@ const MultiSplitCalculator: React.FC<MultiSplitCalculatorProps> = ({ rooms, aggr
                             <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                 Pomieszczenie
                             </th>
-                            <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                Obciążenie maksymalne [kW]
+                            <th 
+                                scope="col" 
+                                className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
+                                onClick={() => toggleSort('individualPeakLoad')}
+                            >
+                                <div className="flex items-center justify-end gap-1">
+                                    Obciążenie maksymalne [kW]
+                                    {sortConfig.key === 'individualPeakLoad' ? (
+                                        sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                                    ) : (
+                                        <ChevronsUpDown size={14} className="opacity-30" />
+                                    )}
+                                </div>
                             </th>
-                            <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                Obciążenie jednoczesne [kW]
+                            <th 
+                                scope="col" 
+                                className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
+                                onClick={() => toggleSort('requiredPeakKw')}
+                            >
+                                <div className="flex items-center justify-end gap-1">
+                                    Obciążenie jednoczesne [kW]
+                                    {sortConfig.key === 'requiredPeakKw' ? (
+                                        sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                                    ) : (
+                                        <ChevronsUpDown size={14} className="opacity-30" />
+                                    )}
+                                </div>
                             </th>
                             <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                 Indeks j.wewn.
