@@ -32,18 +32,28 @@ const SolarHeatMap: React.FC<SolarHeatMapProps> = ({
         return actualSolarInstant;
     }, [dataType, actualYearly, actualSolar, actualSolarInstant]);
 
-    if (!matrix || matrix.length === 0) return null;
+    const reorderedMatrix = useMemo(() => {
+        if (!matrix || matrix.length === 0) return [];
+        return matrix.map((row, mIdx) => {
+            const monthInt = mIdx + 1;
+            const isSummerTime = (monthInt >= 4 && monthInt <= 10);
+            const offset = isSummerTime ? 2 : 1;
+            return Array.from({ length: 24 }, (_, i) => row[(i - offset + 24) % 24] || 0);
+        });
+    }, [matrix]);
+
+    if (!reorderedMatrix || reorderedMatrix.length === 0) return null;
 
     // Find max value for color scaling
     const maxValue = useMemo(() => {
         let max = 0;
-        matrix.forEach(row => {
+        reorderedMatrix.forEach(row => {
             row.forEach(val => {
                 if (val > max) max = val;
             });
         });
         return max || 1;
-    }, [matrix]);
+    }, [reorderedMatrix]);
 
     const getColor = (value: number) => {
         if (value <= 0) return 'rgb(241, 245, 249)'; // slate-100
@@ -130,7 +140,7 @@ const SolarHeatMap: React.FC<SolarHeatMapProps> = ({
 
                         {/* Grid */}
                         <div className="space-y-1">
-                            {matrix.map((row, mIdx) => (
+                            {reorderedMatrix.map((row, mIdx) => (
                                 <div key={mIdx} className="flex items-center group">
                                     <div className="w-24 shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400 pr-4 text-right">
                                         {MONTH_NAMES[mIdx]}
