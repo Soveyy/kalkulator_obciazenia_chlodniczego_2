@@ -5,16 +5,32 @@ import { MONTH_NAMES } from '../constants';
 import { motion, AnimatePresence } from 'framer-motion';
 import { InfoIcon, SunIcon, ZapIcon } from './Icons';
 
-const SolarHeatMap: React.FC = () => {
+interface SolarHeatMapProps {
+    customYearlyMatrix?: number[][] | null;
+    customSolarMatrix?: number[][] | null;
+    customSolarInstantMatrix?: number[][] | null;
+    defaultDataType?: 'total' | 'solar' | 'solarInstant';
+}
+
+const SolarHeatMap: React.FC<SolarHeatMapProps> = ({ 
+    customYearlyMatrix, 
+    customSolarMatrix, 
+    customSolarInstantMatrix,
+    defaultDataType = 'total'
+}) => {
     const { state } = useCalculator();
-    const [dataType, setDataType] = useState<'total' | 'solar' | 'solarInstant'>('solar');
+    const [dataType, setDataType] = useState<'total' | 'solar' | 'solarInstant'>(defaultDataType);
     const [hoveredCell, setHoveredCell] = useState<{ month: number, hour: number, value: number } | null>(null);
 
+    const actualYearly = customYearlyMatrix || state.yearlyMatrix;
+    const actualSolar = customSolarMatrix || state.solarMatrix;
+    const actualSolarInstant = customSolarInstantMatrix || state.solarInstantMatrix;
+
     const matrix = useMemo(() => {
-        if (dataType === 'total') return state.yearlyMatrix;
-        if (dataType === 'solar') return state.solarMatrix;
-        return state.solarInstantMatrix;
-    }, [dataType, state.yearlyMatrix, state.solarMatrix, state.solarInstantMatrix]);
+        if (dataType === 'total') return actualYearly;
+        if (dataType === 'solar') return actualSolar;
+        return actualSolarInstant;
+    }, [dataType, actualYearly, actualSolar, actualSolarInstant]);
 
     if (!matrix || matrix.length === 0) return null;
 

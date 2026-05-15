@@ -95,12 +95,17 @@ const renderSankeyLink = (props: any) => {
     );
 };
 
-const SankeyChart: React.FC = () => {
+interface SankeyChartProps {
+    customResults?: any; // Using any or specific type if exported properly
+}
+
+const SankeyChart: React.FC<SankeyChartProps> = ({ customResults }) => {
     const { state } = useCalculator();
 
-    if (!state.activeResults) return null;
+    const resultsToUse = customResults || state.activeResults;
+    if (!resultsToUse) return null;
 
-    const { finalGains, instantaneousGains } = state.activeResults;
+    const { finalGains, instantaneousGains } = resultsToUse;
 
     // We want to show the peak load breakdown.
     // Let's find the hour of the maximum total load.

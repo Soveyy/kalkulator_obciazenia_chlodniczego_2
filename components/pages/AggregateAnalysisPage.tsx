@@ -5,6 +5,8 @@ import Chart from 'chart.js/auto';
 import { MONTH_NAMES } from '../../constants';
 import { generateAggregatePdfReport } from '../../services/aggregateReportGenerator';
 import MultiSplitCalculator from '../MultiSplitCalculator';
+import SankeyChart from '../SankeyChart';
+import SolarHeatMap from '../SolarHeatMap';
 
 const AggregateAnalysisPage: React.FC = () => {
     const { state, theme, dispatch, handleCalculate, isCalculating } = useCalculator();
@@ -54,13 +56,68 @@ const AggregateAnalysisPage: React.FC = () => {
         const hourlyTotal = Array(24).fill(0);
         let sumOfPeaks = 0;
         
+        const aggregateFinalGains = {
+            clearSky: {
+                total: Array(24).fill(0),
+                windows: Array(24).fill(0),
+                walls: Array(24).fill(0),
+                people: Array(24).fill(0),
+                lighting: Array(24).fill(0),
+                equipment: Array(24).fill(0),
+                ventilationSensible: Array(24).fill(0),
+                infiltrationSensible: Array(24).fill(0),
+                peopleLatent: Array(24).fill(0),
+                ventilationLatent: Array(24).fill(0),
+                infiltrationLatent: Array(24).fill(0),
+            }
+        };
+
+        const aggregateYearlyMatrix: number[][] = Array(12).fill(0).map(() => Array(24).fill(0));
+        const aggregateSolarMatrix: number[][] = Array(12).fill(0).map(() => Array(24).fill(0));
+        const aggregateSolarInstantMatrix: number[][] = Array(12).fill(0).map(() => Array(24).fill(0));
+        
         const roomProfiles = roomsWithResults.map(room => {
-            const profile = room.activeResults!.finalGains.clearSky.total;
+            const clearSky = room.activeResults!.finalGains.clearSky;
+            const profile = clearSky.total;
             const peak = Math.max(...profile);
             sumOfPeaks += peak;
             
             for (let i = 0; i < 24; i++) {
                 hourlyTotal[i] += profile[i];
+                aggregateFinalGains.clearSky.total[i] += profile[i];
+                aggregateFinalGains.clearSky.windows[i] += clearSky.windows?.[i] || 0;
+                aggregateFinalGains.clearSky.walls[i] += clearSky.walls?.[i] || 0;
+                aggregateFinalGains.clearSky.people[i] += clearSky.people?.[i] || 0;
+                aggregateFinalGains.clearSky.lighting[i] += clearSky.lighting?.[i] || 0;
+                aggregateFinalGains.clearSky.equipment[i] += clearSky.equipment?.[i] || 0;
+                aggregateFinalGains.clearSky.ventilationSensible[i] += clearSky.ventilationSensible?.[i] || 0;
+                aggregateFinalGains.clearSky.infiltrationSensible[i] += clearSky.infiltrationSensible?.[i] || 0;
+                aggregateFinalGains.clearSky.peopleLatent[i] += clearSky.peopleLatent?.[i] || 0;
+                aggregateFinalGains.clearSky.ventilationLatent[i] += clearSky.ventilationLatent?.[i] || 0;
+                aggregateFinalGains.clearSky.infiltrationLatent[i] += clearSky.infiltrationLatent?.[i] || 0;
+            }
+
+            // sum matrices
+            if (room.yearlyMatrix) {
+                for (let m = 0; m < 12; m++) {
+                    for (let h = 0; h < 24; h++) {
+                        aggregateYearlyMatrix[m][h] += room.yearlyMatrix[m][h];
+                    }
+                }
+            }
+            if (room.solarMatrix) {
+                for (let m = 0; m < 12; m++) {
+                    for (let h = 0; h < 24; h++) {
+                        aggregateSolarMatrix[m][h] += room.solarMatrix[m][h];
+                    }
+                }
+            }
+            if (room.solarInstantMatrix) {
+                for (let m = 0; m < 12; m++) {
+                    for (let h = 0; h < 24; h++) {
+                        aggregateSolarInstantMatrix[m][h] += room.solarInstantMatrix[m][h];
+                    }
+                }
             }
             
             return {
@@ -83,7 +140,11 @@ const AggregateAnalysisPage: React.FC = () => {
             peakHour,
             sumOfPeaks,
             diversityFactor,
-            roomProfiles
+            roomProfiles,
+            aggregateFinalGains,
+            aggregateYearlyMatrix,
+            aggregateSolarMatrix,
+            aggregateSolarInstantMatrix
         };
     }, [state.rooms, deselectedRoomIds]);
 
@@ -533,6 +594,31 @@ const AggregateAnalysisPage: React.FC = () => {
                             tInternal={parseFloat(state.rooms[0]?.input?.tInternal || '24')}
                             rhInternal={parseFloat(state.rooms[0]?.input?.rhInternal || '50')}
                         />
+
+                    <div className="flex flex-col space-y-6">
+                        <div className="text-center mb-0 mt-4">
+                            <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Zbiorcza Mapa Ciepła</h2>
+                            <p className="text-slate-500 dark:text-slate-400">Całoroczny rozkład obciążeń i zysków słonecznych dla wybranych pomieszczeń</p>
+                        </div>
+
+                        <SolarHeatMap 
+                            customYearlyMatrix={aggregateData.aggregateYearlyMatrix}
+                            customSolarMatrix={aggregateData.aggregateSolarMatrix}
+                            customSolarInstantMatrix={aggregateData.aggregateSolarInstantMatrix}
+                            defaultDataType="total"
+                        />
+                    </div>
+
+                    <div className="flex flex-col space-y-6">
+                        <div className="text-center mb-0 mt-4">
+                            <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Struktura Obciążenia Zbiorczego</h2>
+                            <p className="text-slate-500 dark:text-slate-400">Całkowity przepływ ciepła od źródeł dla wybranych pomieszczeń</p>
+                        </div>
+                        
+                        <Card className="p-6 border-t-4 border-indigo-500 hover:shadow-md transition-shadow">
+                            <SankeyChart customResults={{ finalGains: aggregateData.aggregateFinalGains } as any} />
+                        </Card>
+                    </div>
                 </>
             )}
         </div>

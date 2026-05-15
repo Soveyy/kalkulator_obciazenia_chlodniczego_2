@@ -125,8 +125,13 @@ const MultiSplitCalculator: React.FC<MultiSplitCalculatorProps> = ({ rooms, aggr
         : 1;
 
     useEffect(() => {
-        fetch('/data/combination_database.json')
-            .then(res => res.json())
+        fetch(`/data/combination_database.json?v=${Date.now()}`)
+            .then(res => {
+                if (!res.ok) throw new Error(`Status: ${res.status}`);
+                const contentType = res.headers.get("content-type");
+                if (contentType && contentType.includes("text/html")) throw new Error("Received HTML instead of JSON");
+                return res.json();
+            })
             .then(data => {
                 setDb(data);
                 setIsLoading(false);

@@ -2,11 +2,23 @@
 import { AllData } from '../types';
 
 async function fetchData(url: string): Promise<any> {
-    const response = await fetch(url);
-    if (!response.ok) {
-        throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch ${url}: ${response.statusText} (${response.status})`);
+        }
+        
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("text/html")) {
+            console.error(`Fetch error: URL ${url} returned HTML instead of JSON`);
+            throw new Error(`Expected JSON from ${url} but got HTML. This usually happens when a file is missing and the server falls back to index.html.`);
+        }
+
+        return await response.json();
+    } catch (e) {
+        console.error(`Error in fetchData for ${url}:`, e);
+        throw e;
     }
-    return response.json();
 }
 
 function parseIrradianceData(rawData: any): any {
@@ -41,14 +53,23 @@ function parseIrradianceData(rawData: any): any {
 
 export const loadAllData = async (): Promise<AllData> => {
     console.log("Starting to load application data...");
+    const files = [
+        { name: 'NSRDB', path: `/data/baza_danych_NSRDB.json?v=${Date.now()}` },
+        { name: 'RTS', path: `/data/rts_factors.json?v=${Date.now()}` },
+        { name: 'Shading', path: `/data/shading_database.json?v=${Date.now()}` },
+        { name: 'Weather', path: `/data/warsaw_weather.json?v=${Date.now()}` },
+        { name: 'CTS', path: `/data/cts_factors.json?v=${Date.now()}` },
+    ];
+
     try {
-        const [nsrdbRaw, rtsData, shadingData, warsawWeather, ctsData] = await Promise.all([
-            fetchData('data/baza_danych_NSRDB.json'),
-            fetchData('data/rts_factors.json'),
-            fetchData('data/shading_database.json'),
-            fetchData('data/warsaw_weather.json'),
-            fetchData('data/cts_factors.json'),
-        ]);
+        const results = await Promise.all(
+            files.map(file => fetchData(file.path).catch(err => {
+                console.error(`Failed to load ${file.name} from ${file.path}:`, err);
+                throw new Error(`Błąd ładowania ${file.name}: ${err.message}`);
+            }))
+        );
+        
+        const [nsrdbRaw, rtsData, shadingData, warsawWeather, ctsData] = results;
         console.log("Raw data fetched successfully.");
 
         const nsrdb = parseIrradianceData(nsrdbRaw);
@@ -56,7 +77,7 @@ export const loadAllData = async (): Promise<AllData> => {
 
         return { nsrdb, rts: rtsData, shading: shadingData, warsaw_weather: warsawWeather, cts: ctsData };
     } catch (error) {
-        console.error("Failed to load all application data:", error);
+        console.error("Failed to load application data bundle:", error);
         throw error;
     }
 };
