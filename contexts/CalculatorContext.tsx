@@ -43,6 +43,8 @@ const initialRoomState: RoomState = {
             type: 'none',
             airflow: 150,
             exchangerType: 'counterflow_hrv',
+            heatRecoveryEfficiency: 85,
+            moistureRecoveryEfficiency: 0,
             naturalVentilationAirflow: 150,
             includeInfiltration: false,
             exteriorWallPerimeter: '',

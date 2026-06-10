@@ -97,11 +97,14 @@ export const ROLLER_SHADE_SETTING_LABELS: { [key: string]: string } = {
 };
 
 // Internal gains constants
-export const PEOPLE_ACTIVITY_LEVELS: { [key: string]: { label: string, sensible: number, latent: number, radiantFraction: number } } = {
-    seated_very_light: { label: 'Bardzo lekka, siedząca (115 W)', sensible: 70, latent: 45, radiantFraction: 0.60 },
-    standing_light: { label: 'Lekka, stojąca (130 W)', sensible: 75, latent: 55, radiantFraction: 0.58 },
-    walking_moderate: { label: 'Umiarkowana, chód (295 W)', sensible: 110, latent: 185, radiantFraction: 0.49 },
-    heavy_sport: { label: 'Ciężka, sport (525 W)', sensible: 210, latent: 315, radiantFraction: 0.54 },
+export const PEOPLE_ACTIVITY_LEVELS: { [key: string]: { label: string, examples: string, power: number, sensible: number, latent: number, radiantFraction: number } } = {
+    seated_very_light: { label: 'Praca siedząca, bardzo lekka', examples: 'dom, biuro', power: 115, sensible: 70, latent: 45, radiantFraction: 0.60 },
+    standing_light: { label: 'Praca stojąca, lekka', examples: 'dom, biuro, sklep, laboratorium', power: 130, sensible: 75, latent: 55, radiantFraction: 0.58 },
+    restaurant_eating: { label: 'Spożywanie posiłku w restauracji', examples: 'w tym ciepło potraw', power: 160, sensible: 80, latent: 80, radiantFraction: 0.58 },
+    light_exercise: { label: 'Lekki wysiłek fizyczny', examples: 'joga, pilates, wolny taniec', power: 250, sensible: 90, latent: 160, radiantFraction: 0.49 },
+    walking_moderate: { label: 'Praca umiarkowana / chód', examples: 'lekki przemysł, spacer 5 km/h', power: 295, sensible: 110, latent: 185, radiantFraction: 0.49 },
+    heavy_work: { label: 'Ciężka praca fizyczna', examples: 'hale produkcyjne, magazyny', power: 425, sensible: 170, latent: 255, radiantFraction: 0.54 },
+    heavy_sport: { label: 'Intensywny sport / atletyka', examples: 'siłownia, bieganie', power: 525, sensible: 210, latent: 315, radiantFraction: 0.54 },
 };
 
 
@@ -138,10 +141,10 @@ export const WINDOW_TYPE_DESCRIPTIONS: { [key: string]: string } = {
 };
 
 export const VENTILATION_EXCHANGER_TYPES: { [key: string]: { label: string, eta_s: number, eta_l: number, description: string } } = {
-    counterflow_hrv: { label: 'Przeciwprądowy (Standard / HRV)', eta_s: 0.88, eta_l: 0.00, description: 'Płyty nieprzepuszczalne dla wilgoci. Tylko odzysk temperatury.' },
-    counterflow_erv: { label: 'Przeciwprądowy (Entalpiczny / ERV)', eta_s: 0.80, eta_l: 0.70, description: 'Membrana polimerowa umożliwia dyfuzję pary wodnej.' },
-    rotary_condensing: { label: 'Obrotowy (Standard / Kondensacyjny)', eta_s: 0.85, eta_l: 0.10, description: 'Latem odzysk wilgoci jest minimalny lub pomijalny.' },
-    rotary_sorption: { label: 'Obrotowy (Sorpcyjny / Zeolitowy)', eta_s: 0.85, eta_l: 0.80, description: 'Aktywna adsorpcja wilgoci przez materiał higroskopijny (np. zeolit).' },
+    counterflow_hrv: { label: 'Przeciwprądowy (Standard / HRV)', eta_s: 0.85, eta_l: 0.00, description: 'Płyty nieprzepuszczalne dla wilgoci. Tylko odzysk temperatury.' },
+    counterflow_erv: { label: 'Przeciwprądowy (Entalpiczny / ERV)', eta_s: 0.80, eta_l: 0.65, description: 'Membrana polimerowa umożliwia dyfuzję pary wodnej.' },
+    rotary_condensing: { label: 'Obrotowy (Standard / Kondensacyjny)', eta_s: 0.80, eta_l: 0.10, description: 'Latem odzysk wilgoci jest minimalny lub pomijalny.' },
+    rotary_sorption: { label: 'Obrotowy (Sorpcyjno-entalpiczny)', eta_s: 0.80, eta_l: 0.75, description: 'Aktywna adsorpcja wilgoci przez materiał higroskopijny (np. zeolit).' },
 };
 
 export const WALL_MATERIALS: { [key: string]: { label: string, absorptance: number } } = {

@@ -5,6 +5,7 @@ import Card from './ui/Card';
 import Checkbox from './ui/Checkbox';
 import Input from './ui/Input';
 import Select from './ui/Select';
+import ActivitySelect from './ui/ActivitySelect';
 import Button from './ui/Button';
 import TimeRangeSlider from './ui/TimeRangeSlider';
 import { PEOPLE_ACTIVITY_LEVELS, LIGHTING_TYPES, EQUIPMENT_PRESETS } from '../constants';
@@ -172,11 +173,10 @@ const InternalGainsPanel: React.FC = () => {
                                     Poziom aktywności:
                                     <Tooltip text="Zyski ciepła od ludzi są korygowane w zależności od temperatury wewnętrznej. Dla temp. >= 27°C, zysk jawny jest zmniejszany o 20%, a utajony odpowiednio zwiększany." position="top" />
                                 </label>
-                                <Select name="activityLevel" value={state.internalGains.people.activityLevel} onChange={handlePeopleChange}>
-                                    {Object.entries(PEOPLE_ACTIVITY_LEVELS).map(([key, value]) => (
-                                        <option key={key} value={key}>{value.label}</option>
-                                    ))}
-                                </Select>
+                                <ActivitySelect 
+                                    value={state.internalGains.people.activityLevel} 
+                                    onChange={(val) => handlePeopleChange({ target: { name: 'activityLevel', value: val } } as any)} 
+                                />
                                 {state.tutorialMode && (
                                     <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 italic">
                                         Wskazówka: Praca fizyczna generuje znacznie więcej ciepła niż biurowa.

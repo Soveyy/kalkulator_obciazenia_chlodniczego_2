@@ -23,7 +23,14 @@ const VentilationPanel: React.FC = () => {
             (newVentilationGains as any)[name] = checked;
         } else if (type === 'radio') {
             (newVentilationGains as any)[name] = value;
-        } else if (['airflow', 'naturalVentilationAirflow', 'exteriorWallPerimeter', 'roomHeight'].includes(name)) {
+        } else if (name === 'exchangerType') {
+            newVentilationGains.exchangerType = value as any;
+            const preset = VENTILATION_EXCHANGER_TYPES[value];
+            if (preset) {
+                newVentilationGains.heatRecoveryEfficiency = Math.round(preset.eta_s * 100);
+                newVentilationGains.moistureRecoveryEfficiency = Math.round(preset.eta_l * 100);
+            }
+        } else if (['airflow', 'naturalVentilationAirflow', 'exteriorWallPerimeter', 'roomHeight', 'heatRecoveryEfficiency', 'moistureRecoveryEfficiency'].includes(name)) {
             if (value === '') {
                 (newVentilationGains as any)[name] = '';
             } else {
@@ -228,9 +235,19 @@ const VentilationPanel: React.FC = () => {
                                                 <option key={key} value={key}>{value.label}</option>
                                             ))}
                                         </Select>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-3">
                                             {VENTILATION_EXCHANGER_TYPES[ventilation.exchangerType]?.description}
                                         </p>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="label-style font-medium">Sprawność odzysku ciepła (%):</label>
+                                                <Input type="number" name="heatRecoveryEfficiency" value={ventilation.heatRecoveryEfficiency} onChange={handleChange} min="0" max="100" step="any" />
+                                            </div>
+                                            <div>
+                                                <label className="label-style font-medium">Sprawność odzysku wilgoci (%):</label>
+                                                <Input type="number" name="moistureRecoveryEfficiency" value={ventilation.moistureRecoveryEfficiency} onChange={handleChange} min="0" max="100" step="any" />
+                                            </div>
+                                        </div>
                                     </div>
                                 </>
                             ) : (

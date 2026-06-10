@@ -268,7 +268,7 @@ export function calculateGainsForMonth(
     
     if (internalGains.ventilation) {
         const { 
-            enabled, type, airflow, exchangerType, naturalVentilationAirflow,
+            enabled, type, airflow, exchangerType, heatRecoveryEfficiency, moistureRecoveryEfficiency, naturalVentilationAirflow,
             includeInfiltration, exteriorWallPerimeter, roomHeight, buildingStories, tightnessClass, shieldingClass, windSpeed
         } = internalGains.ventilation;
 
@@ -350,9 +350,10 @@ export function calculateGainsForMonth(
             const C_l_air_dynamic = (rho * h_we) / 3600; // Wh/(m3*(kg/kg))
             
             if (type === 'mechanical' && enabled) {
-                const exchanger = VENTILATION_EXCHANGER_TYPES[exchangerType];
-                ventilationLoadSensible[h] = C_s_air_dynamic * Q_mech_h[h] * (tExt - tInternal) * (1 - exchanger.eta_s);
-                ventilationLoadLatent[h] = C_l_air_dynamic * Q_mech_h[h] * (wExternal - wInternal) * (1 - exchanger.eta_l);
+                const eta_s = Number(heatRecoveryEfficiency) / 100 || 0;
+                const eta_l = Number(moistureRecoveryEfficiency) / 100 || 0;
+                ventilationLoadSensible[h] = C_s_air_dynamic * Q_mech_h[h] * (tExt - tInternal) * (1 - eta_s);
+                ventilationLoadLatent[h] = C_l_air_dynamic * Q_mech_h[h] * (wExternal - wInternal) * (1 - eta_l);
                 
                 if (includeInfiltration) {
                     infiltrationLoadSensible[h] = C_s_air_dynamic * Q_inf_h[h] * (tExt - tInternal);
@@ -472,7 +473,7 @@ export function calculateGainsForMonth(
             const quantity = Number(item.quantity) || 0;
             
             // Find if it matches a preset to get its radiant fraction
-            let radiantFraction = 0.4; // Default 40% radiant / 60% convective
+            let radiantFraction = 0.3; // Default 30% radiant / 70% convective
             const preset = Object.values(EQUIPMENT_PRESETS).find(p => p.label === item.name);
             if (preset) {
                 radiantFraction = preset.radiantFraction;

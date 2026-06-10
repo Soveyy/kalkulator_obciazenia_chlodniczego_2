@@ -50,7 +50,7 @@ export interface AccumulationSettings {
 export interface PeopleGains {
     enabled: boolean;
     count: number | '';
-    activityLevel: 'seated_very_light' | 'standing_light' | 'walking_moderate' | 'heavy_sport';
+    activityLevel: 'seated_very_light' | 'standing_light' | 'restaurant_eating' | 'light_exercise' | 'walking_moderate' | 'heavy_work' | 'heavy_sport';
     startHour: number;
     endHour: number;
 }
@@ -84,6 +84,8 @@ export interface VentilationGains {
     type: 'none' | 'mechanical' | 'natural';
     airflow: number | ''; // m3/h
     exchangerType: 'counterflow_hrv' | 'counterflow_erv' | 'rotary_condensing' | 'rotary_sorption';
+    heatRecoveryEfficiency: number | ''; // %
+    moistureRecoveryEfficiency: number | ''; // %
     naturalVentilationAirflow: number | ''; // m3/h
     includeInfiltration: boolean;
     exteriorWallPerimeter: number | ''; // m

@@ -524,10 +524,13 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
     yPos += 6;
 
     const ACTIVITY_LEVELS: Record<string, string> = {
-        'seated_very_light': 'Siedząca, bardzo lekka',
-        'standing_light': 'Stojąca, lekka',
-        'walking_moderate': 'Chodzenie, umiarkowana',
-        'heavy_sport': 'Ciężka, sport'
+        'seated_very_light': 'Praca siedząca, bardzo lekka',
+        'standing_light': 'Praca stojąca, lekka',
+        'restaurant_eating': 'Spożywanie posiłku w restauracji',
+        'light_exercise': 'Lekki wysiłek fizyczny',
+        'walking_moderate': 'Praca umiarkowana / chód',
+        'heavy_work': 'Ciężka praca fizyczna',
+        'heavy_sport': 'Intensywny sport / atletyka'
     };
 
     const internalBody = [];
