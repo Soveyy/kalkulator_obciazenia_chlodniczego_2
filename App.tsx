@@ -151,7 +151,7 @@ const App: React.FC = () => {
     return <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-slate-500">Ładowanie...</div>;
   }
 
-  if (user && user.email?.toLowerCase() === 'xevenx11@gmail.com') {
+  if (user && user.email?.toLowerCase() === 'testowy@gmail.com') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-4 relative overflow-hidden">
         <div className="absolute inset-0 bg-red-500/10 dark:bg-red-900/20 pointer-events-none" />
