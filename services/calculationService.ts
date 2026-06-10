@@ -22,7 +22,10 @@ function interpolate(x: number, x0: number, y0: number, x1: number, y1: number):
     return y0 + (x - x0) * (y1 - y0) / (x1 - x0);
 }
 
-function getCorrectedSHGC(window: Window, nsrdbDirData: any, hour: number): { shgc_direct: number, shgc_diffuse: number } {
+function getCorrectedSHGC(window: Window, nsrdbDirData: any, hour: number, month?: string, tiltStr?: string): { shgc_direct: number, shgc_diffuse: number } {
+    if (nsrdbDirData.theta?.[hour] === undefined) {
+        console.warn(`Missing theta for hour ${hour}, month ${month}, window direction ${window.direction}, tilt ${tiltStr}`);
+    }
     const angleOfIncidence = nsrdbDirData.theta?.[hour] ?? 90;
     const baseSHGC = window.shgc;
     const windowTypeKey = window.type as keyof typeof SHGC_DIFFUSE_MULTIPLIERS;
@@ -33,14 +36,20 @@ function getCorrectedSHGC(window: Window, nsrdbDirData: any, hour: number): { sh
         return { shgc_direct: 0, shgc_diffuse };
     }
 
-    const curve = SHGC_DIRECT_CORRECTION_CURVES[windowTypeKey];
+    const curve = SHGC_DIRECT_CORRECTION_CURVES[windowTypeKey] || { 0: 1, 90: 0 };
     const angles = Object.keys(curve).map(Number).sort((a, b) => a - b);
     
     let x0 = angles.filter(a => a <= angleOfIncidence).pop();
-    if (x0 === undefined) x0 = 0;
+    if (x0 === undefined) {
+        x0 = angles[0];
+        console.error(`Configuration error: Curve missing 0 node for ${windowTypeKey}`);
+    }
 
     let x1 = angles.find(a => a >= angleOfIncidence);
-    if (x1 === undefined) x1 = 90;
+    if (x1 === undefined) {
+        x1 = angles[angles.length - 1];
+        console.error(`Configuration error: Curve missing 90 node for ${windowTypeKey}`);
+    }
 
     const y0 = curve[x0 as keyof typeof curve];
     const y1 = curve[x1 as keyof typeof curve];
@@ -73,7 +82,8 @@ function getShadingFactors(window: Window, allData: AllData, hour: number, month
             const tiltStr = (window.tilt ?? 90).toString();
             const nsrdbDirData = allData.nsrdb[month]?.[direction]?.[tiltStr];
             const omega = nsrdbDirData?.omega?.[hour] ?? 0;
-            const profileAngle = Math.abs(omega);
+            let profileAngle = Math.abs(omega);
+            if (profileAngle > 60) profileAngle = 60;
 
             const iac_beam = interpolate(profileAngle, 0, factors.iac0, 60, factors.iac60);
             return { iac_beam, iac_diff: factors.iac_diff, fr: factors.fr, is_indoor };
@@ -485,6 +495,8 @@ export function calculateGainsForMonth(
     const componentSolarGains = Array(24).fill(0);
     const componentConductionGains = Array(24).fill(0);
 
+    let diffuseWarningLogged = false;
+
     windows.forEach(win => {
         const area = win.width * win.height;
         const tiltStr = (win.tilt ?? 90).toString();
@@ -496,19 +508,29 @@ export function calculateGainsForMonth(
                 const conductiveTotal = win.u * area * (tExt - tInternal);
                 componentConductionGains[h] += conductiveTotal;
                 
-                const radiativeFractionCond = win.shgc <= 0.55 ? 0.46 : 0.33;
+                const radiativeFractionCond = win.shgc <= 0.5 ? 0.46 : 0.33;
                 conductionRadiantGains_NonSolarRTS[h] += conductiveTotal * radiativeFractionCond;
                 conductionGainsConvective[h] += conductiveTotal * (1 - radiativeFractionCond);
 
                 const shadingFactors = getShadingFactors(win, allData, h, month, isWithoutShading);
-                const correctedSHGC = getCorrectedSHGC(win, nsrdbDirData, h);
+                const correctedSHGC = getCorrectedSHGC(win, nsrdbDirData, h, month, tiltStr);
 
                 // Use only Clear Sky (NSRDB) data
                 const beamIrradiance_raw = nsrdbDirData.Gb?.[h] || 0;
-                const diffuseIrradiance = (nsrdbDirData.Gcs?.[h] || 0) - beamIrradiance_raw;
+                let diffuseIrradiance = (nsrdbDirData.Gcs?.[h] || 0) - beamIrradiance_raw;
+                if (diffuseIrradiance < 0) {
+                    diffuseIrradiance = 0;
+                    if (!diffuseWarningLogged) {
+                        console.warn(`Negative diffuse irradiance detected and clamped to 0 for month ${month}, direction ${win.direction}, tilt ${tiltStr}`);
+                        diffuseWarningLogged = true;
+                    }
+                }
 
                 // Overhang Shading Logic (ASHRAE)
                 // Applied only to beam irradiance (direct solar)
+                // (a) okap traktowany jako nieskończenie szeroki — brak poprawki na skończoną szerokość i efekty boczne;
+                // (b) redukowana jest wyłącznie składowa bezpośrednia, dyfuz nieba pozostaje bez redukcji — zgodne z procedurą uproszczoną i częścią 4 przykładu w rozdz. 18 (przy pełnym zacienieniu okna pozostaje dyfuz plus przewodzenie);
+                // (c) model dotyczy wyłącznie okien pionowych (tilt 90 stopni). Wzory: kąt profilowy tan(omega) = tan(beta) / cos(gamma) — rozdz. 15, równanie (32); zasięg cienia = głębokość okapu razy tan(omega) — rozdz. 15, równanie (34).
                 let overhangShadingFactor = 0;
                 if (win.overhang?.enabled && win.tilt === 90) {
                     const beta = nsrdbDirData.solar_altitude?.[h] || 0;
@@ -534,12 +556,20 @@ export function calculateGainsForMonth(
                 const attenuatedDiffuseGain = (diffuseIrradiance * correctedSHGC.shgc_diffuse * area) * shadingFactors.iac_diff;
                 componentSolarGains[h] += attenuatedBeamGain + attenuatedDiffuseGain;
 
-                const radiantGain = (attenuatedBeamGain + attenuatedDiffuseGain) * shadingFactors.fr;
+                const beamRadiantGain = attenuatedBeamGain * shadingFactors.fr;
+                const diffuseRadiantGain = attenuatedDiffuseGain * shadingFactors.fr;
+                
                 const convectiveGain = (attenuatedBeamGain + attenuatedDiffuseGain) * (1 - shadingFactors.fr);
                 solarConvectiveGains[h] += convectiveGain;
                 
-                if (shadingFactors.is_indoor) solarRadiantGains_NonSolarRTS[h] += radiantGain;
-                else solarRadiantGains_SolarRTS[h] += radiantGain;
+                // dyfuz bez osłony wewnętrznej traktujemy jako 100% radiacyjny zgodnie z Tabelą 14 rozdz. 18 (wiersz "Solar heat gain through fenestration / Without interior shading": 1.00 rad / 0.00 konw.); alternatywny podział 46/54 z przykładu obliczeniowego (s. 18.51) został świadomie odrzucony decyzją projektową.
+                solarRadiantGains_NonSolarRTS[h] += diffuseRadiantGain;
+                
+                if (shadingFactors.is_indoor) {
+                    solarRadiantGains_NonSolarRTS[h] += beamRadiantGain;
+                } else {
+                    solarRadiantGains_SolarRTS[h] += beamRadiantGain;
+                }
             }
         }
     });
