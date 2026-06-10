@@ -9,8 +9,16 @@ const ASHRAE_TEMPERATURE_FRACTIONS = [
     0.05, 0.00, 0.00, 0.06, 0.14, 0.24, 0.39, 0.50, 0.59, 0.68, 0.75, 0.82
 ];
 
+// SOLAR_TIME_INDEX_SHIFT = 1
+// Oś godzinowa danych NSRDB to UTC, a południe słoneczne dla Warszawy (21°E)
+// wypada ~10:40 UTC. Poprawka sprowadza się do frac[(h+1) % 24], co w pełni pokrywa
+// się z procedurą ASHRAE bez interpolacji.
+const SOLAR_TIME_INDEX_SHIFT = 1;
+
 export function generateAshraeTemperatureProfile(peakTemp: number, dailyRange: number): number[] {
-    return ASHRAE_TEMPERATURE_FRACTIONS.map(fraction => {
+    return Array.from({ length: 24 }).map((_, h) => {
+        const fractionIndex = (h + SOLAR_TIME_INDEX_SHIFT) % 24;
+        const fraction = ASHRAE_TEMPERATURE_FRACTIONS[fractionIndex];
         // T_hour = T_peak - (Fraction * DailyRange)
         const temp = peakTemp - (fraction * dailyRange);
         return Number(temp.toFixed(2));
