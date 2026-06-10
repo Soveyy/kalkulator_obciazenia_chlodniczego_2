@@ -6,6 +6,9 @@ import { loadAllData } from '../services/dataService';
 import { generatePdfReport } from '../services/reportGenerator';
 import { MONTH_NAMES } from '../constants';
 import LZString from 'lz-string';
+import { db, auth } from '../firebase';
+import { collection, doc, setDoc, getDocs, deleteDoc, getDoc, query, onSnapshot, serverTimestamp, where } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 
 const initialRoomState: RoomState = {
     id: 'room-1',
@@ -550,15 +553,64 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
     
     // Load saved projects list on mount
     useEffect(() => {
-        const savedProjectsStr = localStorage.getItem('hvac_saved_projects');
-        if (savedProjectsStr) {
-            try {
-                const savedProjects = JSON.parse(savedProjectsStr);
-                dispatch({ type: 'SET_SAVED_PROJECTS', payload: savedProjects });
-            } catch (e) {
-                console.error("Failed to parse saved projects", e);
+        const loadLocalProjects = (): SavedProject[] => {
+            const savedProjectsStr = localStorage.getItem('hvac_saved_projects');
+            if (savedProjectsStr) {
+                try {
+                    const parsed = JSON.parse(savedProjectsStr);
+                    return parsed.map((p: any) => ({ ...p, isLocal: true }));
+                } catch (e) {
+                    console.error("Failed to parse local projects", e);
+                }
             }
-        }
+            return [];
+        };
+
+        const localProjects = loadLocalProjects();
+        
+        let currentLocalProjects = localProjects;
+
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (user) {
+                const projectsRef = collection(db, 'users', user.uid, 'projects');
+                const q = query(projectsRef, where('userId', '==', user.uid));
+                const unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+                    const cloudProjects: SavedProject[] = [];
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        cloudProjects.push({
+                            name: data.name,
+                            date: data.date,
+                            data: JSON.parse(data.data),
+                            isCloud: true
+                        });
+                    });
+                    
+                    // Merge local and cloud projects
+                    const mergedProjects = [...cloudProjects];
+                    currentLocalProjects.forEach(localProj => {
+                        const existing = mergedProjects.find(p => p.name === localProj.name);
+                        if (existing) {
+                            existing.isLocal = true;
+                        } else {
+                            mergedProjects.push(localProj);
+                        }
+                    });
+
+                    // Sort by name or date, let's keep original order or by date desc
+                    mergedProjects.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                    dispatch({ type: 'SET_SAVED_PROJECTS', payload: mergedProjects });
+                }, (error) => {
+                    console.error("Failed to fetch projects from Firestore", error);
+                    dispatch({ type: 'SET_SAVED_PROJECTS', payload: currentLocalProjects });
+                });
+                return () => unsubscribeSnapshot();
+            } else {
+                dispatch({ type: 'SET_SAVED_PROJECTS', payload: currentLocalProjects });
+            }
+        });
+        return () => unsubscribe();
     }, []);
 
     // Check for URL params on mount
@@ -836,12 +888,51 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                 data: projectData
             };
 
-            const updatedProjects = [...state.savedProjects.filter(p => p.name !== name), newProject];
-            localStorage.setItem('hvac_saved_projects', JSON.stringify(updatedProjects));
-            
-            dispatch({ type: 'SET_SAVED_PROJECTS', payload: updatedProjects });
-            dispatch({ type: 'SET_INPUT', payload: { ...activeRoom.input, projectName: name } });
-            dispatch({ type: 'ADD_TOAST', payload: { message: `Projekt "${name}" zapisany!`, type: 'success' } });
+            const updatedLocalProjects = [...state.savedProjects.filter(p => !p.isCloud && p.name !== name), newProject];
+            localStorage.setItem('hvac_saved_projects', JSON.stringify(updatedLocalProjects.map(p => ({name: p.name, date: p.date, data: p.data}))));
+
+            if (auth.currentUser) {
+                // Check if user has reached max limit
+                if (state.savedProjects.filter(p => p.isCloud).length >= 100 && !state.savedProjects.find(p => p.name === name && p.isCloud)) {
+                    dispatch({ type: 'ADD_TOAST', payload: { message: 'Osiągnięto limit 100 projektów w chmurze.', type: 'danger' } });
+                    // Still saved locally!
+                    dispatch({ type: 'SET_INPUT', payload: { ...activeRoom.input, projectName: name } });
+                    dispatch({ type: 'ADD_TOAST', payload: { message: `Projekt "${name}" zapisany lokalnie!`, type: 'success' } });
+                    return;
+                }
+
+                const firestoreDoc = {
+                    name,
+                    date: new Date().toISOString(),
+                    data: JSON.stringify(projectData),
+                    userId: auth.currentUser.uid,
+                    createdAt: new Date().toISOString(), // For fallback
+                    updatedAt: new Date().toISOString()  // For fallback, will use serverTimestamp or Date.now string? Actually rule expects timestamp, but if we send ISO string, rule might fail if we don't pass true Date object. Firestore web sdk converts Date, but let's just use string in rules? No, rules expect timestamp.
+                };
+                
+                // Firestore payload
+                const firestorePayload = {
+                    name,
+                    date: new Date().toISOString(),
+                    data: JSON.stringify(projectData),
+                    userId: auth.currentUser.uid,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                };
+
+                const projectId = name.replace(/[^a-zA-Z0-9_-]/g, '_');
+                setDoc(doc(db, 'users', auth.currentUser.uid, 'projects', projectId), firestorePayload, { merge: true })
+                    .then(() => {
+                        dispatch({ type: 'SET_INPUT', payload: { ...activeRoom.input, projectName: name } });
+                        dispatch({ type: 'ADD_TOAST', payload: { message: `Projekt "${name}" zapisany!`, type: 'success' } });
+                    })
+                    .catch(e => {
+                        console.error('Failed to save', e);
+                        dispatch({ type: 'ADD_TOAST', payload: { message: 'Błąd zapisu projektu w chmurze.', type: 'danger' } });
+                    });
+            } else {
+                dispatch({ type: 'ADD_TOAST', payload: { message: `Zaloguj się, aby zapisać projekt w chmurze!`, type: 'danger' } });
+            }
 
         } else if (action.type === 'LOAD_PROJECT_FROM_LIST') {
             const project = state.savedProjects.find(p => p.name === action.payload);
@@ -851,11 +942,60 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                 dispatch({ type: 'ADD_TOAST', payload: { message: `Projekt "${project.name}" wczytany!`, type: 'success' } });
             }
         } else if (action.type === 'DELETE_PROJECT') {
-            const updatedProjects = state.savedProjects.filter(p => p.name !== action.payload);
-            localStorage.setItem('hvac_saved_projects', JSON.stringify(updatedProjects));
-            dispatch({ type: 'SET_SAVED_PROJECTS', payload: updatedProjects });
-            dispatch({ type: 'ADD_TOAST', payload: { message: 'Projekt usunięty.', type: 'info' } });
+            const projectToDelete = state.savedProjects.find(p => p.name === action.payload);
+            const isLocal = projectToDelete?.isLocal;
+            const isCloud = projectToDelete?.isCloud;
 
+            if (isLocal) {
+                const updatedLocalProjects = state.savedProjects.filter(p => p.isLocal && p.name !== action.payload);
+                localStorage.setItem('hvac_saved_projects', JSON.stringify(updatedLocalProjects.map(p => ({name: p.name, date: p.date, data: p.data}))));
+            }
+            
+            if (isCloud && auth.currentUser) {
+                const projectId = action.payload.replace(/[^a-zA-Z0-9_-]/g, '_');
+                deleteDoc(doc(db, 'users', auth.currentUser.uid, 'projects', projectId))
+                    .then(() => {
+                        dispatch({ type: 'ADD_TOAST', payload: { message: 'Projekt usunięty z chmury.', type: 'info' } });
+                    })
+                    .catch(e => {
+                        console.error('Failed to delete', e);
+                        dispatch({ type: 'ADD_TOAST', payload: { message: 'Błąd usuwania projektu z chmury.', type: 'danger' } });
+                    });
+            } else if (isLocal && !isCloud) {
+                dispatch({ type: 'ADD_TOAST', payload: { message: 'Projekt usunięty.', type: 'info' } });
+                // Need to update the state immediately for local-only deletion
+                const newState = state.savedProjects.filter(p => !(p.name === action.payload && p.isLocal));
+                dispatch({ type: 'SET_SAVED_PROJECTS', payload: newState });
+            }
+
+        } else if (action.type === 'SYNC_PROJECT') {
+            const projectToSync = state.savedProjects.find(p => p.name === action.payload);
+            if (projectToSync && projectToSync.isLocal && !projectToSync.isCloud && auth.currentUser) {
+                
+                if (state.savedProjects.filter(p => p.isCloud).length >= 100) {
+                    dispatch({ type: 'ADD_TOAST', payload: { message: 'Osiągnięto limit 100 projektów w chmurze.', type: 'danger' } });
+                    return;
+                }
+
+                const firestoreDoc = {
+                    name: projectToSync.name,
+                    date: projectToSync.date,
+                    data: JSON.stringify(projectToSync.data),
+                    userId: auth.currentUser.uid,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                };
+
+                const projectId = projectToSync.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+                setDoc(doc(db, 'users', auth.currentUser.uid, 'projects', projectId), firestoreDoc, { merge: true })
+                    .then(() => {
+                        dispatch({ type: 'ADD_TOAST', payload: { message: `Projekt "${projectToSync.name}" zsynchronizowany z chmurą!`, type: 'success' } });
+                    })
+                    .catch(e => {
+                        console.error('Failed to sync', e);
+                        dispatch({ type: 'ADD_TOAST', payload: { message: 'Błąd synchronizacji projektu.', type: 'danger' } });
+                    });
+            }
         } else if (action.type === 'GENERATE_SHARE_LINK') {
             // Strip out massive calculated arrays to keep the URL short
             const strippedRooms = state.rooms.map(room => ({

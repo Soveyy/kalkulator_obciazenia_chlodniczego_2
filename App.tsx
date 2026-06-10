@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { CalculatorProvider, useCalculator } from './contexts/CalculatorContext';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
@@ -20,6 +20,9 @@ import CompassHelper from './components/CompassHelper';
 import KPIDashboard from './components/KPIDashboard';
 import ProjectListModal from './components/modals/ProjectListModal';
 import ToastContainer from './components/ToastContainer';
+import { LoginOverlay } from './components/LoginOverlay';
+import { auth } from './firebase';
+import { onAuthStateChanged, User } from 'firebase/auth';
 
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -133,16 +136,36 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-slate-500">Ładowanie...</div>;
+  }
+
   return (
     <CalculatorProvider>
-      <AppContent />
-      <MethodologyModal />
-      <WindowEditModal />
-      <WallEditModal />
-      <BulkShadingModal />
-      <RtsVisualizerModal />
-      <ProjectListModal />
-      <ToastContainer />
+      {!user && <LoginOverlay />}
+      {user && (
+        <>
+          <AppContent />
+          <MethodologyModal />
+          <WindowEditModal />
+          <WallEditModal />
+          <BulkShadingModal />
+          <RtsVisualizerModal />
+          <ProjectListModal />
+          <ToastContainer />
+        </>
+      )}
     </CalculatorProvider>
   );
 };

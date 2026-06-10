@@ -329,9 +329,9 @@ const MultiSplitCalculator: React.FC<MultiSplitCalculatorProps> = ({ rooms, aggr
         // Apply sorting or manual order
         if (sortConfig.key) {
             const { key, direction } = sortConfig;
-            return [...finalResults].sort((a, b) => {
-                const valA = a[key];
-                const valB = b[key];
+            return [...finalResults].sort((a: any, b: any) => {
+                const valA = Number(a[key] || 0);
+                const valB = Number(b[key] || 0);
                 if (direction === 'asc') return valA - valB;
                 return valB - valA;
             });
@@ -339,13 +339,13 @@ const MultiSplitCalculator: React.FC<MultiSplitCalculatorProps> = ({ rooms, aggr
 
         // Apply manual order if exists
         if (roomOrder.length > 0) {
-            const orderMap = new Map(roomOrder.map((id, index) => [id, index]));
+            const orderMap = new Map<string, number>(roomOrder.map((id, index) => [id as string, index as number]));
             // Only reorder if all room IDs are present in the order list, otherwise fall back or handle partial
             // Actually, we can just sort by the index in orderMap
             return [...finalResults].sort((a, b) => {
                 const indexA = orderMap.has(a.id) ? orderMap.get(a.id)! : 999;
                 const indexB = orderMap.has(b.id) ? orderMap.get(b.id)! : 999;
-                return indexA - indexB;
+                return Number(indexA) - Number(indexB);
             });
         }
 

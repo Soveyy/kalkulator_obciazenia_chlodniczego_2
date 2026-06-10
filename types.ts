@@ -191,6 +191,8 @@ export interface SavedProject {
     name: string;
     date: string;
     data: any;
+    isCloud?: boolean;
+    isLocal?: boolean;
 }
 
 export interface MultiSplitConfig {
@@ -264,6 +266,7 @@ export type Action =
     | { type: 'DELETE_PROJECT'; payload: string }
     | { type: 'SET_SAVED_PROJECTS'; payload: SavedProject[] }
     | { type: 'GENERATE_SHARE_LINK' }
+    | { type: 'SYNC_PROJECT'; payload: string }
     | { type: 'RESET_PROJECT' }
     | { type: 'SET_STATE'; payload: Partial<State> }
     | { type: 'SET_ACTIVE_TAB'; payload: AppTab }
