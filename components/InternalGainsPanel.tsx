@@ -384,20 +384,8 @@ const InternalGainsPanel: React.FC = () => {
 
                                 {/* Options and Quantity */}
                                 <div className="grid grid-cols-2 gap-2 w-full xl:w-auto xl:flex xl:items-center">
-                                    <div className="xl:w-24">
-                                        {catalogItem.qRadW === null && catalogItem.radiantFraction !== undefined && (
-                                            <div>
-                                                <label className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1 block">Ułamek Prom. (fr)</label>
-                                                <Input 
-                                                    type="number"
-                                                    value={item.radiantFractionOverride ?? catalogItem.radiantFraction} 
-                                                    onChange={(e) => handleAdvancedApplianceChange(item.id, 'radiantFractionOverride', parseFloat(e.target.value))}
-                                                    step="0.01" min="0" max="1"
-                                                    className="text-sm !py-1 !px-2 !h-8"
-                                                />
-                                            </div>
-                                        )}
-                                        {catalogItem.qRadHoodedW !== undefined && (
+                                    {catalogItem.qRadHoodedW !== undefined && (
+                                        <div className="xl:w-24">
                                             <div className="flex items-center h-full pt-1">
                                                 <Checkbox 
                                                     id={`hood-${item.id}`} 
@@ -406,8 +394,8 @@ const InternalGainsPanel: React.FC = () => {
                                                     onChange={(e) => handleAdvancedApplianceChange(item.id, 'isHoodedOverride', (e.target as HTMLInputElement).checked)} 
                                                 />
                                             </div>
-                                        )}
-                                    </div>
+                                        </div>
+                                    )}
                                     <div className="xl:w-20">
                                         <label className="xl:hidden text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1 block">Ilość</label>
                                         <div className="relative">
