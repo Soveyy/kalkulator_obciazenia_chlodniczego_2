@@ -13,6 +13,7 @@ import { TrashIcon, PlusIcon } from './Icons';
 import Tooltip from './ui/Tooltip';
 import AdvancedAppliancesModal from './modals/AdvancedAppliancesModal';
 import { ADVANCED_APPLIANCES } from '../data/advancedAppliances';
+import { Users, Lightbulb, Monitor } from 'lucide-react';
 
 const InternalGainsPanel: React.FC = () => {
     const { state, dispatch } = useCalculator();
@@ -159,7 +160,15 @@ const InternalGainsPanel: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* People */}
             <Card>
-                <h3 className="font-semibold mb-3">Ludzie</h3>
+                <div className="flex items-center gap-3 mb-4 shrink-0 w-full">
+                    <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center shrink-0">
+                        <Users className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                    </div>
+                    <div className="min-w-0">
+                        <h3 className="text-base sm:text-lg font-bold text-slate-800 dark:text-white leading-tight whitespace-normal overflow-hidden text-ellipsis">Ludzie</h3>
+                        <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-0.5">Zyski od użytkowników</p>
+                    </div>
+                </div>
                 <div className="space-y-4">
                     <Checkbox id="people_enabled" label="Uwzględnij zyski ciepła od ludzi" name="enabled" checked={state.internalGains.people.enabled} onChange={handlePeopleChange} />
                     {state.internalGains.people.enabled && (
@@ -215,7 +224,15 @@ const InternalGainsPanel: React.FC = () => {
 
             {/* Lighting */}
             <Card>
-                 <h3 className="font-semibold mb-3">Oświetlenie</h3>
+                 <div className="flex items-center gap-3 mb-4 shrink-0 w-full">
+                    <div className="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center shrink-0">
+                        <Lightbulb className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                    </div>
+                    <div className="min-w-0">
+                        <h3 className="text-base sm:text-lg font-bold text-slate-800 dark:text-white leading-tight whitespace-normal overflow-hidden text-ellipsis">Oświetlenie</h3>
+                        <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-0.5">Zyski od lamp opraw</p>
+                    </div>
+                </div>
                  <div className="space-y-4">
                     <Checkbox id="lighting_enabled" label="Uwzględnij zyski ciepła od oświetlenia" name="enabled" checked={state.internalGains.lighting.enabled} onChange={handleLightingChange} />
                     {state.internalGains.lighting.enabled && (
@@ -264,7 +281,15 @@ const InternalGainsPanel: React.FC = () => {
             
             {/* Equipment */}
             <Card className="flex flex-col lg:col-span-2">
-                <h3 className="font-semibold mb-3">Urządzenia</h3>
+                <div className="flex items-center gap-3 mb-4 shrink-0 w-full">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                        <Monitor className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div className="min-w-0">
+                        <h3 className="text-base sm:text-lg font-bold text-slate-800 dark:text-white leading-tight whitespace-normal overflow-hidden text-ellipsis">Urządzenia</h3>
+                        <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-0.5">Zyski od sprzętu elektrycznego</p>
+                    </div>
+                </div>
                 {state.tutorialMode && (
                     <p className="text-[10px] text-blue-600 dark:text-blue-400 mb-3 italic">
                         Wskazówka: Komputer biurowy z monitorem to średnio 100-150W. Drukarki pracują sporadycznie, więc ich uśredniona moc jest niższa.
