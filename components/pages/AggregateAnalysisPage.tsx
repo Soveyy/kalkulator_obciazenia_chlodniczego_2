@@ -76,11 +76,25 @@ const AggregateAnalysisPage: React.FC = () => {
         const aggregateSolarMatrix: number[][] = Array(12).fill(0).map(() => Array(24).fill(0));
         const aggregateSolarInstantMatrix: number[][] = Array(12).fill(0).map(() => Array(24).fill(0));
         
+        let weightedTSum = 0;
+        let weightedRhSum = 0;
+        let totalArea = 0;
+
         const roomProfiles = roomsWithResults.map(room => {
             const clearSky = room.activeResults!.finalGains.clearSky;
             const profile = clearSky.total;
             const peak = Math.max(...profile);
             sumOfPeaks += peak;
+            
+            const area = parseFloat(room.input.roomArea) || 0;
+            const tInt = parseFloat(room.input.tInternal) || 24;
+            const rhInt = parseFloat(room.input.rhInternal) || 50;
+            
+            if (area > 0) {
+                totalArea += area;
+                weightedTSum += (tInt * area);
+                weightedRhSum += (rhInt * area);
+            }
             
             for (let i = 0; i < 24; i++) {
                 hourlyTotal[i] += profile[i];
@@ -132,6 +146,9 @@ const AggregateAnalysisPage: React.FC = () => {
         const aggregatePeak = roomsWithResults.length > 0 ? Math.max(...hourlyTotal) : 0;
         const peakHour = roomsWithResults.length > 0 ? hourlyTotal.indexOf(aggregatePeak) : 0;
         const diversityFactor = sumOfPeaks > 0 ? aggregatePeak / sumOfPeaks : 1;
+        
+        const weightedT = totalArea > 0 ? weightedTSum / totalArea : 24;
+        const weightedRh = totalArea > 0 ? weightedRhSum / totalArea : 50;
 
         return {
             allRoomsWithResults,
@@ -140,6 +157,8 @@ const AggregateAnalysisPage: React.FC = () => {
             peakHour,
             sumOfPeaks,
             diversityFactor,
+            weightedT,
+            weightedRh,
             roomProfiles,
             aggregateFinalGains,
             aggregateYearlyMatrix,
@@ -591,8 +610,8 @@ const AggregateAnalysisPage: React.FC = () => {
                             }))}
                             aggregatePeak={aggregateData.aggregatePeak}
                             tExt={state.rooms[0]?.tExtProfile?.[aggregateData.peakHour] || 35}
-                            tInternal={parseFloat(state.rooms[0]?.input?.tInternal || '24')}
-                            rhInternal={parseFloat(state.rooms[0]?.input?.rhInternal || '50')}
+                            tInternal={aggregateData.weightedT}
+                            rhInternal={aggregateData.weightedRh}
                         />
 
                     <div className="flex flex-col space-y-6">

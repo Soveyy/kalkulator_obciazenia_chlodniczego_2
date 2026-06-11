@@ -77,7 +77,7 @@ const initialState: State = {
     modal: { isOpen: false, type: null, data: null },
     theme: 'light',
     toasts: [],
-    activeTab: 'internal',
+    activeTab: 'input',
     selectedDirection: null,
     hoveredDirection: null,
     isSidebarOpen: false,

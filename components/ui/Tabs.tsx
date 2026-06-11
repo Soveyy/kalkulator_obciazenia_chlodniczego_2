@@ -27,12 +27,13 @@ const Tabs: React.FC = () => {
   }, [state.activeTab, state.results !== null]);
 
   const tabs: { id: AppTab; label: string; status: boolean }[] = [
-    { id: 'internal', label: '1. Zyski wewnętrzne', status: progress.internal },
-    { id: 'windows', label: '2. Okna', status: progress.windows },
-    { id: 'ventilation', label: '3. Wentylacja', status: progress.ventilation },
-    { id: 'walls', label: '4. Ściany', status: progress.walls },
-    { id: 'summary', label: '5. Podsumowanie', status: progress.total === 100 },
-    { id: 'rts', label: '6. Zaawansowana analiza', status: state.results !== null },
+    { id: 'input', label: '1. Dane wejściowe', status: progress.base },
+    { id: 'internal', label: '2. Zyski wewnętrzne', status: progress.internal },
+    { id: 'windows', label: '3. Okna', status: progress.windows },
+    { id: 'ventilation', label: '4. Wentylacja', status: progress.ventilation },
+    { id: 'walls', label: '5. Ściany', status: progress.walls },
+    { id: 'summary', label: '6. Podsumowanie', status: progress.total === 100 },
+    { id: 'rts', label: '7. Dobór i analiza', status: state.results !== null },
   ];
 
   return (

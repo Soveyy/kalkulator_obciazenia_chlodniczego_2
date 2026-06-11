@@ -1,7 +1,7 @@
 
 import { ChartType } from 'chart.js';
 
-export type AppTab = 'internal' | 'windows' | 'walls' | 'ventilation' | 'summary' | 'rts';
+export type AppTab = 'input' | 'internal' | 'windows' | 'ventilation' | 'walls' | 'summary' | 'rts';
 
 export interface Shading {
   enabled: boolean;

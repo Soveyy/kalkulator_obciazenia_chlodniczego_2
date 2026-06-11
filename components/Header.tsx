@@ -10,8 +10,8 @@ const Header: React.FC = () => {
     const user = auth.currentUser;
 
     return (
-        <header className="mb-6">
-            <h1 className="text-xl font-bold text-slate-800 dark:text-white text-center mb-4 lg:hidden">
+        <header className="mb-4">
+            <h1 className="text-xl font-bold text-slate-800 dark:text-white text-center mb-3 lg:hidden whitespace-nowrap">
                 Kalkulator HVAC <span className="text-xs font-normal opacity-50">v0.6.0</span>
             </h1>
             <div className="flex items-center justify-between">
@@ -25,7 +25,7 @@ const Header: React.FC = () => {
                         <span className="font-semibold text-sm pr-2">Konfiguracja</span>
                     </button>
                     <div className="flex items-baseline gap-3">
-                        <h1 className="hidden lg:block text-2xl md:text-3xl font-bold text-slate-800 dark:text-white">
+                        <h1 className="hidden lg:block text-2xl md:text-3xl font-bold text-slate-800 dark:text-white whitespace-nowrap">
                             Kalkulator HVAC
                         </h1>
                         <span className="hidden lg:block text-xs font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">

@@ -5,6 +5,7 @@ import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Tabs from './components/ui/Tabs';
 import RoomTabs from './components/ui/RoomTabs';
+import InputParamsPage from './components/pages/InputParamsPage';
 import InternalGainsPage from './components/pages/InternalGainsPage';
 import WindowsPage from './components/pages/WindowsPage';
 import WallsPage from './components/pages/WallsPage';
@@ -49,6 +50,8 @@ const AppContent: React.FC = () => {
       }
 
       switch (state.activeTab) {
+        case 'input':
+          return <InputParamsPage key="input" />;
         case 'internal':
           return <InternalGainsPage key="internal" />;
         case 'windows':
@@ -79,29 +82,29 @@ const AppContent: React.FC = () => {
             onClose={handleWelcomeClose} 
         />
         <Sidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-24 lg:pb-24">
+        <div className="flex-1 flex flex-col min-w-0 bg-slate-100 dark:bg-slate-950">
+          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-6 pb-24 lg:pb-24">
             <div id="app-header">
                 <Header />
             </div>
             
             {/* Project Progress Bar */}
             {state.activeRoomId !== 'aggregate' && (
-                <div className="mb-2">
-                    <div className="flex justify-between items-center mb-1.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <div className="mb-1.5">
+                    <div className="flex justify-between items-center mb-1">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
                             Kompletność danych pomieszczenia
                         </span>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${getProgressColor(progress.total)} text-white`}>
+                        <span className={`text-[9px] font-extrabold px-1 py-0.5 rounded ${getProgressColor(progress.total)} text-white`}>
                             {progress.total}%
                         </span>
                     </div>
-                    <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-1 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                         <motion.div 
                             initial={{ width: 0 }}
                             animate={{ width: `${progress.total}%` }}
                             transition={{ duration: 0.5, ease: "easeOut" }}
-                            className={`h-full ${getProgressColor(progress.total)} shadow-[0_0_10px_rgba(0,0,0,0.1)]`}
+                            className={`h-full ${getProgressColor(progress.total)}`}
                         />
                     </div>
                 </div>
@@ -130,7 +133,6 @@ const AppContent: React.FC = () => {
           </main>
         </div>
         <CompassHelper />
-        <KPIDashboard />
       </div>
     );
 };
@@ -148,12 +150,12 @@ const App: React.FC = () => {
   }, []);
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-slate-500">Ładowanie...</div>;
+    return <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900 text-slate-500">Ładowanie...</div>;
   }
 
   if (user && user.email?.toLowerCase() === 'testowy@gmail.com') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-4 relative overflow-hidden">
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900 p-4 relative overflow-hidden">
         <div className="absolute inset-0 bg-red-500/10 dark:bg-red-900/20 pointer-events-none" />
         <div className="max-w-md w-full bg-white dark:bg-slate-800 border-4 border-red-500 dark:border-yellow-500 rounded-2xl p-8 text-center shadow-2xl relative z-10">
           <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6 flex-shrink-0">
