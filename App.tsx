@@ -92,14 +92,14 @@ const AppContent: React.FC = () => {
             {state.activeRoomId !== 'aggregate' && (
                 <div className="mb-1.5">
                     <div className="flex justify-between items-center mb-1">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                        <span className="text-[9px] font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500">
                             Kompletność danych pomieszczenia
                         </span>
-                        <span className={`text-[9px] font-extrabold px-1 py-0.5 rounded ${getProgressColor(progress.total)} text-white`}>
+                        <span className={`text-[9px] font-semibold px-1 py-0.5 rounded ${getProgressColor(progress.total)} text-white`}>
                             {progress.total}%
                         </span>
                     </div>
-                    <div className="h-1 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-[3px] w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                         <motion.div 
                             initial={{ width: 0 }}
                             animate={{ width: `${progress.total}%` }}
