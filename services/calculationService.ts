@@ -1,6 +1,7 @@
 
 import { Window, Wall, AccumulationSettings, InternalGains, AllData, InputState, CalculationResults, Shading, CalculationResultData } from '../types';
 import { PEOPLE_ACTIVITY_LEVELS, LIGHTING_TYPES, VENTILATION_EXCHANGER_TYPES, EQUIPMENT_PRESETS, WALL_MATERIALS } from '../constants';
+import { ADVANCED_APPLIANCES } from '../data/advancedAppliances';
 import { SHGC_DIFFUSE_MULTIPLIERS, SHGC_DIRECT_CORRECTION_CURVES } from '../src/config/shgcConfig';
 
 
@@ -487,6 +488,56 @@ export function calculateGainsForMonth(
                     internalGainsSensibleConvective[hour] += conv;
                     equipmentSensibleRadiant[hour] += rad;
                     equipmentSensibleConvective[hour] += conv;
+                }
+            }
+        });
+    }
+
+    if (internalGains.advancedAppliances && internalGains.advancedAppliances.length > 0) {
+        internalGains.advancedAppliances.forEach(item => {
+            const startHourUTC = (item.startHour - offset + 24) % 24;
+            const endHourUTC = (item.endHour - offset + 24) % 24;
+            const quantity = Number(item.quantity) || 0;
+            
+            const catalogItem = ADVANCED_APPLIANCES.find(a => a.id === item.catalogId);
+            if (!catalogItem) return;
+
+            for (let hour = 0; hour < 24; hour++) {
+                if (isHourActive(hour, startHourUTC, endHourUTC)) {
+                    let rad = 0;
+                    let conv = 0;
+                    let lat = 0;
+
+                    if (item.isHoodedOverride && catalogItem.qRadHoodedW !== undefined) {
+                        rad = catalogItem.qRadHoodedW * quantity;
+                        conv = 0;
+                        lat = 0;
+                    } else if (catalogItem.qRadW !== undefined && catalogItem.qRadW !== null) {
+                        rad = catalogItem.qRadW * quantity;
+                        conv = (catalogItem.qConvW || 0) * quantity;
+                        lat = (catalogItem.qLatW || 0) * quantity;
+                    } else {
+                        const total = (catalogItem.avgW !== undefined && catalogItem.avgW !== null)
+                            ? catalogItem.avgW 
+                            : (catalogItem.qTotalW || 0);
+                        const fr = item.radiantFractionOverride !== undefined 
+                            ? item.radiantFractionOverride 
+                            : (catalogItem.radiantFraction !== undefined && catalogItem.radiantFraction !== null 
+                                ? catalogItem.radiantFraction 
+                                : 0.3);
+                        rad = total * fr * quantity;
+                        conv = total * (1 - fr) * quantity;
+                        lat = (catalogItem.qLatW || 0) * quantity;
+                    }
+
+                    internalGainsSensibleRadiant[hour] += rad;
+                    internalGainsSensibleConvective[hour] += conv;
+                    internalGainsLatent[hour] += lat;
+                    
+                    equipmentSensibleRadiant[hour] += rad;
+                    equipmentSensibleConvective[hour] += conv;
+                    // Note: advanced appliances add to latent load, we'll put it in internalGainsLatent, 
+                    // and we might need an equipmentLatentTotal if it were tracked individually, but we only have internalGainsLatent
                 }
             }
         });

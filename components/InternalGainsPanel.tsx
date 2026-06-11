@@ -11,9 +11,12 @@ import TimeRangeSlider from './ui/TimeRangeSlider';
 import { PEOPLE_ACTIVITY_LEVELS, LIGHTING_TYPES, EQUIPMENT_PRESETS } from '../constants';
 import { TrashIcon, PlusIcon } from './Icons';
 import Tooltip from './ui/Tooltip';
+import AdvancedAppliancesModal from './modals/AdvancedAppliancesModal';
+import { ADVANCED_APPLIANCES } from '../data/advancedAppliances';
 
 const InternalGainsPanel: React.FC = () => {
     const { state, dispatch } = useCalculator();
+    const [isAdvancedModalOpen, setIsAdvancedModalOpen] = React.useState(false);
 
     const hours = Array.from({ length: 25 }, (_, i) => i);
 
@@ -138,6 +141,19 @@ const InternalGainsPanel: React.FC = () => {
     const removeEquipment = (id: number) => {
         dispatch({ type: 'DELETE_EQUIPMENT_ITEM', payload: id });
     };
+
+    const handleAdvancedApplianceChange = (id: string, field: string, value: any) => {
+        const item = state.internalGains.advancedAppliances?.find(a => a.id === id);
+        if (!item) return;
+        dispatch({
+            type: 'UPDATE_ADVANCED_APPLIANCE',
+            payload: { ...item, [field]: value }
+        });
+    };
+
+    const removeAdvancedAppliance = (id: string) => {
+        dispatch({ type: 'DELETE_ADVANCED_APPLIANCE', payload: id });
+    };
     
     return (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -259,9 +275,10 @@ const InternalGainsPanel: React.FC = () => {
                         <Button key={key} variant="secondary" className="text-xs py-1" onClick={() => addEquipment(key)}>+ {preset.label}</Button>
                     ))}
                     <Button className="text-xs py-1" onClick={() => addEquipment()}><PlusIcon className="w-4 h-4 inline-block mr-1" />Dodaj własne</Button>
+                    <Button className="text-xs py-1" variant="primary" onClick={() => setIsAdvancedModalOpen(true)}><PlusIcon className="w-4 h-4 inline-block mr-1" />Zaawansowane urządzenia</Button>
                 </div>
                 <div className="flex-grow overflow-y-auto space-y-2 pr-2 -mr-2 max-h-72">
-                    {state.internalGains.equipment.length === 0 && (
+                    {state.internalGains.equipment.length === 0 && (!state.internalGains.advancedAppliances || state.internalGains.advancedAppliances.length === 0) && (
                         <p className="text-sm text-slate-500 text-center py-4">Brak dodanych urządzeń.</p>
                     )}
                     {state.internalGains.equipment.map(item => (
@@ -346,8 +363,111 @@ const InternalGainsPanel: React.FC = () => {
                             </div>
                         </div>
                     ))}
+
+                    {state.internalGains.advancedAppliances?.map(item => {
+                        const catalogItem = ADVANCED_APPLIANCES.find(a => a.id === item.catalogId);
+                        if (!catalogItem) return null;
+                        return (
+                            <div key={item.id} className="flex flex-col xl:flex-row gap-2 items-start xl:items-center bg-blue-50 dark:bg-blue-900/20 p-2 rounded border border-blue-200 dark:border-blue-800 transition-colors hover:bg-blue-100 dark:hover:bg-blue-900/40">
+                                
+                                {/* Name Input */}
+                                <div className="w-full xl:flex-1">
+                                    <label className="xl:hidden text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1 block">Nazwa</label>
+                                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100 leading-tight">
+                                        {catalogItem.name}
+                                    </div>
+                                    <div className="text-[10px] text-slate-500 truncate">
+                                        ASHRAE • {catalogItem.category} • {catalogItem.fuel} 
+                                        {catalogItem.ratedW && ` • Moc znam.: ${catalogItem.ratedW} W`}
+                                    </div>
+                                </div>
+
+                                {/* Options and Quantity */}
+                                <div className="grid grid-cols-2 gap-2 w-full xl:w-auto xl:flex xl:items-center">
+                                    <div className="xl:w-24">
+                                        {catalogItem.qRadW === null && catalogItem.radiantFraction !== undefined && (
+                                            <div>
+                                                <label className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1 block">Ułamek Prom. (fr)</label>
+                                                <Input 
+                                                    type="number"
+                                                    value={item.radiantFractionOverride ?? catalogItem.radiantFraction} 
+                                                    onChange={(e) => handleAdvancedApplianceChange(item.id, 'radiantFractionOverride', parseFloat(e.target.value))}
+                                                    step="0.01" min="0" max="1"
+                                                    className="text-sm !py-1 !px-2 !h-8"
+                                                />
+                                            </div>
+                                        )}
+                                        {catalogItem.qRadHoodedW !== undefined && (
+                                            <div className="flex items-center h-full pt-1">
+                                                <Checkbox 
+                                                    id={`hood-${item.id}`} 
+                                                    label="Pod okapem" 
+                                                    checked={!!item.isHoodedOverride} 
+                                                    onChange={(e) => handleAdvancedApplianceChange(item.id, 'isHoodedOverride', (e.target as HTMLInputElement).checked)} 
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="xl:w-20">
+                                        <label className="xl:hidden text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1 block">Ilość</label>
+                                        <div className="relative">
+                                            <Input 
+                                                type="number" 
+                                                value={item.quantity} 
+                                                onChange={(e) => handleAdvancedApplianceChange(item.id, 'quantity', parseInt(e.target.value, 10))} 
+                                                className={`text-sm pr-8 !py-1 !px-2 !h-8 ${
+                                                    item.quantity === '' as any ? 'animate-pulse-border border-blue-400' : 
+                                                    (item.quantity < 1) ? 'animate-pulse-error' : ''
+                                                }`} 
+                                                min="1" 
+                                                step="1" 
+                                            />
+                                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">szt.</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Hours Dropdowns */}
+                                <div className="grid grid-cols-2 gap-2 w-full xl:w-auto xl:flex xl:items-center xl:gap-1">
+                                    <div className="xl:w-24">
+                                        <label className="xl:hidden text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1 block">Start</label>
+                                        <Select 
+                                            value={item.startHour} 
+                                            onChange={(e) => handleAdvancedApplianceChange(item.id, 'startHour', parseInt(e.target.value))}
+                                            className="text-sm !py-1 !px-2 !h-8"
+                                        >
+                                            {hours.map(h => <option key={`start-${h}`} value={h}>{h}:00</option>)}
+                                        </Select>
+                                    </div>
+                                    <span className="hidden xl:block text-slate-400 font-bold">-</span>
+                                    <div className="xl:w-24">
+                                        <label className="xl:hidden text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1 block">Stop</label>
+                                        <Select 
+                                            value={item.endHour} 
+                                            onChange={(e) => handleAdvancedApplianceChange(item.id, 'endHour', parseInt(e.target.value))}
+                                            className="text-sm !py-1 !px-2 !h-8"
+                                        >
+                                            {hours.map(h => <option key={`end-${h}`} value={h}>{h}:00</option>)}
+                                        </Select>
+                                    </div>
+                                </div>
+
+                                {/* Delete Button */}
+                                <div className="w-full xl:w-auto flex justify-end">
+                                    <Button variant="danger" onClick={() => removeAdvancedAppliance(item.id)} className="!p-0 w-8 h-8 flex items-center justify-center rounded"><TrashIcon className="w-4 h-4"/></Button>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             </Card>
+            
+            {isAdvancedModalOpen && (
+                <AdvancedAppliancesModal 
+                    isOpen={isAdvancedModalOpen} 
+                    onClose={() => setIsAdvancedModalOpen(false)} 
+                />
+            )}
         </div>
     );
 };

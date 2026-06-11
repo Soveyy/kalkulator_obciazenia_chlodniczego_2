@@ -18,6 +18,10 @@ const DailyProfile: React.FC<DailyProfileProps> = ({ profileData }) => {
 
     const reorderDataForLocalTime = (data: number[], offset: number): number[] => {
         if (!data) return Array(24).fill(0);
+        // data to array UTC. Chcemy dane lokalne: index i to czas lokalny.
+        // czas lokalny = czas UTC + offset.
+        // czas UTC = czas lokalny - offset.
+        // Więc dla indexu 'i' bierzemy dane z 'i - offset'.
         return Array.from({ length: 24 }, (_, i) => data[(i - offset + 24) % 24] || 0);
     };
 

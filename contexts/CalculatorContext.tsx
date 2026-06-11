@@ -38,6 +38,7 @@ const initialRoomState: RoomState = {
             endHour: 16,
         },
         equipment: [],
+        advancedAppliances: [],
         ventilation: {
             enabled: false,
             type: 'none',
@@ -298,6 +299,35 @@ function calculatorReducer(state: State, action: Action): State {
                 }
             }));
         }
+        case 'ADD_ADVANCED_APPLIANCE': {
+            return updateActiveRoom(state, room => ({
+                ...room,
+                internalGains: {
+                    ...room.internalGains,
+                    advancedAppliances: [...(room.internalGains.advancedAppliances || []), action.payload]
+                }
+            }));
+        }
+        case 'UPDATE_ADVANCED_APPLIANCE': {
+            return updateActiveRoom(state, room => ({
+                ...room,
+                internalGains: {
+                    ...room.internalGains,
+                    advancedAppliances: (room.internalGains.advancedAppliances || []).map(item => 
+                        item.id === action.payload.id ? action.payload : item
+                    )
+                }
+            }));
+        }
+        case 'DELETE_ADVANCED_APPLIANCE': {
+            return updateActiveRoom(state, room => ({
+                ...room,
+                internalGains: {
+                    ...room.internalGains,
+                    advancedAppliances: (room.internalGains.advancedAppliances || []).filter(item => item.id !== action.payload)
+                }
+            }));
+        }
         case 'SET_RESULTS':
             return updateActiveRoom(state, room => ({
                 ...room,
@@ -460,7 +490,8 @@ function calculatorReducer(state: State, action: Action): State {
                     internalGains: {
                         ...initialRoomState.internalGains,
                         ...room.internalGains,
-                        equipment: room.internalGains?.equipment || []
+                        equipment: room.internalGains?.equipment || [],
+                        advancedAppliances: room.internalGains?.advancedAppliances || []
                     }
                 }));
                 return { ...state, ...payload, rooms: migratedRooms };

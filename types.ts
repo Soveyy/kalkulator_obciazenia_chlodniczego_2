@@ -72,10 +72,21 @@ export interface EquipmentGains {
     endHour: number;
 }
 
+export interface AdvancedApplianceState {
+    id: string; // unique instance id
+    catalogId: string; // id from the json
+    quantity: number;
+    radiantFractionOverride?: number; // fallback fraction to use when the table gives undefined breakdown
+    isHoodedOverride?: boolean; // if false, use unhooded calculation for 5F
+    startHour: number;
+    endHour: number;
+}
+
 export interface InternalGains {
     people: PeopleGains;
     lighting: LightingGains;
     equipment: EquipmentGains[];
+    advancedAppliances: AdvancedApplianceState[];
     ventilation: VentilationGains;
 }
 
@@ -251,6 +262,9 @@ export type Action =
     | { type: 'SET_VENTILATION_GAINS'; payload: VentilationGains }
     | { type: 'ADD_EQUIPMENT_ITEM'; payload?: { name: string; power: number } }
     | { type: 'DELETE_EQUIPMENT_ITEM'; payload: number }
+    | { type: 'ADD_ADVANCED_APPLIANCE'; payload: AdvancedApplianceState }
+    | { type: 'UPDATE_ADVANCED_APPLIANCE'; payload: AdvancedApplianceState }
+    | { type: 'DELETE_ADVANCED_APPLIANCE'; payload: string }
     | { type: 'SET_RESULTS'; payload: { results: { withShading: CalculationResults, withoutShading: CalculationResults }; month: string; tExtProfile: number[], message: string, monthlyPeaks: { month: string; peak: number }[], yearlyMatrix?: number[][], solarMatrix?: number[][], solarInstantMatrix?: number[][] } }
     | { type: 'CLEAR_RESULTS' }
     | { type: 'SET_ACTIVE_RESULTS'; payload: CalculationResults }
