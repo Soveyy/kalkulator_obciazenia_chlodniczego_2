@@ -142,7 +142,7 @@ const WallEditModal: React.FC = () => {
                                 ))}
                             </Select>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 italic">
-                                Wskazówka: Możesz również wybrać kierunek klikając na kompas po prawej stronie.
+                                Możesz również wybrać kierunek klikając na kompas po prawej stronie.
                             </p>
                         </div>
                     )}

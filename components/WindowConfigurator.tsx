@@ -19,7 +19,7 @@ const WindowConfigurator: React.FC = () => {
         {state.tutorialMode && (
             <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 rounded-full border border-blue-100 dark:border-blue-800 animate-fade-in">
                 <Sparkles size={14} />
-                <span>Wskazówka: Okna są bardzo istotną składową zysków ciepła, w budynkach mieszkalnych odpowiadają zazwyczaj za ponad połowę obciążenia chłodniczego.</span>
+                <span>Okna są bardzo istotną składową zysków ciepła, w budynkach mieszkalnych odpowiadają zazwyczaj za ponad połowę obciążenia chłodniczego.</span>
             </div>
         )}
         <div className="flex gap-2 w-full sm:w-auto">

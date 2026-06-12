@@ -189,7 +189,7 @@ const InternalGainsPanel: React.FC = () => {
                                 />
                                 {state.tutorialMode && (
                                     <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 italic">
-                                        Wskazówka: Dla biur przyjmuje się zazwyczaj 1 osobę na 10 m².
+                                        Dla biur przyjmuje się zazwyczaj 1 osobę na 10 m².
                                     </p>
                                 )}
                             </div>
@@ -204,7 +204,7 @@ const InternalGainsPanel: React.FC = () => {
                                 />
                                 {state.tutorialMode && (
                                     <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 italic">
-                                        Wskazówka: Praca fizyczna generuje znacznie więcej ciepła niż biurowa.
+                                        Praca fizyczna generuje znacznie więcej ciepła niż biurowa.
                                     </p>
                                 )}
                             </div>
@@ -261,7 +261,7 @@ const InternalGainsPanel: React.FC = () => {
                                 />
                                 {state.tutorialMode && (
                                     <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 italic">
-                                        Wskazówka: Nowoczesne oświetlenie LED to zazwyczaj 5-10 W/m². Starsze świetlówki to 15-20 W/m².
+                                        Nowoczesne oświetlenie LED to zazwyczaj 5-10 W/m². Starsze świetlówki to 15-20 W/m².
                                     </p>
                                 )}
                             </div>
@@ -292,7 +292,7 @@ const InternalGainsPanel: React.FC = () => {
                 </div>
                 {state.tutorialMode && (
                     <p className="text-[10px] text-blue-600 dark:text-blue-400 mb-3 italic">
-                        Wskazówka: Komputer biurowy z monitorem to średnio 100-150W. Drukarki pracują sporadycznie, więc ich uśredniona moc jest niższa.
+                        Komputer biurowy z monitorem to średnio 100-150W. Drukarki pracują sporadycznie, więc ich uśredniona moc jest niższa.
                     </p>
                 )}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4 lg:flex lg:flex-wrap">

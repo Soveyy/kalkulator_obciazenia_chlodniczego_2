@@ -125,7 +125,7 @@ const VentilationPanel: React.FC = () => {
                                 </Select>
                                 {state.tutorialMode && (
                                     <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 italic">
-                                        Wskazówka: Nowe budynki są zazwyczaj "szczelne", starsze "średnie" lub "nieszczelne".
+                                        Nowe budynki są zazwyczaj "szczelne", starsze "średnie" lub "nieszczelne".
                                     </p>
                                 )}
                             </div>
@@ -211,7 +211,7 @@ const VentilationPanel: React.FC = () => {
                     </div>
                     {state.tutorialMode && (
                         <p className="text-[10px] text-blue-600 dark:text-blue-400 mb-2 italic">
-                            Wskazówka: Wentylacja grawitacyjna to tradycyjne kratki wentylacyjne. Mechaniczna z odzyskiem to rekuperacja.
+                            Wentylacja grawitacyjna to tradycyjne kratki wentylacyjne. Mechaniczna z odzyskiem to rekuperacja.
                         </p>
                     )}
 
@@ -224,7 +224,7 @@ const VentilationPanel: React.FC = () => {
                                         <Input type="number" name="airflow" value={ventilation.airflow} onChange={handleChange} min="0" step="any" />
                                         {state.tutorialMode && (
                                             <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 italic">
-                                                Wskazówka: Wymagany strumień to zazwyczaj 20-30 m³/h na osobę lub 0.5-1.0 wymiany na godzinę.
+                                                Wymagany strumień to zazwyczaj 20-30 m³/h na osobę lub 0.5-1.0 wymiany na godzinę.
                                             </p>
                                         )}
                                     </div>
