@@ -138,7 +138,9 @@ export interface CalculationResultData {
     latent: number[];
     total: number[];
     windows?: number[];
+    individualWindows?: { id: number; title: string; sensible: number[] }[];
     walls?: number[];
+    individualWalls?: { id: number; title: string; sensible: number[] }[];
     people?: number[];
     lighting?: number[];
     equipment?: number[];
@@ -173,7 +175,10 @@ export interface CalculationResults {
     internalGainsLoad: CalculationResultData;
     windowGainsLoad: {
         clearSky: CalculationResultData;
-    },
+    };
+    wallGainsLoad: {
+        clearSky: CalculationResultData;
+    };
     ventilationLoad: CalculationResultData;
     infiltrationLoad: CalculationResultData;
     components: CalculationComponents;

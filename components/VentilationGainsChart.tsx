@@ -4,6 +4,7 @@ import Chart from 'chart.js/auto';
 import { useCalculator } from '../contexts/CalculatorContext';
 import Card from './ui/Card';
 import { ArrowsExpandIcon, ArrowsShrinkIcon } from './Icons';
+import { getChartColor, CHART_COLORS } from '../lib/chartUtils';
 
 const reorderDataForLocalTime = (data: number[], offset: number): number[] => {
     if (!data) return Array(24).fill(0);
@@ -78,10 +79,10 @@ const VentilationGainsChart: React.FC = () => {
         const { ventilationLoad, infiltrationLoad } = state.activeResults;
 
         const datasets = [
-            { label: 'Wentylacja jawna', data: reorderDataForLocalTime(ventilationLoad.sensible, offset), backgroundColor: 'rgba(230, 126, 34, 0.7)', stack: 'a' },
-            { label: 'Wentylacja utajona', data: reorderDataForLocalTime(ventilationLoad.latent, offset), backgroundColor: 'rgba(52, 152, 219, 0.7)', stack: 'a' },
-            { label: 'Infiltracja jawna', data: reorderDataForLocalTime(infiltrationLoad.sensible, offset), backgroundColor: 'rgba(16, 185, 129, 0.7)', stack: 'a' },
-            { label: 'Infiltracja utajona', data: reorderDataForLocalTime(infiltrationLoad.latent, offset), backgroundColor: 'rgba(52, 211, 153, 0.7)', stack: 'a' }
+            { label: 'Wentylacja jawna', data: reorderDataForLocalTime(ventilationLoad.sensible, offset), backgroundColor: getChartColor('ventilation', false), stack: 'a' },
+            { label: 'Wentylacja utajona', data: reorderDataForLocalTime(ventilationLoad.latent, offset), backgroundColor: getChartColor('ventilation', true), borderColor: CHART_COLORS.ventilation, borderWidth: 1, stack: 'a' },
+            { label: 'Infiltracja jawna', data: reorderDataForLocalTime(infiltrationLoad.sensible, offset), backgroundColor: getChartColor('infiltration', false), stack: 'a' },
+            { label: 'Infiltracja utajona', data: reorderDataForLocalTime(infiltrationLoad.latent, offset), backgroundColor: getChartColor('infiltration', true), borderColor: CHART_COLORS.infiltration, borderWidth: 1, stack: 'a' }
         ];
 
         const chartConfig: any = {

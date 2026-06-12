@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useCalculator } from '../../contexts/CalculatorContext';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
@@ -8,11 +8,13 @@ import { Cloud, Monitor, CloudUpload } from 'lucide-react';
 const ProjectListModal: React.FC = () => {
     const { state, dispatch } = useCalculator();
     const { modal, savedProjects } = state;
+    const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
     const isOpen = modal.isOpen && modal.type === 'projectList';
 
     const handleClose = () => {
         dispatch({ type: 'SET_MODAL', payload: { isOpen: false } });
+        setConfirmDelete(null);
     };
 
     const handleLoad = (name: string) => {
@@ -21,9 +23,8 @@ const ProjectListModal: React.FC = () => {
     };
 
     const handleDelete = (name: string) => {
-        if (window.confirm(`Czy na pewno chcesz usunąć projekt "${name}"?`)) {
-            dispatch({ type: 'DELETE_PROJECT', payload: name });
-        }
+        dispatch({ type: 'DELETE_PROJECT', payload: name });
+        setConfirmDelete(null);
     };
 
     const handleSync = (name: string) => {
@@ -72,25 +73,45 @@ const ProjectListModal: React.FC = () => {
                                     </p>
                                 </div>
                                 <div className="flex gap-2 items-center">
-                                    {project.isLocal && !project.isCloud && (
-                                        <button 
-                                            onClick={() => handleSync(project.name)}
-                                            className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-full transition-colors"
-                                            title="Synchronizuj z chmurą"
-                                        >
-                                            <CloudUpload className="w-4 h-4" />
-                                        </button>
+                                    {confirmDelete === project.name ? (
+                                        <div className="flex gap-2 items-center bg-red-50 dark:bg-red-900/20 p-1.5 rounded-lg border border-red-200 dark:border-red-800">
+                                            <span className="text-xs font-medium text-red-600 dark:text-red-400 px-1">Usunąć?</span>
+                                            <button 
+                                                onClick={() => handleDelete(project.name)}
+                                                className="px-2 py-1 text-xs font-bold text-white bg-red-500 hover:bg-red-600 rounded transition-colors"
+                                            >
+                                                Tak
+                                            </button>
+                                            <button 
+                                                onClick={() => setConfirmDelete(null)}
+                                                className="px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 rounded transition-colors"
+                                            >
+                                                Nie
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {project.isLocal && !project.isCloud && (
+                                                <button 
+                                                    onClick={() => handleSync(project.name)}
+                                                    className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-full transition-colors"
+                                                    title="Synchronizuj z chmurą"
+                                                >
+                                                    <CloudUpload className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                            <Button size="sm" onClick={() => handleLoad(project.name)}>
+                                                Wczytaj
+                                            </Button>
+                                            <button 
+                                                onClick={() => setConfirmDelete(project.name)}
+                                                className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full transition-colors"
+                                                title="Usuń projekt"
+                                            >
+                                                <TrashIcon className="w-4 h-4" />
+                                            </button>
+                                        </>
                                     )}
-                                    <Button size="sm" onClick={() => handleLoad(project.name)}>
-                                        Wczytaj
-                                    </Button>
-                                    <button 
-                                        onClick={() => handleDelete(project.name)}
-                                        className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full transition-colors"
-                                        title="Usuń projekt"
-                                    >
-                                        <TrashIcon className="w-4 h-4" />
-                                    </button>
                                 </div>
                             </div>
                         ))}

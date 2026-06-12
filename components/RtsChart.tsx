@@ -131,7 +131,7 @@ const RtsChart: React.FC = () => {
         const datasets = [
             {
                 type: 'line',
-                label: 'Zyski Chwilowe (Instantaneous)',
+                label: 'Zyski Chwilowe',
                 data: instData,
                 borderColor: 'rgba(231, 76, 60, 0.8)',
                 backgroundColor: 'transparent',
@@ -144,7 +144,7 @@ const RtsChart: React.FC = () => {
             },
             {
                 type: 'line',
-                label: 'Obciążenie Chłodnicze (Cooling Load)',
+                label: 'Obciążenie Chłodnicze',
                 data: loadData,
                 borderColor: 'rgba(52, 152, 219, 1)',
                 backgroundColor: 'transparent',

@@ -8,7 +8,7 @@ interface Tab {
 }
 
 const Tabs: React.FC = () => {
-  const { state, dispatch, progress } = useCalculator();
+  const { state, dispatch, validation } = useCalculator();
   const [showRtsAttention, setShowRtsAttention] = useState(false);
 
   useEffect(() => {
@@ -27,12 +27,12 @@ const Tabs: React.FC = () => {
   }, [state.activeTab, state.results !== null]);
 
   const tabs: { id: AppTab; label: string; status: boolean }[] = [
-    { id: 'input', label: '1. Dane wejściowe', status: progress.base },
-    { id: 'internal', label: '2. Zyski wewnętrzne', status: progress.internal },
-    { id: 'windows', label: '3. Okna', status: progress.windows },
-    { id: 'ventilation', label: '4. Wentylacja', status: progress.ventilation },
-    { id: 'walls', label: '5. Ściany', status: progress.walls },
-    { id: 'summary', label: '6. Podsumowanie', status: progress.total === 100 },
+    { id: 'input', label: '1. Dane wejściowe', status: validation.baseValid },
+    { id: 'internal', label: '2. Zyski wewnętrzne', status: validation.internal },
+    { id: 'windows', label: '3. Okna', status: validation.windows },
+    { id: 'ventilation', label: '4. Wentylacja', status: validation.ventilation },
+    { id: 'walls', label: '5. Ściany', status: validation.walls },
+    { id: 'summary', label: '6. Podsumowanie', status: validation.isFormValid },
     { id: 'rts', label: '7. Dobór i analiza', status: state.results !== null },
   ];
 

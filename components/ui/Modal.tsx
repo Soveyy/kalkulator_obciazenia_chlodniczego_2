@@ -36,12 +36,12 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, footer,
 
   return (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 transition-opacity duration-300"
+      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 transition-opacity duration-200"
       onClick={handleBackdropClick}
     >
       <div
         ref={modalRef}
-        className={`bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full ${maxWidth} flex flex-col transform transition-transform duration-300 scale-95 animate-scale-in`}
+        className={`bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full ${maxWidth} flex flex-col transform transition-transform duration-200 scale-95 animate-scale-in`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">

@@ -83,6 +83,14 @@ const ShadingStatus = ({ shading }: { shading: Shading }) => {
 };
 
 
+const WINDOW_TYPE_LABELS: Record<string, string> = {
+  custom: 'Niestandardowe',
+  modern: 'Nowoczesne (3-szybowe)',
+  standard: 'Standardowe (nowe, 2-szybowe)',
+  older_double: 'Starsze (2-szybowe)',
+  historic: 'Historyczne (1-szybowe)',
+};
+
 interface WindowCardProps {
   window: Window;
 }
@@ -114,16 +122,17 @@ const WindowCard: React.FC<WindowCardProps> = ({ window }) => {
   const isEditing = state.modal.isOpen && state.modal.type === 'editWindow' && state.modal.data === window.id;
 
   return (
-    <div className={`relative bg-slate-100 dark:bg-slate-700 p-4 rounded-lg shadow-sm flex flex-col min-h-48 transition-all duration-300 ${isNew ? 'ring-2 ring-green-400 ring-offset-2 ring-offset-slate-100 dark:ring-offset-slate-800' : ''} ${isEditing ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-slate-100 dark:ring-offset-slate-800' : ''}`}>
+    <div className={`relative bg-slate-100 dark:bg-slate-700 pt-2 pb-4 px-4 rounded-lg shadow-sm flex flex-col min-h-48 transition-all duration-300 ${isNew ? 'ring-2 ring-green-400 ring-offset-2 ring-offset-slate-100 dark:ring-offset-slate-800' : ''} ${isEditing ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-slate-100 dark:ring-offset-slate-800' : ''}`}>
        <CompassArrow rotation={rotation} />
-      <h3 className="font-bold text-lg mb-1 text-slate-800 dark:text-white">{title}</h3>
-      <div className="flex-grow text-sm space-y-1 text-slate-600 dark:text-slate-300">
+      <h3 className="font-bold text-lg mb-1 text-slate-800 dark:text-white leading-tight">{title}</h3>
+      <div className="flex-grow text-xs space-y-1 text-slate-600 dark:text-slate-300">
         <p>Kierunek: <strong className="text-slate-800 dark:text-slate-100">{dirLabel.split(' (')[0]}</strong></p>
-        <p>Pochylenie: <strong className="text-slate-800 dark:text-slate-100">{window.tilt ?? 90}°</strong></p>
-        <p>Powierzchnia: <strong className="text-slate-800 dark:text-slate-100">{area} m²</strong></p>
+        <p>Pochylenie / Typ: <strong className="text-slate-800 dark:text-slate-100">{window.tilt ?? 90}°</strong> — <span className="text-amber-700 dark:text-amber-400 font-medium">{WINDOW_TYPE_LABELS[window.type] || window.type}</span></p>
+        <p>Powierzchnia: <strong className="text-slate-800 dark:text-slate-100">{window.width} × {window.height} m ({area} m²)</strong></p>
+        <p>Współczynniki: <strong className="text-slate-800 dark:text-slate-100">U = {window.u.toFixed(2)} | SHGC = {window.shgc.toFixed(2)}</strong></p>
         <ShadingStatus shading={window.shading} />
       </div>
-      <div className="grid grid-cols-3 gap-2 mt-auto">
+      <div className="grid grid-cols-3 gap-2 mt-3 pt-1">
         <Button onClick={handleEdit} className="py-1 px-2 text-xs"><PencilIcon className="w-4 h-4 inline-block mr-1"/>Edytuj</Button>
         <Button onClick={handleDuplicate} variant="secondary" className="py-1 px-2 text-xs"><DocumentDuplicateIcon className="w-4 h-4 inline-block mr-1"/>Duplikuj</Button>
         <Button onClick={handleDelete} variant="danger" className="py-1 px-2 text-xs"><TrashIcon className="w-4 h-4 inline-block mr-1"/>Usuń</Button>

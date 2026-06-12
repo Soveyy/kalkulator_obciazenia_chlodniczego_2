@@ -615,7 +615,7 @@ const MultiSplitCalculator: React.FC<MultiSplitCalculatorProps> = ({ rooms, aggr
                                     </select>
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-700 dark:text-gray-300">
-                                    {room.index > 0 ? (room.realCapacityKw > 0 ? room.realCapacityKw.toFixed(2) : 'brak komb.') : '-'}
+                                    {room.index > 0 ? (room.realCapacityKw > 0 ? room.realCapacityKw.toFixed(2) : 'brak kombinacji') : '-'}
                                 </td>
                                 <td className={`px-4 py-3 whitespace-nowrap text-sm text-right ${room.colorClass}`}>
                                     {room.index > 0 && room.requiredPeakKw > 0 && room.realCapacityKw > 0 ? room.ratio.toFixed(1) + '%' : '-'}

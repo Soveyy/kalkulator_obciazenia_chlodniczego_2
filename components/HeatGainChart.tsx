@@ -5,6 +5,8 @@ import { useCalculator } from '../contexts/CalculatorContext';
 import Card from './ui/Card';
 import { ArrowsExpandIcon, ArrowsShrinkIcon } from './Icons';
 
+import { getChartColor, CHART_COLORS } from '../lib/chartUtils';
+
 const reorderDataForLocalTime = (data: number[], offset: number): number[] => {
     if (!data) return Array(24).fill(0);
     return Array.from({ length: 24 }, (_, i) => data[(i - offset + 24) % 24] || 0);
@@ -94,16 +96,16 @@ const HeatGainChart: React.FC = () => {
 
         if (chartType === 'line') {
             datasets = [
-                { type: 'line', label: 'Obciążenie chłodnicze projektowe', data: reorderDataForLocalTime(finalGains.clearSky.total, offset), borderColor: '#e74c3c', backgroundColor: 'rgba(231, 76, 60, 0.2)', fill: true, tension: 0.3, yAxisID: 'yLoad' }
+                { type: 'line', label: 'Obciążenie chłodnicze projektowe', data: reorderDataForLocalTime(finalGains.clearSky.total, offset), borderColor: getChartColor('totalSensible'), backgroundColor: 'rgba(231, 76, 60, 0.2)', fill: true, tension: 0.3, yAxisID: 'yLoad' }
             ];
         } else { // bar chart
              datasets = [
-                { type: 'bar', label: 'Słoneczne', data: reorderDataForLocalTime(loadComponents.solar, offset), backgroundColor: 'rgba(241, 196, 15, 0.7)', stack: 'a', yAxisID: 'yLoad' },
-                { type: 'bar', label: 'Przewodzenie', data: reorderDataForLocalTime(loadComponents.conduction, offset), backgroundColor: 'rgba(230, 126, 34, 0.7)', stack: 'a', yAxisID: 'yLoad' },
-                { type: 'bar', label: 'Wewn. Jawne', data: reorderDataForLocalTime(loadComponents.internalSensible, offset), backgroundColor: 'rgba(231, 76, 60, 0.7)', stack: 'a', yAxisID: 'yLoad' },
-                { type: 'bar', label: 'Wentylacja Jawna', data: reorderDataForLocalTime(loadComponents.ventilationSensible, offset), backgroundColor: 'rgba(142, 68, 173, 0.7)', stack: 'a', yAxisID: 'yLoad' },
-                { type: 'bar', label: 'Infiltracja Jawna', data: reorderDataForLocalTime(loadComponents.infiltrationSensible, offset), backgroundColor: 'rgba(16, 185, 129, 0.7)', stack: 'a', yAxisID: 'yLoad' },
-                { type: 'bar', label: 'Utajone (wewn. + went. + inf.)', data: reorderDataForLocalTime(finalGains.clearSky.latent, offset), backgroundColor: 'rgba(52, 152, 219, 0.7)', stack: 'a', yAxisID: 'yLoad' }
+                { type: 'bar', label: 'Słoneczne', data: reorderDataForLocalTime(loadComponents.solar, offset), backgroundColor: getChartColor('solar'), stack: 'a', yAxisID: 'yLoad' },
+                { type: 'bar', label: 'Przewodzenie', data: reorderDataForLocalTime(loadComponents.conduction, offset), backgroundColor: getChartColor('conduction'), stack: 'a', yAxisID: 'yLoad' },
+                { type: 'bar', label: 'Wewn. Jawne', data: reorderDataForLocalTime(loadComponents.internalSensible, offset), backgroundColor: getChartColor('internal', false), stack: 'a', yAxisID: 'yLoad' },
+                { type: 'bar', label: 'Wentylacja Jawna', data: reorderDataForLocalTime(loadComponents.ventilationSensible, offset), backgroundColor: getChartColor('ventilation', false), stack: 'a', yAxisID: 'yLoad' },
+                { type: 'bar', label: 'Infiltracja Jawna', data: reorderDataForLocalTime(loadComponents.infiltrationSensible, offset), backgroundColor: getChartColor('infiltration', false), stack: 'a', yAxisID: 'yLoad' },
+                { type: 'bar', label: 'Utajone (wewn. + went. + inf.)', data: reorderDataForLocalTime(finalGains.clearSky.latent, offset), backgroundColor: getChartColor('totalLatent', true), borderColor: CHART_COLORS.totalLatent, borderWidth: 1, stack: 'a', yAxisID: 'yLoad' }
             ];
         }
 
@@ -211,7 +213,7 @@ const HeatGainChart: React.FC = () => {
     }, [state.activeResults, state.chartType, theme, state.tExtProfile, state.currentMonth]);
 
     return (
-        <Card className="h-[450px] flex flex-col">
+        <Card className="h-full min-h-[450px] flex flex-col">
             <div className="relative flex-grow chart-container" ref={chartContainerRef}>
                 <div className="absolute top-2 right-2 z-10 flex gap-2">
                     <button

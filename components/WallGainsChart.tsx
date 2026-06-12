@@ -1,9 +1,7 @@
-
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Chart from 'chart.js/auto';
 import { useCalculator } from '../contexts/CalculatorContext';
 import Card from './ui/Card';
-import Checkbox from './ui/Checkbox';
 import { ArrowsExpandIcon, ArrowsShrinkIcon } from './Icons';
 import { CHART_COLORS } from '../lib/chartUtils';
 
@@ -12,12 +10,11 @@ const reorderDataForLocalTime = (data: number[], offset: number): number[] => {
     return Array.from({ length: 24 }, (_, i) => data[(i - offset + 24) % 24] || 0);
 };
 
-const WindowGainsChart: React.FC = () => {
+const WallGainsChart: React.FC = () => {
     const chartRef = useRef<HTMLCanvasElement>(null);
     const chartInstanceRef = useRef<Chart | null>(null);
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const { state, theme } = useCalculator();
-    const [showIncidentRadiation, setShowIncidentRadiation] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [chartType, setChartType] = useState<'line' | 'bar'>('line');
 
@@ -42,12 +39,12 @@ const WindowGainsChart: React.FC = () => {
         try {
             if (!document.fullscreenElement) {
                 await element.requestFullscreen();
-                 if (window.screen.orientation && window.innerWidth < 1024) {
+                if (window.screen.orientation && window.innerWidth < 1024) {
                     await (window.screen.orientation as any).lock('landscape').catch((e: any) => console.warn("Screen orientation lock failed:", e));
                 }
             } else {
                 if (document.exitFullscreen) {
-                     if (window.screen.orientation && window.screen.orientation.type.startsWith('landscape')) {
+                    if (window.screen.orientation && window.screen.orientation.type.startsWith('landscape')) {
                         window.screen.orientation.unlock();
                     }
                     await document.exitFullscreen();
@@ -79,42 +76,42 @@ const WindowGainsChart: React.FC = () => {
         const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
         const textColor = isDarkMode ? '#ecf0f1' : '#333';
         
-        const { windowGainsLoad, incidentSolarPower } = state.activeResults;
+        const { wallGainsLoad } = state.activeResults;
         
-        const windowCS = Array.isArray(windowGainsLoad) 
-            ? { total: windowGainsLoad, individualWindows: [] } 
-            : windowGainsLoad?.clearSky || { total: Array(24).fill(0), individualWindows: [] };
+        const wallsCS = Array.isArray(wallGainsLoad) 
+            ? { total: wallGainsLoad, individualWalls: [] } 
+            : wallGainsLoad?.clearSky || { total: Array(24).fill(0), individualWalls: [] };
 
         const datasets: any[] = [];
 
         if (chartType === 'line') {
              datasets.push({ 
                  type: 'line',
-                 label: 'Obciążenie chłodnicze - Okna', 
-                 data: reorderDataForLocalTime(windowCS.total, offset), 
-                 borderColor: CHART_COLORS.solar, 
-                 backgroundColor: CHART_COLORS.solar.replace(/[\d\.]+\)$/g, '0.2)'), // Convert 0.8 opacity to 0.2
+                 label: 'Obciążenie chłodnicze - Ściany', 
+                 data: reorderDataForLocalTime(wallsCS.total, offset), 
+                 borderColor: CHART_COLORS.conduction, 
+                 backgroundColor: CHART_COLORS.conduction.replace(/[\d\.]+\)$/g, '0.2)'), // Convert opacity
                  fill: true, 
                  borderWidth: 2.5, 
                  yAxisID: 'yLoad',
                  tension: 0.3
             });
         } else {
-            const indWindows = windowCS.individualWindows || [];
+            const indWalls = wallsCS.individualWalls || [];
             
-            if (indWindows.length === 0) {
+            if (indWalls.length === 0) {
                  datasets.push({
                     type: 'bar',
                     label: 'Suma (wymaga przeliczenia w ukrytej zakładce "Podsumowanie")',
-                    data: reorderDataForLocalTime(windowCS.total, offset),
-                    backgroundColor: CHART_COLORS.solar,
-                    stack: 'windows',
+                    data: reorderDataForLocalTime(wallsCS.total, offset),
+                    backgroundColor: CHART_COLORS.conduction,
+                    stack: 'walls',
                     yAxisID: 'yLoad'
                 });
             } else {
                 const palette = [
-                    CHART_COLORS.solar,
                     CHART_COLORS.conduction,
+                    CHART_COLORS.solar,
                     CHART_COLORS.people,
                     CHART_COLORS.equipment,
                     CHART_COLORS.ventilation,
@@ -123,35 +120,19 @@ const WindowGainsChart: React.FC = () => {
                     CHART_COLORS.totalSensible
                 ];
                 
-                indWindows.forEach((win, idx) => {
+                indWalls.forEach((wall: any, idx: number) => {
                     const color = palette[idx % palette.length];
                     datasets.push({
                         type: 'bar',
-                        label: win.title,
-                        data: reorderDataForLocalTime(win.sensible, offset),
+                        label: wall.title,
+                        data: reorderDataForLocalTime(wall.sensible, offset),
                         backgroundColor: color,
-                        stack: 'windows',
+                        stack: 'walls',
                         yAxisID: 'yLoad'
                     });
                 });
             }
         }
-
-        if (showIncidentRadiation) {
-            datasets.push({
-                type: 'line',
-                label: 'Padające promieniowanie słoneczne',
-                data: reorderDataForLocalTime(incidentSolarPower, offset),
-                borderColor: '#95a5a6',
-                borderWidth: 1.5,
-                borderDash: [2, 2],
-                yAxisID: 'yRadiation',
-                tension: 0.3,
-                fill: false,
-                pointRadius: 0
-            });
-        }
-
 
         const chartConfig: any = {
             type: chartType === 'line' ? 'line' : 'bar',
@@ -172,24 +153,16 @@ const WindowGainsChart: React.FC = () => {
                     },
                     yLoad: { 
                         position: 'left', 
-                        title: { display: true, text: 'Obciążenie chłodnicze od okien (kW)', color: textColor }, 
+                        title: { display: true, text: 'Obciążenie chłodnicze od ścian (kW)', color: textColor }, 
                         ticks: { color: textColor, callback: function(value: any) { return (Number(value) / 1000).toFixed(2); } }, 
                         grid: { color: gridColor }, 
                         beginAtZero: true,
                         stacked: chartType === 'bar'
-                    },
-                    yRadiation: { 
-                        position: 'right', 
-                        title: { display: showIncidentRadiation, text: 'Padające prom. słoneczne (kW)', color: textColor }, 
-                        ticks: { color: textColor, callback: function(value: any) { return (Number(value) / 1000).toFixed(2); } }, 
-                        grid: { drawOnChartArea: false }, 
-                        display: showIncidentRadiation, 
-                        beginAtZero: true 
                     }
                 },
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
-                    title: { display: true, text: 'Obciążenie chłodnicze od okien', color: textColor, font: { size: 16 } },
+                    title: { display: true, text: 'Obciążenie chłodnicze od ścian', color: textColor, font: { size: 16 } },
                     legend: { labels: { color: textColor } },
                     tooltip: { 
                         mode: 'index',
@@ -215,22 +188,22 @@ const WindowGainsChart: React.FC = () => {
         }
         chartInstanceRef.current = new Chart(ctx, chartConfig);
 
-    }, [state.activeResults, theme, showIncidentRadiation, state.currentMonth, chartType]);
+    }, [state.activeResults, theme, state.currentMonth, chartType]);
     
     if (!state.results) {
         return (
             <Card className="flex items-center justify-center h-full min-h-[500px]">
-                <p className="text-slate-500 text-center px-4">Przejdź do zakładki "Podsumowanie" i uruchom obliczenia, aby zobaczyć wykres obciążenia od okien.</p>
+                <p className="text-slate-500 text-center px-4">Przejdź do zakładki "Podsumowanie" i uruchom obliczenia, aby zobaczyć wykres obciążenia od ścian.</p>
             </Card>
         );
     }
 
-    if (state.windows.length === 0) {
+    if (state.walls.length === 0) {
         return (
             <Card className="flex items-center justify-center h-full min-h-[500px]">
                 <div className="text-center px-4">
-                    <p className="text-slate-500 mb-2">Brak zdefiniowanych okien w projekcie.</p>
-                    <p className="text-xs text-slate-400">Dodaj okna w zakładce "Okna", aby zobaczyć analizę zysków słonecznych.</p>
+                    <p className="text-slate-500 mb-2">Brak zdefiniowanych ścian w projekcie.</p>
+                    <p className="text-xs text-slate-400">Dodaj ściany/stropodachy w zakładce "Ściany", aby zobaczyć analizę zysków.</p>
                 </div>
             </Card>
         );
@@ -262,18 +235,12 @@ const WindowGainsChart: React.FC = () => {
                         onClick={() => setChartType('bar')}
                         className={`px-3 py-1 text-sm font-medium rounded ${chartType === 'bar' ? 'bg-white dark:bg-slate-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
                     >
-                        Rozbicie na okna (Słupkowy)
+                        Rozbicie na ściany (Słupkowy)
                     </button>
                 </div>
-                <Checkbox 
-                    id="show_incident_radiation"
-                    label="Pokaż całkowite promieniowanie słoneczne padające na okna"
-                    checked={showIncidentRadiation}
-                    onChange={(e) => setShowIncidentRadiation(e.target.checked)}
-                />
             </div>
         </Card>
     );
 };
 
-export default WindowGainsChart;
+export default WallGainsChart;

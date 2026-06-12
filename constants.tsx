@@ -5,6 +5,12 @@ export const MONTH_NAMES = [
     'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'
 ];
 
+export const ANALYSIS_MONTHS = {
+    START: 4, // Kwiecień
+    END: 9,   // Wrzesień
+    ARRAY: [4, 5, 6, 7, 8, 9]
+};
+
 export const WINDOW_DIRECTIONS = [
     { value: 'N', label: 'N (0°) - Północ' },
     { value: 'NNE', label: 'NNE (22.5°) - Północno-północno-wschód' },
@@ -148,7 +154,7 @@ export const VENTILATION_EXCHANGER_TYPES: { [key: string]: { label: string, eta_
 };
 
 export const WALL_MATERIALS: { [key: string]: { label: string, absorptance: number } } = {
-    brick_red: { label: 'Cegła czerwona (Purdue)', absorptance: 0.63 },
+    brick_red: { label: 'Cegła czerwona', absorptance: 0.63 },
     paint_red: { label: 'Farba czerwona', absorptance: 0.63 },
     paint_black: { label: 'Farba czarna (matowa)', absorptance: 0.94 },
     paint_sandstone: { label: 'Farba piaskowa (Sandstone)', absorptance: 0.50 },

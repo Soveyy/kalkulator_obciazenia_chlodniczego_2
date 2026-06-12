@@ -1,6 +1,6 @@
 
 import { Window, Wall, AccumulationSettings, InternalGains, AllData, InputState, CalculationResults, Shading, CalculationResultData } from '../types';
-import { PEOPLE_ACTIVITY_LEVELS, LIGHTING_TYPES, VENTILATION_EXCHANGER_TYPES, EQUIPMENT_PRESETS, WALL_MATERIALS } from '../constants';
+import { PEOPLE_ACTIVITY_LEVELS, LIGHTING_TYPES, VENTILATION_EXCHANGER_TYPES, EQUIPMENT_PRESETS, WALL_MATERIALS, ANALYSIS_MONTHS } from '../constants';
 import { ADVANCED_APPLIANCES } from '../data/advancedAppliances';
 import { SHGC_DIFFUSE_MULTIPLIERS, SHGC_DIRECT_CORRECTION_CURVES } from '../src/config/shgcConfig';
 
@@ -218,9 +218,9 @@ export function calculateWorstMonth(
         solarMatrix.push(solarLoads);
         solarInstantMatrix.push(solarInstant);
 
-        // Peak analysis (only April to September)
+        // Peak analysis (only selected analysis months)
         const mNum = parseInt(monthStr, 10);
-        if (mNum >= 4 && mNum <= 9) {
+        if (mNum >= ANALYSIS_MONTHS.START && mNum <= ANALYSIS_MONTHS.END) {
             const peakLoad = Math.max(...totalLoads);
             monthlyPeaks.push({ month: monthStr, peak: peakLoad });
 
@@ -557,10 +557,18 @@ export function calculateGainsForMonth(
 
     let diffuseWarningLogged = false;
 
-    windows.forEach(win => {
+    const individualWindowsData: { id: number; title: string; sensible: number[] }[] = [];
+
+    windows.forEach((win, index) => {
         const area = win.width * win.height;
         const tiltStr = (win.tilt ?? 90).toString();
         const nsrdbDirData = allData.nsrdb[month]?.[win.direction]?.[tiltStr];
+
+        const ind_solarRadiantGains_SolarRTS = Array(24).fill(0);
+        const ind_solarRadiantGains_NonSolarRTS = Array(24).fill(0);
+        const ind_conductionRadiantGains_NonSolarRTS = Array(24).fill(0);
+        const ind_conductionGainsConvective = Array(24).fill(0);
+        const ind_solarConvectiveGains = Array(24).fill(0);
 
         if (nsrdbDirData) {
             for (let h = 0; h < 24; h++) {
@@ -571,6 +579,9 @@ export function calculateGainsForMonth(
                 const radiativeFractionCond = win.shgc <= 0.5 ? 0.46 : 0.33;
                 conductionRadiantGains_NonSolarRTS[h] += conductiveTotal * radiativeFractionCond;
                 conductionGainsConvective[h] += conductiveTotal * (1 - radiativeFractionCond);
+                
+                ind_conductionRadiantGains_NonSolarRTS[h] += conductiveTotal * radiativeFractionCond;
+                ind_conductionGainsConvective[h] += conductiveTotal * (1 - radiativeFractionCond);
 
                 const shadingFactors = getShadingFactors(win, allData, h, month, isWithoutShading);
                 const correctedSHGC = getCorrectedSHGC(win, nsrdbDirData, h, month, tiltStr);
@@ -621,17 +632,35 @@ export function calculateGainsForMonth(
                 
                 const convectiveGain = (attenuatedBeamGain + attenuatedDiffuseGain) * (1 - shadingFactors.fr);
                 solarConvectiveGains[h] += convectiveGain;
+                ind_solarConvectiveGains[h] += convectiveGain;
                 
                 // dyfuz bez osłony wewnętrznej traktujemy jako 100% radiacyjny zgodnie z Tabelą 14 rozdz. 18 (wiersz "Solar heat gain through fenestration / Without interior shading": 1.00 rad / 0.00 konw.); alternatywny podział 46/54 z przykładu obliczeniowego (s. 18.51) został świadomie odrzucony decyzją projektową.
                 solarRadiantGains_NonSolarRTS[h] += diffuseRadiantGain;
+                ind_solarRadiantGains_NonSolarRTS[h] += diffuseRadiantGain;
                 
                 if (shadingFactors.is_indoor) {
                     solarRadiantGains_NonSolarRTS[h] += beamRadiantGain;
+                    ind_solarRadiantGains_NonSolarRTS[h] += beamRadiantGain;
                 } else {
                     solarRadiantGains_SolarRTS[h] += beamRadiantGain;
+                    ind_solarRadiantGains_SolarRTS[h] += beamRadiantGain;
                 }
             }
         }
+
+        const ind_solarLoadFromSolarRTS = accumulation.include ? applyRTS(ind_solarRadiantGains_SolarRTS, rtsFactorsSolar) : ind_solarRadiantGains_SolarRTS;
+        const ind_solarLoadFromNonSolarRTS = accumulation.include ? applyRTS(ind_solarRadiantGains_NonSolarRTS, rtsFactorsNonSolar) : ind_solarRadiantGains_NonSolarRTS;
+        const ind_conductionLoadFromRadiant = accumulation.include ? applyRTS(ind_conductionRadiantGains_NonSolarRTS, rtsFactorsNonSolar) : ind_conductionRadiantGains_NonSolarRTS;
+
+        const winLoad = Array(24).fill(0).map((_, h) => 
+            ind_solarLoadFromSolarRTS[h] + ind_solarLoadFromNonSolarRTS[h] + ind_conductionLoadFromRadiant[h] + ind_solarConvectiveGains[h] + ind_conductionGainsConvective[h]
+        );
+
+        individualWindowsData.push({
+            id: win.id,
+            title: `Okno ${index + 1}`,
+            sensible: winLoad
+        });
     });
 
     const solarLoadFromSolarRTS = accumulation.include ? applyRTS(solarRadiantGains_SolarRTS, rtsFactorsSolar) : solarRadiantGains_SolarRTS;
@@ -641,9 +670,10 @@ export function calculateGainsForMonth(
 
     const wallConvectiveGains = Array(24).fill(0);
     const wallRadiantGains = Array(24).fill(0);
+    const individualWallsData: { id: number; title: string; sensible: number[] }[] = [];
     
     if (walls && walls.length > 0) {
-        walls.forEach(wall => {
+        walls.forEach((wall, index) => {
             const area = wall.area;
             const U = wall.u;
             const alpha = WALL_MATERIALS[wall.material || 'brick_red']?.absorptance ?? 0.65;
@@ -684,6 +714,18 @@ export function calculateGainsForMonth(
                 wallConvectiveGains[n] += q_cond[n] * convectiveFraction;
                 wallRadiantGains[n] += q_cond[n] * radiativeFraction;
             }
+            
+            const wallLoadRadiant = q_cond.map((q, i) => q * (isRoof ? 0.60 : 0.46));
+            const wallLoadRadiant_RTS = accumulation.include ? applyRTS(wallLoadRadiant, rtsFactorsNonSolar) : wallLoadRadiant;
+            const wallLoadTotal = Array(24).fill(0).map((_, h) => q_cond[h] * (isRoof ? 0.40 : 0.54) + wallLoadRadiant_RTS[h]);
+            
+            const title = isRoof ? `Stropodach ${index + 1}` : `Ściana ${index + 1} (${wall.direction})`;
+            
+            individualWallsData.push({
+                id: wall.id,
+                title,
+                sensible: wallLoadTotal
+            });
         });
     }
 
@@ -731,6 +773,7 @@ export function calculateGainsForMonth(
             total: sensibleLoad.map((s, h) => s + totalLatentLoad[h]),
             windows: windowsLoad,
             walls: wallsLoad,
+            individualWalls: individualWallsData,
             people: peopleLoad,
             lighting: lightingLoad,
             equipment: equipmentLoad,
@@ -767,8 +810,17 @@ export function calculateGainsForMonth(
             clearSky: { 
                 sensible: windowGainsSensible, 
                 latent: Array(24).fill(0), 
-                total: windowGainsSensible 
+                total: windowGainsSensible,
+                individualWindows: individualWindowsData
             },
+        },
+        wallGainsLoad: {
+            clearSky: {
+                sensible: wallsLoad,
+                latent: Array(24).fill(0),
+                total: wallsLoad,
+                individualWalls: individualWallsData
+            }
         },
         ventilationLoad,
         infiltrationLoad,

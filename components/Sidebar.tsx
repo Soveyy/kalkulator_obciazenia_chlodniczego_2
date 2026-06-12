@@ -10,7 +10,7 @@ import { createTutorial } from '../services/tutorialService';
 import KPIDashboard from './KPIDashboard';
 
 const Sidebar: React.FC = () => {
-    const { state, dispatch, progress } = useCalculator();
+    const { state, dispatch, validation } = useCalculator();
 
     const startTour = () => {
         const tour = createTutorial(() => {});
@@ -41,7 +41,7 @@ const Sidebar: React.FC = () => {
                  <div className="flex justify-between items-center mb-4 mt-2 lg:mt-0">
                     <div className="flex items-center gap-2">
                         <h2 className="text-xl font-bold text-slate-800 dark:text-white">Narzędzia</h2>
-                        <span className={`w-2 h-2 rounded-full transition-colors ${progress.base ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                        <span className={`w-2 h-2 rounded-full transition-colors ${validation.baseValid ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-slate-300 dark:bg-slate-600'}`} />
                     </div>
                     <button 
                         id="sidebar-toggle"

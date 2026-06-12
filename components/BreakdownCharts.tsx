@@ -2,17 +2,18 @@ import React, { useState } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend, Sector } from 'recharts';
 import { useCalculator } from '../contexts/CalculatorContext';
 import Card from './ui/Card';
+import { CHART_COLORS } from '../lib/chartUtils';
 
 const NODE_COLORS: Record<string, string> = {
-    'Okna': '#f1c40f',
-    'Ściany': '#d35400',
-    'Ludzie': '#e67e22',
-    'Oświetlenie': '#e74c3c',
-    'Sprzęt': '#9b59b6',
-    'Wentylacja': '#3498db',
-    'Infiltracja': '#2ecc71',
-    'Ciepło Jawne': '#ff7675',
-    'Ciepło Utajone': '#74b9ff',
+    'Okna': CHART_COLORS.solar,
+    'Ściany': CHART_COLORS.conduction,
+    'Ludzie': CHART_COLORS.people,
+    'Oświetlenie': CHART_COLORS.lighting,
+    'Sprzęt': CHART_COLORS.equipment,
+    'Wentylacja': CHART_COLORS.ventilation,
+    'Infiltracja': CHART_COLORS.infiltration,
+    'Ciepło Jawne': CHART_COLORS.totalSensible,
+    'Ciepło Utajone': CHART_COLORS.totalLatent,
 };
 
 const renderActiveShape = (props: any) => {

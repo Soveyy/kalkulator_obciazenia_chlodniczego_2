@@ -4,6 +4,7 @@ import Chart from 'chart.js/auto';
 import { useCalculator } from '../contexts/CalculatorContext';
 import Card from './ui/Card';
 import { ArrowsExpandIcon, ArrowsShrinkIcon } from './Icons';
+import { getChartColor, CHART_COLORS } from '../lib/chartUtils';
 
 const reorderDataForLocalTime = (data: number[], offset: number): number[] => {
     if (!data) return Array(24).fill(0);
@@ -78,8 +79,8 @@ const InternalGainsChart: React.FC = () => {
         const { internalGainsLoad } = state.activeResults;
         
         const datasets = [
-            { label: 'Obciążenie jawne', data: reorderDataForLocalTime(internalGainsLoad.sensible, offset), backgroundColor: 'rgba(231, 76, 60, 0.7)', stack: 'a' },
-            { label: 'Obciążenie utajone', data: reorderDataForLocalTime(internalGainsLoad.latent, offset), backgroundColor: 'rgba(52, 152, 219, 0.7)', stack: 'a' }
+            { label: 'Obciążenie jawne', data: reorderDataForLocalTime(internalGainsLoad.sensible, offset), backgroundColor: getChartColor('internal', false), stack: 'a' },
+            { label: 'Obciążenie utajone', data: reorderDataForLocalTime(internalGainsLoad.latent, offset), backgroundColor: getChartColor('internal', true), borderColor: CHART_COLORS.internal, borderWidth: 1, stack: 'a' }
         ];
 
         const chartConfig: any = {

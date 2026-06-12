@@ -2,7 +2,7 @@ import React, { useMemo, useEffect, useRef, useState } from 'react';
 import { useCalculator } from '../../contexts/CalculatorContext';
 import Card from '../ui/Card';
 import Chart from 'chart.js/auto';
-import { MONTH_NAMES } from '../../constants';
+import { MONTH_NAMES, ANALYSIS_MONTHS } from '../../constants';
 import { generateAggregatePdfReport } from '../../services/aggregateReportGenerator';
 import MultiSplitCalculator from '../MultiSplitCalculator';
 import SankeyChart from '../SankeyChart';
@@ -335,75 +335,22 @@ const AggregateAnalysisPage: React.FC = () => {
         };
     }, [aggregateData, theme, state.rooms]);
 
+    if (state.isCalculating) {
+        return (
+            <div className="flex flex-col items-center justify-center h-64 space-y-4">
+                <svg className="animate-spin h-10 w-10 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p className="text-slate-600 dark:text-slate-300 font-medium animate-pulse">Obliczanie zysków dla całego budynku...</p>
+            </div>
+        );
+    }
+
     if (!aggregateData) {
         return (
-            <div className="space-y-6 animate-fade-in">
-                <Card className="p-8 text-center flex flex-col items-center justify-center">
-                    <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
-                        <span className="text-2xl">📊</span>
-                    </div>
-                    <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Brak danych do analizy zbiorczej</h2>
-                    <p className="text-slate-500 dark:text-slate-400 max-w-md mb-8">
-                        Aby zobaczyć analizę zbiorczą dla całego budynku, musisz najpierw uruchomić obliczenia. 
-                        Kalkulator znajdzie najbardziej niekorzystny miesiąc dla wszystkich pomieszczeń razem.
-                    </p>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl">
-                        <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col">
-                            <h3 className="font-bold text-slate-800 dark:text-white mb-2">Opcja 1: Automatyczna</h3>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 flex-grow">
-                                Kalkulator przeanalizuje wszystkie miesiące i wybierze ten, w którym suma zysków ciepła ze wszystkich pomieszczeń jest największa.
-                            </p>
-                            <button
-                                onClick={handleCalculate}
-                                disabled={isCalculating}
-                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
-                            >
-                                {isCalculating ? (
-                                    <>
-                                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        Obliczanie...
-                                    </>
-                                ) : 'Znajdź najgorszy miesiąc'}
-                            </button>
-                        </div>
-
-                        <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col">
-                            <h3 className="font-bold text-slate-800 dark:text-white mb-2">Opcja 2: Ręczna</h3>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                                Wybierz konkretny miesiąc, dla którego chcesz przeprowadzić analizę wszystkich pomieszczeń.
-                            </p>
-                            <div className="mb-4">
-                                <select
-                                    id="initial-month-select"
-                                    value={currentMonth}
-                                    onChange={handleMonthChange}
-                                    className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                                >
-                                    {MONTH_NAMES.map((name, index) => {
-                                        const monthNum = index + 1;
-                                        if (monthNum < 5 || monthNum > 9) return null;
-                                        return (
-                                            <option key={monthNum} value={monthNum.toString()}>
-                                                {name}
-                                            </option>
-                                        );
-                                    })}
-                                </select>
-                            </div>
-                            <button
-                                onClick={() => dispatch({ type: 'RECALCULATE_ALL_ROOMS', payload: currentMonth })}
-                                disabled={isCalculating}
-                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50"
-                            >
-                                Oblicz dla {MONTH_NAMES[parseInt(currentMonth, 10) - 1]}
-                            </button>
-                        </div>
-                    </div>
-                </Card>
+            <div className="flex items-center justify-center h-64">
+                <p className="text-slate-500 dark:text-slate-400">Trwa inicjalizacja analizy zbiorczej...</p>
             </div>
         );
     }
@@ -437,7 +384,7 @@ const AggregateAnalysisPage: React.FC = () => {
                         >
                             {MONTH_NAMES.map((name, index) => {
                                 const monthNum = index + 1;
-                                if (monthNum < 5 || monthNum > 9) return null;
+                                if (monthNum < ANALYSIS_MONTHS.START || monthNum > ANALYSIS_MONTHS.END) return null;
                                 return (
                                     <option key={monthNum} value={monthNum.toString()}>
                                         {name}

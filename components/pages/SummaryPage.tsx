@@ -3,65 +3,73 @@ import { useCalculator } from '../../contexts/CalculatorContext';
 import ResultsArea from '../ResultsArea';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
+import { CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 
 const SummaryPage: React.FC = () => {
-    const { state, handleCalculate, isCalculating, handleGenerateReport } = useCalculator();
-    
-    const isFormValid = React.useMemo(() => {
-        const { input, internalGains } = state;
-        const baseValid = 
-            input.projectName.trim() !== '' && 
-            input.tInternal !== '' && 
-            input.rhInternal !== '' && 
-            input.roomArea !== '';
-        
-        const infiltrationValid = 
-            !internalGains.ventilation.includeInfiltration || 
-            (internalGains.ventilation.exteriorWallPerimeter !== '' && 
-             internalGains.ventilation.roomHeight !== '' && 
-             internalGains.ventilation.windSpeed !== '');
-            
-        return baseValid && infiltrationValid;
-    }, [state.input, state.internalGains.ventilation]);
+    const { state, handleGenerateReport, validation } = useCalculator();
 
-    if (state.results) {
-        return (
-            <>
-                <ResultsArea />
-                 <div className="text-center mt-6">
-                    <Button variant="primary" onClick={handleGenerateReport} disabled={state.isGeneratingReport}>
-                        {state.isGeneratingReport ? 'Generowanie raportu...' : 'Wygeneruj raport pomieszczenia PDF'}
-                    </Button>
+    const bottomRightContent = (
+        <Card className="px-5 py-4 flex flex-col justify-center gap-4 flex-grow-0 shrink-0">
+            <div className="flex items-center gap-x-4 gap-y-2 flex-wrap justify-center overflow-x-auto">
+                <div className="flex items-center gap-1.5" title={validation.baseValid && validation.infiltrationValid ? "Wszystkie wymagane parametry zostały uzupełnione." : "Brak wymaganych parametrów (np. powierzchnia, temperatura)."}>
+                    {validation.baseValid && validation.infiltrationValid ? (
+                        <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+                    ) : (
+                        <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
+                    )}
+                    <span className="text-sm font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">Dane podstawowe</span>
                 </div>
-            </>
-        );
-    }
-
-    return (
-        <Card>
-            <div className="text-center p-8">
-                <h2 className="text-xl font-semibold mb-4">Gotowy do obliczeń?</h2>
-                <p className="text-slate-600 dark:text-slate-400 mb-6">
-                    Skonfigurowałeś już parametry pomieszczenia i źródła zysków ciepła. Kliknij poniższy przycisk, aby uruchomić pełną symulację. 
-                    Kalkulator znajdzie miesiąc z największymi zyskami słonecznymi i przedstawi szczegółowe wyniki.
-                </p>
-                <div id="calculate-button">
-                    <Button variant="action" onClick={handleCalculate} disabled={isCalculating || !isFormValid} fullWidth>
-                        {isCalculating ? (
-                            <span className="flex items-center justify-center">
-                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Obliczanie...
-                            </span>
-                        ) : (
-                            !isFormValid ? 'Uzupełnij brakujące dane (migające pola)' : 'Oblicz obciążenie chłodnicze'
-                        )}
-                    </Button>
+                <div className="flex items-center gap-1.5" title={validation.internal ? "Źródła zysków wewnętrznych dodane." : "Brak dodatkowych zysków."}>
+                    {validation.internal ? (
+                        <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+                    ) : (
+                        <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 opacity-50" />
+                    )}
+                    <span className="text-sm font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">Zyski wewn.</span>
+                </div>
+                <div className="flex items-center gap-1.5" title={validation.windows ? "Okna zdefiniowane." : "Pomijasz zyski przez okna."}>
+                    {validation.windows ? (
+                        <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+                    ) : (
+                        <Info className="w-5 h-5 text-orange-400 shrink-0" />
+                    )}
+                    <span className="text-sm font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">Okna</span>
+                </div>
+                <div className="flex items-center gap-1.5" title={validation.ventilation ? "Wentylacja zdefiniowana." : "Pomijasz zyski z wentylacji."}>
+                    {validation.ventilation ? (
+                        <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+                    ) : (
+                        <Info className="w-5 h-5 text-orange-400 shrink-0" />
+                    )}
+                    <span className="text-sm font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">Wentylacja</span>
+                </div>
+                <div className="flex items-center gap-1.5" title={validation.walls ? "Zdefiniowano ściany." : "Pomijasz zyski ze ścian."}>
+                    {validation.walls ? (
+                        <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+                    ) : (
+                        <Info className="w-5 h-5 text-orange-400 shrink-0" />
+                    )}
+                    <span className="text-sm font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">Ściany</span>
                 </div>
             </div>
+            
+            <div className="flex items-center justify-center pt-3 border-t border-slate-100 dark:border-slate-700">
+                <Button 
+                    variant="primary" 
+                    onClick={handleGenerateReport} 
+                    disabled={state.isGeneratingReport || !validation.isFormValid} 
+                    className="w-full justify-center"
+                >
+                    {state.isGeneratingReport ? 'Generowanie...' : (!validation.isFormValid ? 'Uzupełnij dane' : 'Generuj raport PDF')}
+                </Button>
+            </div>
         </Card>
+    );
+
+    return (
+        <div className="space-y-6">
+            <ResultsArea bottomRightContent={bottomRightContent} />
+        </div>
     );
 };
 

@@ -4,7 +4,7 @@ import { Window, AccumulationSettings, CalculationResults, AllData, Shading, Int
 import { calculateWorstMonth, calculateGainsForMonth, generateTemperatureProfile } from '../services/calculationService';
 import { loadAllData } from '../services/dataService';
 import { generatePdfReport } from '../services/reportGenerator';
-import { MONTH_NAMES } from '../constants';
+import { MONTH_NAMES, ANALYSIS_MONTHS } from '../constants';
 import LZString from 'lz-string';
 import { db, auth } from '../firebase';
 import { collection, doc, setDoc, getDocs, deleteDoc, getDoc, query, onSnapshot, serverTimestamp, where } from 'firebase/firestore';
@@ -542,12 +542,14 @@ const CalculatorContext = createContext<{
     handleGenerateReport: () => void;
     isCalculating: boolean;
     toasts: any[];
-    progress: {
-        base: boolean;
+    validation: {
+        baseValid: boolean;
+        infiltrationValid: boolean;
         internal: boolean;
         windows: boolean;
         ventilation: boolean;
-        total: number;
+        walls: boolean;
+        isFormValid: boolean;
     };
 }>({
     state: initialState,
@@ -558,13 +560,12 @@ const CalculatorContext = createContext<{
     handleGenerateReport: () => {},
     isCalculating: false,
     toasts: [],
-    progress: { base: false, internal: false, windows: false, ventilation: false, total: 0 }
+    validation: { baseValid: false, infiltrationValid: false, internal: false, windows: false, ventilation: false, walls: false, isFormValid: false }
 });
 
 export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const [state, dispatch] = useReducer(calculatorReducer, initialState);
     const [isCalculating, setIsCalculating] = useState(false);
-    const [initialCalculationDone, setInitialCalculationDone] = useState(false);
 
     useEffect(() => {
         const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
@@ -602,12 +603,19 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
         const localProjects = loadLocalProjects();
         
         let currentLocalProjects = localProjects;
+        let unsubscribeSnapshot: (() => void) | undefined;
 
         const unsubscribe = onAuthStateChanged(auth, (user) => {
+            // Clean up existing snapshot listener if auth state changes
+            if (unsubscribeSnapshot) {
+                unsubscribeSnapshot();
+                unsubscribeSnapshot = undefined;
+            }
+
             if (user) {
                 const projectsRef = collection(db, 'users', user.uid, 'projects');
                 const q = query(projectsRef, where('userId', '==', user.uid));
-                const unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+                unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
                     const cloudProjects: SavedProject[] = [];
                     snapshot.forEach(doc => {
                         const data = doc.data();
@@ -638,12 +646,17 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                     console.error("Failed to fetch projects from Firestore", error);
                     dispatch({ type: 'SET_SAVED_PROJECTS', payload: currentLocalProjects });
                 });
-                return () => unsubscribeSnapshot();
             } else {
                 dispatch({ type: 'SET_SAVED_PROJECTS', payload: currentLocalProjects });
             }
         });
-        return () => unsubscribe();
+        
+        return () => {
+            unsubscribe();
+            if (unsubscribeSnapshot) {
+                unsubscribeSnapshot();
+            }
+        };
     }, []);
 
     // Check for URL params on mount
@@ -711,23 +724,35 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
 
     const activeRoom = state.rooms.find(r => r.id === state.activeRoomId) || state.rooms[0];
 
-    const progress = React.useMemo(() => {
-        const base = 
+    const validation = React.useMemo(() => {
+        const baseValid = 
             state.projectName.trim() !== '' && 
             activeRoom.input.roomArea !== '' && 
             activeRoom.input.tInternal !== '' && 
             activeRoom.input.rhInternal !== '';
-            
+
+        const infiltrationValid = 
+            !activeRoom.internalGains.ventilation.includeInfiltration || 
+            (activeRoom.internalGains.ventilation.exteriorWallPerimeter !== '' && 
+             activeRoom.internalGains.ventilation.roomHeight !== '' && 
+             activeRoom.internalGains.ventilation.windSpeed !== '');
+             
         const internal = activeRoom.internalGains.people.enabled || activeRoom.internalGains.lighting.enabled || (activeRoom.internalGains.equipment?.length || 0) > 0;
         const windows = (activeRoom.windows?.length || 0) > 0;
         const ventilation = activeRoom.internalGains.ventilation.type !== 'none';
         const walls = (activeRoom.walls?.length || 0) > 0;
-        
-        const sections = [base, internal, windows, ventilation, walls];
-        const completed = sections.filter(Boolean).length;
-        const total = Math.round((completed / sections.length) * 100);
 
-        return { base, internal, windows, ventilation, walls, total };
+        const isFormValid = baseValid && infiltrationValid;
+
+        return { 
+            baseValid, 
+            infiltrationValid,
+            internal, 
+            windows, 
+            ventilation, 
+            walls,
+            isFormValid 
+        };
     }, [state.projectName, activeRoom.input, activeRoom.internalGains, activeRoom.windows, activeRoom.walls]);
     
     const performCalculation = useCallback((month: string, customMessage?: string) => {
@@ -788,8 +813,8 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             let buildingWorstMonth = '7';
 
             for (let m = 0; m < 12; m++) {
-                // Only consider April to September (indices 3 to 8)
-                if (m >= 3 && m <= 8) {
+                // Only consider months in the ANALYSIS_MONTHS range
+                if (m >= ANALYSIS_MONTHS.START - 1 && m <= ANALYSIS_MONTHS.END - 1) {
                     for (let h = 0; h < 24; h++) {
                         let hourlySum = 0;
                         for (let r = 0; r < roomCalculations.length; r++) {
@@ -804,7 +829,9 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             }
 
             const monthName = MONTH_NAMES[parseInt(buildingWorstMonth, 10) - 1];
-            const message = `Miesiąc z największym obciążeniem chłodniczym dla całego budynku: <strong>${monthName}</strong>.`;
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const message = `<span class="inline-flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-green-500 animate-[spin_3s_linear_infinite]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Przeliczono automatycznie o ${timeString} dla całego budynku.</span>`;
 
             // Second pass: generate results for the building's worst month
             const newRooms = state.rooms.map((room, index) => {
@@ -831,7 +858,6 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
 
             dispatch({ type: 'SET_STATE', payload: { rooms: newRooms } });
             dispatch({ type: 'ADD_TOAST', payload: { message: 'Obliczenia dla wszystkich pomieszczeń zakończone!', type: 'success' } });
-            setInitialCalculationDone(true);
         } catch(error) {
             console.error("Calculation failed:", error);
             dispatch({ type: 'ADD_TOAST', payload: { message: 'Wystąpił błąd podczas obliczeń.', type: 'danger' } });
@@ -842,7 +868,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
     
     // Effect to recalculate automatically on changes and update the message
     useEffect(() => {
-        if (initialCalculationDone && state.allData) {
+        if (state.allData && state.activeRoomId !== 'aggregate') {
             const handler = setTimeout(() => {
                 // Find the worst month based on current settings
                 const { worstMonth, monthlyPeaks } = calculateWorstMonth(
@@ -855,16 +881,25 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                     !state.isShadingViewActive
                 );
                 const worstMonthName = MONTH_NAMES[parseInt(worstMonth, 10) - 1];
+                const now = new Date();
+                const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                 
                 // Only show critical month message
-                const message = `Miesiąc z największym obciążeniem chłodniczym dla obecnych ustawień: <strong>${worstMonthName}</strong>.`;
+                const message = `<span class="inline-flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-green-500 animate-[spin_3s_linear_infinite]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Przeliczono automatycznie o ${timeString}.</span>`;
                 
                 // Recalculate for current viewing month (don't force switch)
-                performCalculation(activeRoom.currentMonth, message);
-            }, 500);
+                performCalculation(activeRoom.currentMonth || worstMonth, message);
+            }, 300);
             return () => clearTimeout(handler);
         }
-    }, [activeRoom.windows, activeRoom.walls, activeRoom.input, state.projectName, activeRoom.accumulation, activeRoom.internalGains, initialCalculationDone, performCalculation, state.allData, activeRoom.currentMonth, state.isShadingViewActive]);
+    }, [activeRoom.windows, activeRoom.walls, activeRoom.input, state.projectName, activeRoom.accumulation, activeRoom.internalGains, performCalculation, state.allData, activeRoom.currentMonth, state.isShadingViewActive, state.activeRoomId]);
+
+    // Auto calculate ALL rooms when entering Aggregate Analysis
+    useEffect(() => {
+        if (state.activeRoomId === 'aggregate' && state.allData) {
+            handleCalculate();
+        }
+    }, [state.activeRoomId, state.allData, handleCalculate]);
 
     const handleGenerateReport = async () => {
         if (!activeRoom.activeResults) {
@@ -900,7 +935,6 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             const savedProject = localStorage.getItem('heatGainProject');
             if (savedProject) {
                 const projectData = JSON.parse(savedProject);
-                setInitialCalculationDone(false);
                 dispatch({ type: 'SET_STATE', payload: projectData });
                 dispatch({ type: 'ADD_TOAST', payload: { message: 'Projekt wczytany!', type: 'success' } });
             } else {
@@ -970,7 +1004,6 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
         } else if (action.type === 'LOAD_PROJECT_FROM_LIST') {
             const project = state.savedProjects.find(p => p.name === action.payload);
             if (project) {
-                setInitialCalculationDone(false);
                 dispatch({ type: 'SET_STATE', payload: project.data });
                 dispatch({ type: 'ADD_TOAST', payload: { message: `Projekt "${project.name}" wczytany!`, type: 'success' } });
             }
@@ -1062,7 +1095,6 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             });
 
         } else if (action.type === 'RESET_PROJECT') {
-            setInitialCalculationDone(false);
             dispatch({ type: 'SET_STATE', payload: {
                 projectName: initialState.projectName,
                 rooms: initialState.rooms,
@@ -1071,16 +1103,11 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             }});
             dispatch({ type: 'ADD_TOAST', payload: { message: 'Ustawienia zostały zresetowane.', type: 'info' } });
         } else if (['SET_INPUT', 'SET_ACCUMULATION', 'SET_INTERNAL_GAINS', 'ADD_WINDOW', 'UPDATE_WINDOW', 'DELETE_WINDOW', 'DUPLICATE_WINDOW', 'ADD_WALL', 'UPDATE_WALL', 'DELETE_WALL', 'DUPLICATE_WALL', 'UPDATE_ALL_SHADING', 'ADD_EQUIPMENT_ITEM', 'DELETE_EQUIPMENT_ITEM', 'SET_VENTILATION_GAINS'].includes(action.type)) {
-             if (initialCalculationDone) {
-                 dispatch(action);
-             } else {
-                dispatch({ ...action, type: 'CLEAR_RESULTS' });
-                dispatch(action);
-             }
+            dispatch(action);
         } else {
             dispatch(action);
         }
-    }, [state, initialCalculationDone, activeRoom]);
+    }, [state, activeRoom]);
 
     const legacyState = {
         ...state,
@@ -1100,7 +1127,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
         solarInstantMatrix: activeRoom.solarInstantMatrix,
     };
 
-    const value = { state: legacyState as any, dispatch: enhancedDispatch, theme: state.theme, toggleTheme, handleCalculate, isCalculating, toasts: state.toasts, handleGenerateReport, progress };
+    const value = { state: legacyState as any, dispatch: enhancedDispatch, theme: state.theme, toggleTheme, handleCalculate, isCalculating, toasts: state.toasts, handleGenerateReport, validation };
 
     return (
         <CalculatorContext.Provider value={value}>

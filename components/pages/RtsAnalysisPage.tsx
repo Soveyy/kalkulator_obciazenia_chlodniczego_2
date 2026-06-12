@@ -60,9 +60,9 @@ const RtsAnalysisPage: React.FC = () => {
                 <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-4">
                     <TrendingDownIcon className="w-8 h-8 text-blue-500" />
                 </div>
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Brak danych do analizy</h2>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Trwa generowanie wyników...</h2>
                 <p className="text-slate-500 dark:text-slate-400 max-w-md">
-                    Wykonaj obliczenia w zakładce "Podsumowanie", aby zobaczyć zaawansowaną analizę wyników.
+                    Proszę czekać.
                 </p>
             </div>
         );
@@ -89,9 +89,9 @@ const RtsAnalysisPage: React.FC = () => {
                 <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-4">
                     <TrendingDownIcon className="w-8 h-8 text-blue-500" />
                 </div>
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Brak danych do analizy</h2>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Brak wyników do wyświetlenia</h2>
                 <p className="text-slate-500 dark:text-slate-400 max-w-md">
-                    Wprowadź dane i wykonaj obliczenia w zakładce "Podsumowanie", aby zobaczyć zaawansowaną analizę wyników.
+                    Dodaj źródła zysków ciepła (okna, sprzęt, itp.), aby zobaczyć szczegółową analizę obciążeń chłodniczych.
                 </p>
             </div>
         );
