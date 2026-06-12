@@ -8,6 +8,7 @@ import SankeyChart from '../SankeyChart';
 import BreakdownCharts from '../BreakdownCharts';
 import MonthlyLoadChart from '../MonthlyLoadChart';
 import SolarHeatMap from '../SolarHeatMap';
+import SystemInfoCard from '../SystemInfoCard';
 
 const RtsAnalysisPage: React.FC = () => {
     const { state } = useCalculator();
@@ -143,8 +144,8 @@ const RtsAnalysisPage: React.FC = () => {
                 </button>
             </div>
 
-            {/* Segment 1: Bezwładność Cieplna */}
             <div id="rts" ref={segment1Ref} className="flex flex-col space-y-6 pt-0">
+                <SystemInfoCard roomId={state.activeRoomId} />
                 <div className="text-center mb-1">
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Analiza Bezwładności Cieplnej</h2>
                     <p className="text-slate-500 dark:text-slate-400">Wpływ masy termicznej budynku na szczytowe zapotrzebowanie na chłód</p>

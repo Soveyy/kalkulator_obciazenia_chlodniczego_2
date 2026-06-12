@@ -213,12 +213,18 @@ export interface SavedProject {
     isLocal?: boolean;
 }
 
-export interface MultiSplitConfig {
-    selectedOutdoorModel: string;
-    roomIndices: Record<string, number>;
+export interface SystemUnit {
+    roomId: string;
+    index: number;
+}
+
+export interface HVACSystem {
+    id: string;
+    name: string;
+    type: 'split' | 'multi';
+    outdoorModel: string;
+    indoorUnits: SystemUnit[];
     applyTempCorrection: boolean;
-    deactivatedRoomIds?: string[];
-    roomOrder?: string[];
 }
 
 export interface State {
@@ -226,7 +232,7 @@ export interface State {
     projectName: string;
     rooms: RoomState[];
     activeRoomId: string;
-    multiSplitConfig?: MultiSplitConfig;
+    systems: HVACSystem[];
     
     // Global state
     allData: AllData | null;
@@ -297,5 +303,8 @@ export type Action =
     | { type: 'SET_GENERATING_REPORT', payload: boolean }
     | { type: 'SET_TUTORIAL_MODE', payload: boolean }
     | { type: 'SET_HAS_SEEN_WELCOME', payload: boolean }
-    | { type: 'UPDATE_MULTI_SPLIT_CONFIG', payload: Partial<MultiSplitConfig> };
+    | { type: 'ADD_SYSTEM', payload: HVACSystem }
+    | { type: 'UPDATE_SYSTEM', payload: HVACSystem }
+    | { type: 'DELETE_SYSTEM', payload: string }
+    | { type: 'REORDER_SYSTEMS', payload: HVACSystem[] };
 

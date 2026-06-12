@@ -97,8 +97,8 @@ async function createTempChart(config: any, width: number, height: number): Prom
     const chart = new Chart(offscreenCanvas, chartConfig);
     await new Promise(resolve => setTimeout(resolve, 50));
     
-    // Export as JPEG with 0.95 quality
-    const dataUrl = chart.canvas.toDataURL('image/jpeg', 0.95);
+    // Export as PNG
+    const dataUrl = chart.canvas.toDataURL('image/png', 1.0);
     chart.destroy();
     return dataUrl;
 }
@@ -173,6 +173,20 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
 
     // --- PAGE 1: Summary ---
     
+    // Header block with logo
+    try {
+        const logoData = await fetchFont('/logo-1.png');
+        doc.addImage(`data:image/png;base64,${logoData}`, 'PNG', margin, yPos, 40, 12, undefined, 'FAST');
+    } catch(e) {}
+    
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.setFont('Roboto', 'normal');
+    doc.text(`Data: ${new Date().toLocaleDateString('pl-PL')}`, pageWidth - margin, yPos + 4, { align: 'right' });
+    doc.text(`Wersja aplikacji: v1.0 (ASHRAE RTS)`, pageWidth - margin, yPos + 8, { align: 'right' });
+    
+    yPos += 25;
+
     // Title
     doc.setFontSize(22);
     doc.setFont('Roboto', 'bold');
@@ -215,7 +229,7 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
     
     // Box 2: Suma szczytów
     doc.setFillColor(241, 245, 249);
-    doc.roundedRect(margin + boxWidth + gap, yPos, boxWidth, boxHeight, 2, 2, 'F');
+    doc.roundedRect(margin + boxWidth + gap, yPos, boxWidth, boxHeight + 5, 2, 2, 'F');
     doc.setFontSize(8);
     doc.setFont('Roboto', 'normal');
     doc.setTextColor(100);
@@ -230,6 +244,11 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
     doc.setFont('Roboto', 'normal');
     doc.setTextColor(100);
     doc.text(`(${sumOfPeaksDensity.toFixed(1)} W/m²)`, margin + boxWidth + gap + boxWidth / 2, yPos + 26, { align: 'center' });
+
+    doc.setFontSize(6);
+    doc.setTextColor(150);
+    doc.text(`(Suma maks. wartości`, margin + boxWidth + gap + boxWidth / 2, yPos + 32, { align: 'center' });
+    doc.text(`ze wszystkich miesięcy)`, margin + boxWidth + gap + boxWidth / 2, yPos + 35, { align: 'center' });
 
     // Box 3: Powierzchnia całkowita
     doc.setFillColor(241, 245, 249);
@@ -257,7 +276,7 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
     yPos += boxHeight + 12;
 
     // Aggregate Chart
-    addHeader(`Sumaryczny profil obciążenia chłodniczego - ${MONTH_NAMES[month - 1].toUpperCase()}`);
+    addHeader(`1. Sumaryczny profil obciążenia chłodniczego - ${MONTH_NAMES[month - 1].toUpperCase()}`);
     
     const labels = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
     
@@ -328,19 +347,20 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
     yPos += 15;
 
     // Table of rooms
-    addHeader(`Zestawienie pomieszczeń (Miesiąc: ${MONTH_NAMES[month - 1]})`);
+    addHeader(`2. Zestawienie pomieszczeń (Miesiąc: ${MONTH_NAMES[month - 1]})`);
     
     const tableData = aggregateData.roomProfiles.map((room: any) => [
         room.name,
         `${(room.peak / 1000).toFixed(2)} kW`,
+        `${(room.worstPeak / 1000).toFixed(2)} kW (${MONTH_NAMES[parseInt(room.worstMonthStr, 10) - 1]})`,
         `${(room.area || 0).toFixed(1)} m²`,
         `${(room.peak / (room.area || 1)).toFixed(1)} W/m²`,
-        `${aggregateData.sumOfPeaks > 0 ? ((room.peak / aggregateData.sumOfPeaks) * 100).toFixed(1) : 0}%`
+        `${aggregateData.sumOfPeaks > 0 ? ((room.worstPeak / aggregateData.sumOfPeaks) * 100).toFixed(1) : 0}% *`
     ]);
 
     autoTable(doc, {
         startY: yPos,
-        head: [['Pomieszczenie', 'Obciążenie [kW]', 'Pow. [m²]', 'Wskaźnik', 'Udział [%]']],
+        head: [['Pomieszczenie', `Obciążenie\n(${MONTH_NAMES[month - 1]})`, `Obciążenie\nMaksymalne (Miesiąc)`, 'Pow. [m²]', 'Wskaźnik', 'Udział [%]*']],
         body: tableData,
         theme: 'striped',
         headStyles: { 
@@ -354,7 +374,8 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
             1: { halign: 'right' },
             2: { halign: 'right' },
             3: { halign: 'right' },
-            4: { halign: 'right' }
+            4: { halign: 'right' },
+            5: { halign: 'right' }
         },
         didParseCell: (data) => {
             // Force header alignment to match column alignment
@@ -366,9 +387,65 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
         margin: { left: margin, right: margin }
     });
 
-    yPos = (doc as any).lastAutoTable.finalY + 15;
+    yPos = (doc as any).lastAutoTable.finalY + 3;
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text('* Udział % liczony względem sumy szczytów maksymalnych.', margin, yPos);
+    yPos += 15;
 
-    // --- PAGE 2+: Room Breakdown ---
+    // --- PAGE 2: Systems Breakdown ---
+    if (state.systems && state.systems.length > 0) {
+        addHeader(`3. Dobór urządzeń klimatyzacyjnych`);
+
+        const systemTableData: any[] = [];
+        state.systems.forEach((sys: any) => {
+            const isMulti = sys.type === 'multi';
+            const sysNames = `Układ: ${sys.name}\n${isMulti ? 'Multi-Split' : 'Split'} ${sys.outdoorModel ? `(${sys.outdoorModel})` : ''}`;
+
+            sys.indoorUnits.forEach((unit: any, i: number) => {
+                const room = state.rooms.find((r: any) => r.id === unit.roomId);
+                if (room) {
+                    systemTableData.push([
+                        i === 0 ? sysNames : '',
+                        room.name,
+                        isMulti ? (unit.index > 0 ? unit.index.toString() : '-') : '-',
+                        room.monthlyPeaks ? `${(Math.max(...room.monthlyPeaks.map((p: any) => p.peak)) / 1000).toFixed(2)} kW` : '-'
+                    ]);
+                }
+            });
+            // Empty row for separation
+            systemTableData.push(['', '', '', '']);
+        });
+
+        // Remove trailing empty row
+        if (systemTableData.length > 0 && systemTableData[systemTableData.length - 1][0] === '') {
+            systemTableData.pop();
+        }
+
+        autoTable(doc, {
+            startY: yPos,
+            head: [['Urządzenie zewnętrzne', 'Przypisane pomieszczenia', 'Indeks Jw (Multi)', 'Wymagane maks.']],
+            body: systemTableData,
+            theme: 'grid',
+            headStyles: { 
+                fillColor: [79, 70, 229], // indigo-600
+                font: 'Roboto', 
+                fontStyle: 'bold'
+            },
+            styles: { font: 'Roboto', fontSize: 9 },
+            columnStyles: {
+                0: { fontStyle: 'bold', cellWidth: 50 },
+                1: { halign: 'left' },
+                2: { halign: 'center' },
+                3: { halign: 'right' }
+            },
+            margin: { left: margin, right: margin }
+        });
+        
+        yPos = (doc as any).lastAutoTable.finalY + 15;
+    }
+
+    // --- PAGE 3+: Room Breakdown ---
     
     for (const roomProfile of aggregateData.roomProfiles) {
         // Find the full room object in state
@@ -386,72 +463,77 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
         yPos += 7;
 
         // Find individual worst month
-        let worstMonthPeak = 0;
-        let worstMonth = '7';
-        
-        let peaksToUse = roomState.monthlyPeaks;
-        
-        // If monthlyPeaks is missing (e.g. user used manual calculation option), calculate it now
-        if (!peaksToUse || peaksToUse.length === 0) {
-            if (state.allData) {
-                const calc = calculateWorstMonth(
-                    roomState.windows,
-                    roomState.walls,
-                    state.allData,
-                    roomState.input,
-                    roomState.accumulation,
-                    roomState.internalGains,
-                    !state.isShadingViewActive
-                );
-                peaksToUse = calc.monthlyPeaks;
-            }
-        }
-
-        if (peaksToUse && peaksToUse.length > 0) {
-            const maxPeakObj = peaksToUse.reduce((prev: any, current: any) => (prev.peak > current.peak) ? prev : current);
-            worstMonthPeak = maxPeakObj.peak;
-            worstMonth = maxPeakObj.month;
-        }
+        const worstMonthPeak = roomProfile.worstPeak || 0;
+        const worstMonth = roomProfile.worstMonthStr || '7';
 
         // Compare aggregate month peak vs individual worst month peak
         const boxWidth2 = (pageWidth - 2 * margin - 5) / 2;
         const roomBoxHeight = 28;
         
+        const analyzedIsWorst = parseInt(worstMonth) === month;
+        const displayWidth = analyzedIsWorst ? pageWidth - 2 * margin : boxWidth2;
+
         doc.setFillColor(241, 245, 249);
-        doc.roundedRect(margin, yPos, boxWidth2, roomBoxHeight, 2, 2, 'F');
+        doc.roundedRect(margin, yPos, displayWidth, roomBoxHeight, 2, 2, 'F');
         doc.setFontSize(9);
         doc.setTextColor(100);
         doc.setFont('Roboto', 'normal');
-        doc.text(`W analizowanym miesiącu (${MONTH_NAMES[month - 1]})`, margin + boxWidth2 / 2, yPos + 7, { align: 'center' });
+        doc.text(analyzedIsWorst ? `Maksymalne obciążenie chłodnicze (${MONTH_NAMES[month - 1]})` : `W analizowanym miesiącu (${MONTH_NAMES[month - 1]})`, margin + displayWidth / 2, yPos + 7, { align: 'center' });
         doc.setFontSize(14);
         doc.setFont('Roboto', 'bold');
         doc.setTextColor(37, 99, 235);
         const roomPeakText = `${(roomProfile.peak / 1000).toFixed(2)} kW`;
-        doc.text(roomPeakText, margin + boxWidth2 / 2, yPos + 16, { align: 'center' });
+        doc.text(roomPeakText, margin + displayWidth / 2, yPos + 16, { align: 'center' });
         
         doc.setFontSize(9);
         doc.setFont('Roboto', 'normal');
         doc.setTextColor(100);
-        doc.text(`(${(roomProfile.peak / (roomProfile.area || 1)).toFixed(1)} W/m²)`, margin + boxWidth2 / 2, yPos + 23, { align: 'center' });
+        doc.text(`(${(roomProfile.peak / (roomProfile.area || 1)).toFixed(1)} W/m²)`, margin + displayWidth / 2, yPos + 23, { align: 'center' });
 
-        doc.setFillColor(254, 242, 242); // red-50
-        doc.roundedRect(margin + boxWidth2 + 5, yPos, boxWidth2, roomBoxHeight, 2, 2, 'F');
-        doc.setFontSize(9);
-        doc.setTextColor(100);
-        doc.setFont('Roboto', 'normal');
-        doc.text(`W najgorszym miesiącu (${MONTH_NAMES[parseInt(worstMonth, 10) - 1]})`, margin + boxWidth2 + 5 + boxWidth2 / 2, yPos + 7, { align: 'center' });
-        doc.setFontSize(14);
-        doc.setFont('Roboto', 'bold');
-        doc.setTextColor(220, 38, 38); // red-600
-        const worstPeakText = `${(worstMonthPeak / 1000).toFixed(2)} kW`;
-        doc.text(worstPeakText, margin + boxWidth2 + 5 + boxWidth2 / 2, yPos + 16, { align: 'center' });
-        
-        doc.setFontSize(9);
-        doc.setFont('Roboto', 'normal');
-        doc.setTextColor(100);
-        doc.text(`(${(worstMonthPeak / (roomProfile.area || 1)).toFixed(1)} W/m²)`, margin + boxWidth2 + 5 + boxWidth2 / 2, yPos + 23, { align: 'center' });
+        if (!analyzedIsWorst) {
+            doc.setFillColor(254, 242, 242); // red-50
+            doc.roundedRect(margin + boxWidth2 + 5, yPos, boxWidth2, roomBoxHeight, 2, 2, 'F');
+            doc.setFontSize(9);
+            doc.setTextColor(100);
+            doc.setFont('Roboto', 'normal');
+            doc.text(`W najgorszym miesiącu (${MONTH_NAMES[parseInt(worstMonth, 10) - 1]})`, margin + boxWidth2 + 5 + boxWidth2 / 2, yPos + 7, { align: 'center' });
+            doc.setFontSize(14);
+            doc.setFont('Roboto', 'bold');
+            doc.setTextColor(220, 38, 38); // red-600
+            const worstPeakText = `${(worstMonthPeak / 1000).toFixed(2)} kW`;
+            doc.text(worstPeakText, margin + boxWidth2 + 5 + boxWidth2 / 2, yPos + 16, { align: 'center' });
+            
+            doc.setFontSize(9);
+            doc.setFont('Roboto', 'normal');
+            doc.setTextColor(100);
+            doc.text(`(${(worstMonthPeak / (roomProfile.area || 1)).toFixed(1)} W/m²)`, margin + boxWidth2 + 5 + boxWidth2 / 2, yPos + 23, { align: 'center' });
+        }
 
         yPos += roomBoxHeight + 12;
+
+        // Assumptions table
+        addHeader(`1. Założenia projektowe`);
+        const totalWindowArea = roomState.windows?.reduce((sum: number, w: any) => sum + (parseFloat(w.width)*parseFloat(w.height) || 0), 0) || 0;
+        
+        autoTable(doc, {
+            startY: yPos,
+            body: [
+                ['Powierzchnia podłogi:', `${roomProfile.area} m²`, 'Temperatura wewn.:', `${roomState.input?.tInternal || 24} °C`],
+                ['Typ wentylacji:', roomState.ventilation?.type === 'mechanical' ? 'Mechaniczna' : 'Grawitacyjna', 'Wilgotność wewn.:', `${roomState.input?.rhInternal || 50} %`],
+                ['Powierzchnia okien:', `${totalWindowArea.toFixed(2)} m²`, 'Infiltracja:', roomState.ventilation?.includeInfiltration ? 'Tak' : 'Nie']
+            ],
+            theme: 'plain',
+            styles: { font: 'Roboto', fontSize: 9 },
+            columnStyles: {
+                0: { fontStyle: 'bold', textColor: [100, 100, 100] },
+                1: { textColor: [30, 41, 59] },
+                2: { fontStyle: 'bold', textColor: [100, 100, 100] },
+                3: { textColor: [30, 41, 59] }
+            },
+            margin: { left: margin, right: margin }
+        });
+        
+        yPos = (doc as any).lastAutoTable.finalY + 12;
 
         // We need the components at the peak hour of the *aggregate month* for this room
         // roomState.activeResults contains the results for the aggregate month (because RECALCULATE_ALL_ROOMS was called)
@@ -490,15 +572,14 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
             const sensibleAtPeak = finalGains.clearSky.sensible[hourTotalCS_UTC] || 0;
             const latentAtPeak = finalGains.clearSky.latent[hourTotalCS_UTC] || 0;
 
-            addHeader(`Struktura obciążenia w miesiącu zbiorczym (godz. ${String(hourTotalCS_Local).padStart(2, '0')}:00)`);
+            addHeader(`2. Struktura obciążenia w miesiącu zbiorczym (godz. ${String(hourTotalCS_Local).padStart(2, '0')}:00 - godzina szczytu pomieszczenia)`);
 
             const pieChartValues = [
                 { label: 'Słoneczne', val: solarLoadPeak, color: '#f59e0b' },
                 { label: 'Przewodzenie', val: conductionLoadPeak, color: '#f97316' },
-                { label: 'Wewn. Jawne', val: internalSensibleLoadPeak, color: '#ef4444' },
-                { label: 'Wentylacja', val: ventilationSensibleLoadPeak, color: '#a855f7' },
-                { label: 'Infiltracja', val: infiltrationSensibleLoadPeak, color: '#10b981' },
-                { label: 'Utajone', val: latentAtPeak, color: '#3b82f6' }
+                { label: 'Wewnętrzne (J+U)', val: internalSensibleLoadPeak + internalLatentAtPeak, color: '#ef4444' },
+                { label: 'Wentylacja (J+U)', val: ventilationSensibleLoadPeak + ventilationLatentAtPeak, color: '#a855f7' },
+                { label: 'Infiltracja (J+U)', val: infiltrationSensibleLoadPeak + infiltrationLatentAtPeak, color: '#10b981' }
             ].filter(item => item.val > 0);
 
             const totalForPie = pieChartValues.reduce((acc, curr) => acc + curr.val, 0);
@@ -529,23 +610,30 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
 
             const pieSize = 100;
             const xOffsetPie = (pageWidth - pieSize) / 2;
-            doc.addImage(pieChartDataUrl, 'JPEG', xOffsetPie, yPos, pieSize, pieSize);
+            doc.addImage(pieChartDataUrl, 'PNG', xOffsetPie, yPos, pieSize, pieSize);
             yPos += pieSize + 15;
+            
+            // Add a subtext below pie chart for explicit sensible/latent ratio
+            doc.setFontSize(9);
+            doc.setTextColor(150);
+            doc.text(`* W tym ciepło jawne: ${(sensibleAtPeak/1000).toFixed(2)} kW, ciepło utajone: ${(latentAtPeak/1000).toFixed(2)} kW`, margin, yPos);
+            yPos += 10;
+
 
             // Bar chart for components over 24h
-            addHeader('Składowe obciążenia w ciągu doby');
+            addHeader('3. Składowe obciążenia w ciągu doby');
             
             const barChartDataUrl = await createTempChart({
                 type: 'bar',
                 data: {
                     labels,
                     datasets: [
-                        { label: 'Słoneczne', data: reorderDataForLocalTime(loadComponents.solar, offset), backgroundColor: '#f59e0b', stack: 'a' },
-                        { label: 'Przewodzenie', data: reorderDataForLocalTime(loadComponents.conduction, offset), backgroundColor: '#f97316', stack: 'a' },
-                        { label: 'Wewn. Jawne', data: reorderDataForLocalTime(loadComponents.internalSensible, offset), backgroundColor: '#ef4444', stack: 'a' },
-                        { label: 'Wentylacja', data: reorderDataForLocalTime(loadComponents.ventilationSensible, offset), backgroundColor: '#a855f7', stack: 'a' },
-                        { label: 'Infiltracja', data: reorderDataForLocalTime(loadComponents.infiltrationSensible, offset), backgroundColor: '#10b981', stack: 'a' },
-                        { label: 'Utajone', data: reorderDataForLocalTime(finalGains.clearSky.latent, offset), backgroundColor: '#3b82f6', stack: 'a' }
+                        { label: 'Słoneczne', data: reorderDataForLocalTime(loadComponents.solar, offset).map(v => v/1000), backgroundColor: '#f59e0b', stack: 'a' },
+                        { label: 'Przewodzenie', data: reorderDataForLocalTime(loadComponents.conduction, offset).map(v => v/1000), backgroundColor: '#f97316', stack: 'a' },
+                        { label: 'Wewn. Jawne', data: reorderDataForLocalTime(loadComponents.internalSensible, offset).map(v => v/1000), backgroundColor: '#ef4444', stack: 'a' },
+                        { label: 'Wentylacja', data: reorderDataForLocalTime(loadComponents.ventilationSensible, offset).map(v => v/1000), backgroundColor: '#a855f7', stack: 'a' },
+                        { label: 'Infiltracja', data: reorderDataForLocalTime(loadComponents.infiltrationSensible, offset).map(v => v/1000), backgroundColor: '#10b981', stack: 'a' },
+                        { label: 'Utajone', data: reorderDataForLocalTime(finalGains.clearSky.latent, offset).map(v => v/1000), backgroundColor: '#3b82f6', stack: 'a' }
                     ]
                 },
                 options: {
@@ -568,8 +656,14 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
                 }
             }, 1200, 500);
 
-            doc.addImage(barChartDataUrl, 'JPEG', margin, yPos, pageWidth - 2 * margin, 75);
+            doc.addImage(barChartDataUrl, 'PNG', margin, yPos, pageWidth - 2 * margin, 75);
             yPos += 80;
+            
+            // Add negative values footnote
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            doc.text('* Wartości ujemne = wentylacja/infiltracja odbiera ciepło z pomieszczenia (chłodzi).', margin, yPos);
+            yPos += 8;
         }
     }
 

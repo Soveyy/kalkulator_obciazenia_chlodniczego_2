@@ -139,21 +139,19 @@ const RoomTabs: React.FC = () => {
                 </Tooltip>
             )}
 
-            {state.rooms.length > 1 && (
-                <div className="ml-auto flex-shrink-0">
-                    <button
-                        onClick={() => handleSwitchRoom('aggregate')}
-                        className={`
-                            px-4 py-2 rounded-lg cursor-pointer transition-all border-2 text-sm font-bold
-                            ${state.activeRoomId === 'aggregate'
-                                ? 'bg-indigo-100 dark:bg-indigo-900/50 border-indigo-700 dark:border-indigo-400 text-indigo-800 dark:text-indigo-200 shadow-md'
-                                : 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-600 dark:border-indigo-500 text-indigo-700 dark:text-indigo-300 animate-breathe hover:bg-indigo-100 dark:hover:bg-indigo-900/40'}
-                        `}
-                    >
-                        Analiza Zbiorcza
-                    </button>
-                </div>
-            )}
+            <div className="ml-auto flex-shrink-0">
+                <button
+                    onClick={() => handleSwitchRoom('aggregate')}
+                    className={`
+                        px-4 py-2 rounded-lg cursor-pointer transition-all border-2 text-sm font-bold
+                        ${state.activeRoomId === 'aggregate'
+                            ? 'bg-indigo-100 dark:bg-indigo-900/50 border-indigo-700 dark:border-indigo-400 text-indigo-800 dark:text-indigo-200 shadow-md'
+                            : 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-600 dark:border-indigo-500 text-indigo-700 dark:text-indigo-300 animate-breathe hover:bg-indigo-100 dark:hover:bg-indigo-900/40'}
+                    `}
+                >
+                    Dobór i analiza zbiorcza
+                </button>
+            </div>
         </div>
     );
 };

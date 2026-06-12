@@ -31,10 +31,10 @@ const pieLabelsPlugin = {
             const meta = chart.getDatasetMeta(i);
             meta.data.forEach((element: any, index: number) => {
                 const labelText = data.labels[index];
-                const percentMatch = labelText.match(/\((\d+)%\)/);
+                const percentMatch = labelText.match(/\(([\d.]+)%\)/);
                 
                 if (percentMatch) {
-                    const percent = parseInt(percentMatch[1], 10);
+                    const percent = parseFloat(percentMatch[1]);
                     if (percent > 4) {
                         const { x, y } = element.tooltipPosition();
                         ctx.fillStyle = '#fff';
@@ -43,7 +43,7 @@ const pieLabelsPlugin = {
                         ctx.textBaseline = 'middle';
                         ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
                         ctx.shadowBlur = 4;
-                        ctx.fillText(`${percent}%`, x, y);
+                        ctx.fillText(`${percentMatch[1]}%`, x, y);
                         ctx.shadowBlur = 0;
                     }
                 }
@@ -97,8 +97,8 @@ async function createTempChart(config: any, width: number, height: number): Prom
     const chart = new Chart(offscreenCanvas, chartConfig);
     await new Promise(resolve => setTimeout(resolve, 50));
     
-    // Export as JPEG with 0.95 quality (higher quality, larger file but still reasonable)
-    const dataUrl = chart.canvas.toDataURL('image/jpeg', 0.95);
+    // Export as PNG
+    const dataUrl = chart.canvas.toDataURL('image/png', 1.0);
     chart.destroy();
     return dataUrl;
 }
@@ -198,21 +198,35 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
 
     // --- PAGE 1 ---
     
+    // Header block with logo
+    try {
+        const logoData = await fetchFont('/logo-1.png');
+        doc.addImage(`data:image/png;base64,${logoData}`, 'PNG', margin, yPos, 40, 12, undefined, 'FAST');
+    } catch(e) {}
+    
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.setFont('Roboto', 'normal');
+    doc.text(`Data: ${new Date().toLocaleDateString('pl-PL')}`, pageWidth - margin, yPos + 4, { align: 'right' });
+    doc.text(`Wersja aplikacji: v1.0 (ASHRAE RTS)`, pageWidth - margin, yPos + 8, { align: 'right' });
+    
+    yPos += 25;
+
     // Main Title
     doc.setFontSize(24);
     doc.setFont('Roboto', 'bold');
     doc.setTextColor(30);
-    doc.text('Raport Obciążenia Chłodniczego', pageWidth / 2, yPos + 10, { align: 'center' });
+    doc.text('Raport Obciążenia Chłodniczego', pageWidth / 2, yPos, { align: 'center' });
     
     doc.setFontSize(12);
     doc.setTextColor(100);
     doc.setFont('Roboto', 'normal');
-    doc.text(`Projekt: ${projectName || 'Bez nazwy'}`, pageWidth / 2, yPos + 22, { align: 'center' });
-    doc.text(`Pomieszczenie: ${activeRoom.name || 'Bez nazwy'}`, pageWidth / 2, yPos + 30, { align: 'center' });
+    doc.text(`Projekt: ${projectName || 'Bez nazwy'}`, pageWidth / 2, yPos + 10, { align: 'center' });
+    doc.text(`Pomieszczenie: ${activeRoom.name || 'Bez nazwy'}`, pageWidth / 2, yPos + 18, { align: 'center' });
     
     doc.setFontSize(10);
     
-    yPos += 40;
+    yPos += 30;
 
     // 1. Parameters Table
     addHeader('1. Parametry Projektowe');
@@ -331,14 +345,18 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
     doc.setFontSize(10);
     doc.setTextColor(100);
     doc.setFont('Roboto', 'bold');
-    doc.text('Szacunkowe dobowe zużycie energii chłodniczej:', margin + 5, yPos + 9);
+    doc.text('Dobowe zapotrzebowanie na chłód:', margin + 5, yPos + 9);
     
-    const textWidth = doc.getTextWidth('Szacunkowe dobowe zużycie energii chłodniczej: ');
+    const textWidth = doc.getTextWidth('Dobowe zapotrzebowanie na chłód: ');
     doc.setFont('Roboto', 'normal');
     doc.setTextColor(50);
     doc.text(`${totalKWhCS.toFixed(1)} kWh`, margin + 5 + textWidth, yPos + 9);
+    
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text('* Faktyczny pobór energii elektrycznej przez klimatyzator będzie ok. 3-5 razy mniejszy (zależnie od EER/SEER).', margin + 5, yPos + 20);
 
-    yPos += 20;
+    yPos += 25;
 
     doc.setFillColor(240, 249, 255);
     doc.setDrawColor(186, 230, 253);
@@ -631,22 +649,21 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
         yPos = margin;
     }
     
-    addHeader('4. Struktura Zysków Ciepła');
+    addHeader(`4. Struktura Zysków Ciepła (godz. ${String(hourTotalCS_Local).padStart(2, '0')}:00 - godzina szczytu)`);
     
     // Prepare Pie Data
     const pieChartValues = [
         { label: 'Słoneczne', val: solarLoadPeak, color: '#f59e0b' },
         { label: 'Przewodzenie', val: conductionLoadPeak, color: '#f97316' },
-        { label: 'Wewn. Jawne', val: internalSensibleLoadPeak, color: '#ef4444' },
-        { label: 'Wentylacja', val: ventilationSensibleLoadPeak, color: '#a855f7' },
-        { label: 'Infiltracja', val: infiltrationSensibleLoadPeak, color: '#10b981' },
-        { label: 'Utajone', val: latentAtPeak, color: '#3b82f6' }
+        { label: 'Wewnętrzne (J+U)', val: internalSensibleLoadPeak + internalLatentAtPeak, color: '#ef4444' },
+        { label: 'Wentylacja (J+U)', val: ventilationSensibleLoadPeak + ventilationLatentAtPeak, color: '#a855f7' },
+        { label: 'Infiltracja (J+U)', val: infiltrationSensibleLoadPeak + infiltrationLatentAtPeak, color: '#10b981' }
     ].filter(item => item.val > 0);
 
     const totalVal = pieChartValues.reduce((acc, curr) => acc + curr.val, 0);
 
     const pieChartData = {
-        labels: pieChartValues.map(d => `${d.label} (${Math.round(d.val/totalVal*100)}%)`),
+        labels: pieChartValues.map(d => `${d.label} (${(d.val/totalVal*100).toFixed(1)}%)`),
         datasets: [{
             data: pieChartValues.map(d => d.val),
             backgroundColor: pieChartValues.map(d => d.color),
@@ -655,7 +672,7 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
         }]
     };
     
-    // Generate Pie Chart Image with Labels (JPEG for smaller size)
+    // Generate Pie Chart Image with Labels
     const pieChartImg = await createTempChart({
         type: 'pie',
         data: pieChartData,
@@ -680,7 +697,7 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
 
     const pieSize = 160; 
     const xOffsetPie = (pageWidth - pieSize) / 2;
-    doc.addImage(pieChartImg, 'JPEG', xOffsetPie, yPos, pieSize, pieSize);
+    doc.addImage(pieChartImg, 'PNG', xOffsetPie, yPos, pieSize, pieSize);
     yPos += pieSize + 15;
 
 
@@ -744,7 +761,7 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
         },
     }, 1200, 500);
 
-    doc.addImage(lineChartImg, 'JPEG', margin, yPos, pageWidth - 2*margin, 70);
+    doc.addImage(lineChartImg, 'PNG', margin, yPos, pageWidth - 2*margin, 70);
     yPos += 80;
 
     // 2. Bar Chart (Stacked Components)
@@ -782,8 +799,14 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
         },
     }, 1200, 500);
 
-    doc.addImage(barChartImg, 'JPEG', margin, yPos, pageWidth - 2*margin, 70);
-    yPos += 80;
+    doc.addImage(barChartImg, 'PNG', margin, yPos, pageWidth - 2*margin, 70);
+    yPos += 75;
+
+    // Add negative values footnote
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text('* Wartości ujemne = wentylacja/infiltracja odbiera ciepło z pomieszczenia (chłodzi).', margin, yPos);
+    yPos += 5;
 
     // Disclaimer
     doc.setFontSize(7);

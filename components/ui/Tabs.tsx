@@ -33,7 +33,7 @@ const Tabs: React.FC = () => {
     { id: 'ventilation', label: '4. Wentylacja', status: validation.ventilation },
     { id: 'walls', label: '5. Ściany', status: validation.walls },
     { id: 'summary', label: '6. Podsumowanie', status: validation.isFormValid },
-    { id: 'rts', label: '7. Dobór i analiza', status: state.results !== null },
+    { id: 'rts', label: '7. Analiza pomieszczenia', status: state.results !== null },
   ];
 
   return (

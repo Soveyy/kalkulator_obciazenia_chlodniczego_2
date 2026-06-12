@@ -149,6 +149,14 @@ const SankeyChart: React.FC<SankeyChartProps> = ({ customResults }) => {
         { sourceName: 'Ciepło Utajone', targetName: 'Całkowite Obciążenie', value: Math.round(totalLatent) }
     ].filter(link => link.value > 0);
 
+    if (rawLinks.length === 0) {
+        return (
+            <div className="flex items-center justify-center h-full text-slate-500">
+                Brak wystarczających zysków ciepła dla wybranej godziny, aby wygenerować wykres (wartości mniejsze lub równe 0).
+            </div>
+        );
+    }
+
     // Build unique nodes from active links
     const nodeNames = Array.from(new Set(rawLinks.flatMap(l => [l.sourceName, l.targetName])));
     const nodes = nodeNames.map(name => ({ name }));

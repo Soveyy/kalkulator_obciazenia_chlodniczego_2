@@ -86,12 +86,7 @@ const initialState: State = {
     savedProjects: [],
     tutorialMode: false,
     hasSeenWelcome: false,
-    multiSplitConfig: {
-        selectedOutdoorModel: '',
-        roomIndices: {},
-        applyTempCorrection: false,
-        deactivatedRoomIds: []
-    }
+    systems: []
 };
 
 let toastId = 0;
@@ -139,19 +134,14 @@ function calculatorReducer(state: State, action: Action): State {
                 newActiveRoomId = newRooms[0].id;
             }
             
-            const newRoomIndices = { ...state.multiSplitConfig?.roomIndices };
-            delete newRoomIndices[action.payload];
-            const newDeactivatedRoomIds = state.multiSplitConfig?.deactivatedRoomIds?.filter(id => id !== action.payload) || [];
-
             return {
                 ...state,
                 rooms: newRooms,
                 activeRoomId: newActiveRoomId,
-                multiSplitConfig: state.multiSplitConfig ? { 
-                    ...state.multiSplitConfig, 
-                    roomIndices: newRoomIndices,
-                    deactivatedRoomIds: newDeactivatedRoomIds
-                } : state.multiSplitConfig
+                systems: state.systems.map(sys => ({
+                    ...sys,
+                    indoorUnits: sys.indoorUnits.filter(unit => unit.roomId !== action.payload)
+                }))
             };
         }
         case 'DUPLICATE_ROOM': {
@@ -334,7 +324,7 @@ function calculatorReducer(state: State, action: Action): State {
                 results: action.payload.results,
                 currentMonth: action.payload.month,
                 tExtProfile: action.payload.tExtProfile,
-                resultMessage: action.payload.message,
+                resultMessage: action.payload.message !== undefined ? action.payload.message : room.resultMessage,
                 monthlyPeaks: action.payload.monthlyPeaks,
                 yearlyMatrix: action.payload.yearlyMatrix || room.yearlyMatrix,
                 solarMatrix: action.payload.solarMatrix || room.solarMatrix,
@@ -519,13 +509,25 @@ function calculatorReducer(state: State, action: Action): State {
                 localStorage.setItem('hvac_has_seen_welcome', 'true');
             }
             return { ...state, hasSeenWelcome: true };
-        case 'UPDATE_MULTI_SPLIT_CONFIG':
+        case 'ADD_SYSTEM':
             return {
                 ...state,
-                multiSplitConfig: {
-                    ...(state.multiSplitConfig || { selectedOutdoorModel: '', roomIndices: {}, applyTempCorrection: false, deactivatedRoomIds: [] }),
-                    ...action.payload
-                }
+                systems: [...state.systems, action.payload]
+            };
+        case 'UPDATE_SYSTEM':
+            return {
+                ...state,
+                systems: state.systems.map(sys => sys.id === action.payload.id ? action.payload : sys)
+            };
+        case 'DELETE_SYSTEM':
+            return {
+                ...state,
+                systems: state.systems.filter(sys => sys.id !== action.payload)
+            };
+        case 'REORDER_SYSTEMS':
+            return {
+                ...state,
+                systems: action.payload
             };
         default:
             return state;
@@ -773,19 +775,17 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             !state.isShadingViewActive
         );
 
-        const message = customMessage || activeRoom.resultMessage;
-
         dispatch({ type: 'SET_RESULTS', payload: { 
             results: { withShading: resultsWithShading, withoutShading: resultsWithoutShading },
             month: month,
             tExtProfile,
-            message,
+            message: customMessage,
             monthlyPeaks,
             yearlyMatrix,
             solarMatrix,
             solarInstantMatrix
         }});
-    }, [state.allData, activeRoom.windows, activeRoom.walls, activeRoom.input, state.projectName, activeRoom.accumulation, activeRoom.internalGains, activeRoom.resultMessage, state.isShadingViewActive]);
+    }, [state.allData, activeRoom.windows, activeRoom.walls, activeRoom.input, state.projectName, activeRoom.accumulation, activeRoom.internalGains, state.isShadingViewActive]);
 
 
     const handleCalculate = useCallback(async () => {
@@ -899,7 +899,8 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
         if (state.activeRoomId === 'aggregate' && state.allData) {
             handleCalculate();
         }
-    }, [state.activeRoomId, state.allData, handleCalculate]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [state.activeRoomId, state.allData, state.isShadingViewActive]);
 
     const handleGenerateReport = async () => {
         if (!activeRoom.activeResults) {
@@ -926,7 +927,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                 projectName: state.projectName,
                 rooms: state.rooms,
                 activeRoomId: state.activeRoomId,
-                multiSplitConfig: state.multiSplitConfig,
+                systems: state.systems,
             };
             localStorage.setItem('heatGainProject', JSON.stringify(projectData));
             dispatch({ type: 'ADD_TOAST', payload: { message: 'Projekt zapisany (szybki zapis)!', type: 'success' } });
@@ -946,7 +947,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                 projectName: name,
                 rooms: state.rooms,
                 activeRoomId: state.activeRoomId,
-                multiSplitConfig: state.multiSplitConfig,
+                systems: state.systems,
             };
             
             const newProject: SavedProject = {
@@ -1080,7 +1081,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                 projectName: state.projectName,
                 rooms: strippedRooms,
                 activeRoomId: state.activeRoomId,
-                multiSplitConfig: state.multiSplitConfig,
+                systems: state.systems,
             };
             const json = JSON.stringify(projectData);
             const compressed = LZString.compressToEncodedURIComponent(json);
@@ -1099,7 +1100,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                 projectName: initialState.projectName,
                 rooms: initialState.rooms,
                 activeRoomId: initialState.activeRoomId,
-                multiSplitConfig: initialState.multiSplitConfig,
+                systems: initialState.systems,
             }});
             dispatch({ type: 'ADD_TOAST', payload: { message: 'Ustawienia zostały zresetowane.', type: 'info' } });
         } else if (['SET_INPUT', 'SET_ACCUMULATION', 'SET_INTERNAL_GAINS', 'ADD_WINDOW', 'UPDATE_WINDOW', 'DELETE_WINDOW', 'DUPLICATE_WINDOW', 'ADD_WALL', 'UPDATE_WALL', 'DELETE_WALL', 'DUPLICATE_WALL', 'UPDATE_ALL_SHADING', 'ADD_EQUIPMENT_ITEM', 'DELETE_EQUIPMENT_ITEM', 'SET_VENTILATION_GAINS'].includes(action.type)) {

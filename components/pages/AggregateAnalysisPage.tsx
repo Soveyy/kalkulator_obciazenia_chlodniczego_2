@@ -4,7 +4,7 @@ import Card from '../ui/Card';
 import Chart from 'chart.js/auto';
 import { MONTH_NAMES, ANALYSIS_MONTHS } from '../../constants';
 import { generateAggregatePdfReport } from '../../services/aggregateReportGenerator';
-import MultiSplitCalculator from '../MultiSplitCalculator';
+import HVACSystemsManager from '../HVACSystemsManager';
 import SankeyChart from '../SankeyChart';
 import SolarHeatMap from '../SolarHeatMap';
 
@@ -12,7 +12,6 @@ const AggregateAnalysisPage: React.FC = () => {
     const { state, theme, dispatch, handleCalculate, isCalculating } = useCalculator();
     const chartRef = useRef<HTMLCanvasElement>(null);
     const chartInstanceRef = useRef<Chart | null>(null);
-    const [deselectedRoomIds, setDeselectedRoomIds] = React.useState<Set<string>>(new Set());
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
     const currentMonth = state.rooms[0]?.currentMonth || '7';
@@ -35,23 +34,9 @@ const AggregateAnalysisPage: React.FC = () => {
         }
     };
 
-    const toggleRoom = (roomId: string) => {
-        setDeselectedRoomIds(prev => {
-            const next = new Set(prev);
-            if (next.has(roomId)) {
-                next.delete(roomId);
-            } else {
-                next.add(roomId);
-            }
-            return next;
-        });
-    };
-
     const aggregateData = useMemo(() => {
-        const allRoomsWithResults = state.rooms.filter(r => r.activeResults?.finalGains?.clearSky?.total);
-        if (allRoomsWithResults.length === 0) return null;
-
-        const roomsWithResults = allRoomsWithResults.filter(r => !deselectedRoomIds.has(r.id));
+        const roomsWithResults = state.rooms.filter(r => r.activeResults?.finalGains?.clearSky?.total);
+        if (roomsWithResults.length === 0) return null;
 
         const hourlyTotal = Array(24).fill(0);
         let sumOfPeaks = 0;
@@ -84,7 +69,15 @@ const AggregateAnalysisPage: React.FC = () => {
             const clearSky = room.activeResults!.finalGains.clearSky;
             const profile = clearSky.total;
             const peak = Math.max(...profile);
-            sumOfPeaks += peak;
+            
+            let worstPeak = peak;
+            let worstMonthStr = '7';
+            if (room.monthlyPeaks && room.monthlyPeaks.length > 0) {
+                const maxObj = room.monthlyPeaks.reduce((prev: any, curr: any) => (prev.peak > curr.peak) ? prev : curr);
+                worstPeak = maxObj.peak;
+                worstMonthStr = maxObj.month;
+            }
+            sumOfPeaks += worstPeak;
             
             const area = parseFloat(room.input.roomArea) || 0;
             const tInt = parseFloat(room.input.tInternal) || 24;
@@ -139,7 +132,9 @@ const AggregateAnalysisPage: React.FC = () => {
                 name: room.name,
                 area: room.input.roomArea,
                 profile,
-                peak
+                peak,
+                worstPeak,
+                worstMonthStr
             };
         });
 
@@ -151,7 +146,7 @@ const AggregateAnalysisPage: React.FC = () => {
         const weightedRh = totalArea > 0 ? weightedRhSum / totalArea : 50;
 
         return {
-            allRoomsWithResults,
+            roomsWithResults,
             hourlyTotal,
             aggregatePeak,
             peakHour,
@@ -165,7 +160,7 @@ const AggregateAnalysisPage: React.FC = () => {
             aggregateSolarMatrix,
             aggregateSolarInstantMatrix
         };
-    }, [state.rooms, deselectedRoomIds]);
+    }, [state.rooms]);
 
     useEffect(() => {
         if (!chartRef.current || !aggregateData) return;
@@ -396,24 +391,11 @@ const AggregateAnalysisPage: React.FC = () => {
                 </div>
             </Card>
 
-            {/* Room Selection */}
             <Card className="p-3">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                     <div className="flex flex-wrap items-center gap-3">
-                        <h3 className="text-sm font-semibold text-slate-800 dark:text-white whitespace-nowrap">Uwzględnione pomieszczenia:</h3>
-                        <div className="flex flex-wrap gap-2">
-                            {aggregateData.allRoomsWithResults.map(room => (
-                                <label key={room.id} className={`flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-lg border transition-colors ${!deselectedRoomIds.has(room.id) ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800' : 'bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700 opacity-60 hover:opacity-100'}`}>
-                                    <input 
-                                        type="checkbox" 
-                                        checked={!deselectedRoomIds.has(room.id)}
-                                        onChange={() => toggleRoom(room.id)}
-                                        className="rounded text-blue-600 focus:ring-blue-500 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600"
-                                    />
-                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{room.name}</span>
-                                </label>
-                            ))}
-                        </div>
+                        <h3 className="text-sm font-semibold text-slate-800 dark:text-white whitespace-nowrap">Podsumowanie instalacji:</h3>
+                        <p className="text-sm text-slate-500">Miesiąc wymiarujący, analiza układów oraz wyniki dla wszystkich pomieszczeń analizowanych w projekcie.</p>
                     </div>
                     
                     <button
@@ -447,7 +429,7 @@ const AggregateAnalysisPage: React.FC = () => {
                 </Card>
             ) : (
                 <>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className={`grid grid-cols-1 ${aggregateData.roomProfiles.length > 1 ? 'md:grid-cols-3' : ''} gap-4`}>
                         <Card className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-100 dark:border-blue-800/30">
                             <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-0.5">Całkowite obciążenie (Peak)</h3>
                             <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
@@ -458,25 +440,29 @@ const AggregateAnalysisPage: React.FC = () => {
                             </p>
                         </Card>
 
-                        <Card className="p-3">
-                            <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-0.5">Suma szczytów (niejednoczesna)</h3>
-                            <div className="text-3xl font-bold text-slate-700 dark:text-slate-300">
-                                {(aggregateData.sumOfPeaks / 1000).toFixed(2)} <span className="text-lg font-normal">kW</span>
-                            </div>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                                Suma maksymalnych obciążeń wyznaczonych indywidualnie dla każdego pomieszczenia
-                            </p>
-                        </Card>
+                        {aggregateData.roomProfiles.length > 1 && (
+                            <>
+                                <Card className="p-3">
+                                    <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-0.5">Suma szczytów (niejednoczesna)</h3>
+                                    <div className="text-3xl font-bold text-slate-700 dark:text-slate-300">
+                                        {(aggregateData.sumOfPeaks / 1000).toFixed(2)} <span className="text-lg font-normal">kW</span>
+                                    </div>
+                                    <p className="text-xs text-slate-500 mt-0.5">
+                                        Suma maksymalnych obciążeń wyznaczonych dla każdego pomieszczenia z jego własnego najgorszego miesiąca
+                                    </p>
+                                </Card>
 
-                        <Card className="p-3">
-                            <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-0.5">Współczynnik jednoczesności</h3>
-                            <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
-                                {(aggregateData.diversityFactor * 100).toFixed(1)} <span className="text-lg font-normal">%</span>
-                            </div>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                                Stosunek szczytowego obciążenia całego obiektu do sumy szczytów niejednoczesnych
-                            </p>
-                        </Card>
+                                <Card className="p-3">
+                                    <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-0.5">Współczynnik jednoczesności</h3>
+                                    <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+                                        {(aggregateData.diversityFactor * 100).toFixed(1)} <span className="text-lg font-normal">%</span>
+                                    </div>
+                                    <p className="text-xs text-slate-500 mt-0.5">
+                                        Stosunek szczytowego obciążenia całego obiektu do sumy szczytów niejednoczesnych
+                                    </p>
+                                </Card>
+                            </>
+                        )}
                     </div>
 
                     <Card className="p-4">
@@ -548,18 +534,7 @@ const AggregateAnalysisPage: React.FC = () => {
                         </div>
                     </Card>
 
-                        <MultiSplitCalculator 
-                            rooms={aggregateData.roomProfiles.map(room => ({
-                                id: room.id,
-                                name: room.name,
-                                peakLoadAtAggregate: room.profile[aggregateData.peakHour],
-                                individualPeakLoad: room.peak
-                            }))}
-                            aggregatePeak={aggregateData.aggregatePeak}
-                            tExt={state.rooms[0]?.tExtProfile?.[aggregateData.peakHour] || 35}
-                            tInternal={aggregateData.weightedT}
-                            rhInternal={aggregateData.weightedRh}
-                        />
+                        <HVACSystemsManager />
 
                     <div className="flex flex-col space-y-6">
                         <div className="text-center mb-0 mt-4">
