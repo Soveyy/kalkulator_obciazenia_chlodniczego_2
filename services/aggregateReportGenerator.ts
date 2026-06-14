@@ -402,19 +402,59 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
             const isMulti = sys.type === 'multi';
             const sysNames = `Układ: ${sys.name}\n${isMulti ? 'Multi-Split' : 'Split'} ${sys.outdoorModel ? `(${sys.outdoorModel})` : ''}`;
 
+            const roomsInSystem = sys.indoorUnits
+                .map((unit: any) => state.rooms.find((r: any) => r.id === unit.roomId))
+                .filter((r: any) => r !== undefined);
+
+            const selectedMonthVal = state.rooms[0]?.currentMonth || '7';
+            const selectedMonthIndex = parseInt(selectedMonthVal, 10) - 1; // 0-indexed monthly index
+
+            let maxSystemPeak = 0;
+            let peakMonth = selectedMonthIndex;
+            let peakHour = 0; // 0-23
+            
+            if (roomsInSystem.length > 0) {
+                for (let h = 0; h < 24; h++) {
+                    let sum = 0;
+                    for (const r of roomsInSystem) {
+                        if (r.yearlyMatrix) {
+                            sum += r.yearlyMatrix[selectedMonthIndex][h];
+                        }
+                    }
+                    if (sum > maxSystemPeak) {
+                        maxSystemPeak = sum;
+                        peakHour = h;
+                    }
+                }
+                
+                // Now snap maxSystemPeak to sum of rounded components at the chosen peakHour
+                let sumAtPeak = 0;
+                for (const r of roomsInSystem) {
+                    if (r.yearlyMatrix) {
+                        sumAtPeak += Number((r.yearlyMatrix[selectedMonthIndex][peakHour] / 1000).toFixed(2));
+                    }
+                }
+                maxSystemPeak = sumAtPeak * 1000;
+            }
+
             sys.indoorUnits.forEach((unit: any, i: number) => {
                 const room = state.rooms.find((r: any) => r.id === unit.roomId);
                 if (room) {
+                    const reqMax = room.monthlyPeaks ? Math.max(...room.monthlyPeaks.map((p: any) => p.peak)) : 0;
+                    const rawSimultaneous = room.yearlyMatrix ? room.yearlyMatrix[peakMonth][peakHour] : 0;
+                    const simultaneous = Number((rawSimultaneous / 1000).toFixed(2)) * 1000;
+                    
                     systemTableData.push([
                         i === 0 ? sysNames : '',
                         room.name,
                         isMulti ? (unit.index > 0 ? unit.index.toString() : '-') : '-',
-                        room.monthlyPeaks ? `${(Math.max(...room.monthlyPeaks.map((p: any) => p.peak)) / 1000).toFixed(2)} kW` : '-'
+                        `${(reqMax / 1000).toFixed(2)} kW`,
+                        `${(simultaneous / 1000).toFixed(2)} kW`
                     ]);
                 }
             });
             // Empty row for separation
-            systemTableData.push(['', '', '', '']);
+            systemTableData.push(['', '', '', '', '']);
         });
 
         // Remove trailing empty row
@@ -424,7 +464,7 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
 
         autoTable(doc, {
             startY: yPos,
-            head: [['Urządzenie zewnętrzne', 'Przypisane pomieszczenia', 'Indeks Jw (Multi)', 'Wymagane maks.']],
+            head: [['Urządzenie zewnętrzne', 'Przypisane pomieszczenia', 'Indeks Jw', 'Maksymalne', 'Jednoczesne']],
             body: systemTableData,
             theme: 'grid',
             headStyles: { 
@@ -434,10 +474,11 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
             },
             styles: { font: 'Roboto', fontSize: 9 },
             columnStyles: {
-                0: { fontStyle: 'bold', cellWidth: 50 },
+                0: { fontStyle: 'bold', cellWidth: 40 },
                 1: { halign: 'left' },
                 2: { halign: 'center' },
-                3: { halign: 'right' }
+                3: { halign: 'right' },
+                4: { halign: 'right' }
             },
             margin: { left: margin, right: margin }
         });

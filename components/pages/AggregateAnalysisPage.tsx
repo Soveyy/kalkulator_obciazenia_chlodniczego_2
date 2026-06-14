@@ -1,6 +1,8 @@
 import React, { useMemo, useEffect, useRef, useState } from 'react';
 import { useCalculator } from '../../contexts/CalculatorContext';
 import Card from '../ui/Card';
+import { Info } from 'lucide-react';
+import Tooltip from '../ui/Tooltip';
 import Chart from 'chart.js/auto';
 import { MONTH_NAMES, ANALYSIS_MONTHS } from '../../constants';
 import { generateAggregatePdfReport } from '../../services/aggregateReportGenerator';
@@ -68,16 +70,18 @@ const AggregateAnalysisPage: React.FC = () => {
         const roomProfiles = roomsWithResults.map(room => {
             const clearSky = room.activeResults!.finalGains.clearSky;
             const profile = clearSky.total;
-            const peak = Math.max(...profile);
+            const roundedProfile = profile.map(v => Number((v / 1000).toFixed(2)) * 1000);
+            const peak = Math.max(...roundedProfile);
             
-            let worstPeak = peak;
+            let worstPeak = rPeak => rPeak; // placeholder
+            let worstPeakVal = peak;
             let worstMonthStr = '7';
             if (room.monthlyPeaks && room.monthlyPeaks.length > 0) {
                 const maxObj = room.monthlyPeaks.reduce((prev: any, curr: any) => (prev.peak > curr.peak) ? prev : curr);
-                worstPeak = maxObj.peak;
+                worstPeakVal = maxObj.peak;
                 worstMonthStr = maxObj.month;
             }
-            sumOfPeaks += worstPeak;
+            sumOfPeaks += worstPeakVal;
             
             const area = parseFloat(room.input.roomArea) || 0;
             const tInt = parseFloat(room.input.tInternal) || 24;
@@ -90,8 +94,9 @@ const AggregateAnalysisPage: React.FC = () => {
             }
             
             for (let i = 0; i < 24; i++) {
-                hourlyTotal[i] += profile[i];
-                aggregateFinalGains.clearSky.total[i] += profile[i];
+                const roundedHourW = roundedProfile[i];
+                hourlyTotal[i] += roundedHourW;
+                aggregateFinalGains.clearSky.total[i] += roundedHourW;
                 aggregateFinalGains.clearSky.windows[i] += clearSky.windows?.[i] || 0;
                 aggregateFinalGains.clearSky.walls[i] += clearSky.walls?.[i] || 0;
                 aggregateFinalGains.clearSky.people[i] += clearSky.people?.[i] || 0;
@@ -131,15 +136,16 @@ const AggregateAnalysisPage: React.FC = () => {
                 id: room.id,
                 name: room.name,
                 area: room.input.roomArea,
-                profile,
+                profile: roundedProfile,
                 peak,
-                worstPeak,
+                worstPeak: worstPeakVal,
                 worstMonthStr
             };
         });
 
         const aggregatePeak = roomsWithResults.length > 0 ? Math.max(...hourlyTotal) : 0;
         const peakHour = roomsWithResults.length > 0 ? hourlyTotal.indexOf(aggregatePeak) : 0;
+
         const diversityFactor = sumOfPeaks > 0 ? aggregatePeak / sumOfPeaks : 1;
         
         const weightedT = totalArea > 0 ? weightedTSum / totalArea : 24;
@@ -482,10 +488,16 @@ const AggregateAnalysisPage: React.FC = () => {
                                             Pomieszczenie
                                         </th>
                                         <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                            Obciążenie maksymalne [kW]
+                                            <div className="inline-flex items-center justify-end gap-1 w-full">
+                                                <span>Obciążenie maksymalne [kW]</span>
+                                                <Tooltip text="Najwyższe możliwe obciążenie dla tego pomieszczenia w jego własnym najgorszym miesiącu i godzinie" position="bottom" />
+                                            </div>
                                         </th>
                                         <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                            Obciążenie jednoczesne [kW]
+                                            <div className="inline-flex items-center justify-end gap-1 w-full">
+                                                <span>Obciążenie jednoczesne [kW]</span>
+                                                <Tooltip text="Obciążenie chłodnicze pomieszczenia dla globalnej godziny szczytu całego budynku" position="bottom" />
+                                            </div>
                                         </th>
                                         <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                             Udział w sumie [%]
@@ -499,14 +511,10 @@ const AggregateAnalysisPage: React.FC = () => {
                                         const totalPeakRounded = Number((aggregateData.aggregatePeak / 1000).toFixed(2));
                                         
                                         const roundedValues = profiles.map(p => Number((p.profile[peakHour] / 1000).toFixed(2)));
-                                        const currentSum = roundedValues.reduce((a, b) => a + b, 0);
-                                        const diff = Number((totalPeakRounded - currentSum).toFixed(2));
 
                                         return profiles.map((room, idx) => {
                                             const baseVal = roundedValues[idx];
-                                            // Apply diff to the first room with non-zero load
-                                            const isAdjustmentTarget = diff !== 0 && room.profile[peakHour] > 0 && idx === profiles.findIndex(p => p.profile[peakHour] > 0);
-                                            const displayVal = isAdjustmentTarget ? (baseVal + diff).toFixed(2) : baseVal.toFixed(2);
+                                            const displayVal = baseVal.toFixed(2);
                                             const share = aggregateData.aggregatePeak > 0 
                                                 ? ((room.profile[peakHour] / aggregateData.aggregatePeak) * 100).toFixed(1) 
                                                 : "0.0";
@@ -517,7 +525,7 @@ const AggregateAnalysisPage: React.FC = () => {
                                                         {room.name}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">
-                                                        {(room.peak / 1000).toFixed(2)} kW
+                                                        {(room.worstPeak / 1000).toFixed(2)} kW
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-900 dark:text-white font-medium">
                                                         {displayVal} kW

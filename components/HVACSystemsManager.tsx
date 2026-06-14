@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useCalculator } from '../contexts/CalculatorContext';
 import Card from './ui/Card';
 import { Plus, Trash2, Info, ChevronDown, CheckCircle2, AlertTriangle } from 'lucide-react';
+import Tooltip from './ui/Tooltip';
 import { HVACSystem } from '../types';
 
 interface Combination {
@@ -183,28 +184,37 @@ export const HVACSystemsManager: React.FC = () => {
                 .map(unit => state.rooms.find(r => r.id === unit.roomId))
                 .filter(r => r !== undefined) as any[]; // Need the RoomState object
 
-            // Calculate peak for the whole system
+            const selectedMonthVal = state.rooms[0]?.currentMonth || '7';
+            const selectedMonthIndex = parseInt(selectedMonthVal, 10) - 1; // 0-indexed monthly index
+
+            // Calculate peak for the whole system within the selected month
             let maxSystemPeak = 0;
-            let peakMonth = 0; // 0-11
+            let peakMonth = selectedMonthIndex; // Use selected month
             let peakHour = 0; // 0-23
             
             if (roomsInSystem.length > 0) {
-                // Determine system peak from yearly matrices
-                for (let m = 0; m < 12; m++) {
-                    for (let h = 0; h < 24; h++) {
-                        let sum = 0;
-                        for (const r of roomsInSystem) {
-                            if (r.yearlyMatrix) {
-                                sum += r.yearlyMatrix[m][h];
-                            }
-                        }
-                        if (sum > maxSystemPeak) {
-                            maxSystemPeak = sum;
-                            peakMonth = m;
-                            peakHour = h;
+                // Determine system peak from yearly matrices for the selected month
+                for (let h = 0; h < 24; h++) {
+                    let sum = 0;
+                    for (const r of roomsInSystem) {
+                        if (r.yearlyMatrix) {
+                            sum += r.yearlyMatrix[selectedMonthIndex][h];
                         }
                     }
+                    if (sum > maxSystemPeak) {
+                        maxSystemPeak = sum;
+                        peakHour = h;
+                    }
                 }
+                
+                // Now round the total maxSystemPeak properly
+                let roundedSumAtPeak = 0;
+                for (const r of roomsInSystem) {
+                    if (r.yearlyMatrix) {
+                        roundedSumAtPeak += Number((r.yearlyMatrix[selectedMonthIndex][peakHour] / 1000).toFixed(2));
+                    }
+                }
+                maxSystemPeak = roundedSumAtPeak * 1000;
             }
 
             // Derive TExt for the system's peak hour
@@ -251,8 +261,9 @@ export const HVACSystemsManager: React.FC = () => {
             // Prepare room results
             let finalResults = roomsInSystem.map(r => {
                 const configUnit = sys.indoorUnits.find(u => u.roomId === r.id);
-                // peakLoad at the system's hour
-                const requiredPeakW = r.yearlyMatrix ? r.yearlyMatrix[peakMonth][peakHour] : 0;
+                // peakLoad at the system's hour using rounded value
+                const rawPeakVal = r.yearlyMatrix ? r.yearlyMatrix[peakMonth][peakHour] : 0;
+                const requiredPeakW = Number((rawPeakVal / 1000).toFixed(2)) * 1000;
                 const individualWorstW = r.monthlyPeaks ? Math.max(...r.monthlyPeaks.map((p: any) => p.peak)) : 0;
                 
                 return {
@@ -412,7 +423,13 @@ export const HVACSystemsManager: React.FC = () => {
                                 <div className="text-right">
                                     <div className="text-xs text-slate-500 mb-1">Miesiąc wymiarujący</div>
                                     <div className="font-medium text-slate-800 dark:text-white">
-                                        {sys.results.length > 0 ? `${sys.peakMonth + 1} (${String(sys.peakHour).padStart(2, '0')}:00)` : '-'}
+                                        {sys.results.length > 0 ? (() => {
+                                            const monthVal = sys.peakMonth + 1;
+                                            const isSummerTime = monthVal >= 4 && monthVal <= 10;
+                                            const offset = isSummerTime ? 2 : 1;
+                                            const localPeakHour = (sys.peakHour + offset) % 24;
+                                            return `${monthVal} (${String(localPeakHour).padStart(2, '0')}:00)`;
+                                        })() : '-'}
                                     </div>
                                 </div>
                                 <div className="text-right">
@@ -504,15 +521,40 @@ export const HVACSystemsManager: React.FC = () => {
                                 <thead className="bg-slate-50 dark:bg-slate-800">
                                     <tr>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Pomieszczenie</th>
-                                        <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">Obciążenie układu</th>
-                                        {isMulti ? (
+                                        <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">
+                                            <div className="inline-flex items-center justify-end gap-1 w-full">
+                                                <span>Obciążenie max</span>
+                                                <Tooltip text="Najwyższe możliwe obciążenie dla tego pomieszczenia w jego własnym najgorszym miesiącu" position="bottom" />
+                                            </div>
+                                        </th>
+                                        <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">
+                                            <div className="inline-flex items-center justify-end gap-1 w-full">
+                                                <span>Obciążenie jednoczesne</span>
+                                                <Tooltip text="Obciążenie chłodnicze w miesiącu i godzinie szczytu dla całego wybranego układu (obciążenie z uwzględnieniem jednoczesności na podstawie globalnego max układu)" position="bottom" />
+                                            </div>
+                                        </th>
+                                        {isMulti && (
                                             <>
-                                                <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">Indeks jw</th>
-                                                <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">Moc z DB</th>
-                                                <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">Pokrycie %</th>
+                                                <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase py-3.5">Indeks jw</th>
+                                                <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">
+                                                    <div className="inline-flex items-center justify-end gap-1 w-full font-medium">
+                                                        <span>Moc jednoczesna</span>
+                                                        <Tooltip text="Rzeczywista docierająca moc chłodnicza jednostki w momencie wystąpienia piku układu" position="bottom" />
+                                                    </div>
+                                                </th>
+                                                <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">
+                                                    <div className="inline-flex items-center justify-end gap-1 w-full font-medium">
+                                                        <span>Pokrycie %</span>
+                                                        <Tooltip text="Stosunek mocy jednoczesnej z agregatu do obciążenia jednoczesnego pomieszczenia" position="bottom" />
+                                                    </div>
+                                                </th>
+                                                <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">
+                                                    <div className="inline-flex items-center justify-end gap-1 w-full font-medium">
+                                                        <span>Pokrycie % (max)</span>
+                                                        <Tooltip text="Stosunek mocy nominalnej jednostki wew. z typoszeregu do maksymalnego obciążenia pomieszczenia" position="bottom" />
+                                                    </div>
+                                                </th>
                                             </>
-                                        ) : (
-                                            <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">Maks indywidualne</th>
                                         )}
                                         <th className="px-4 py-3 w-10"></th>
                                     </tr>
@@ -521,8 +563,13 @@ export const HVACSystemsManager: React.FC = () => {
                                     {sys.results.map((r, i) => (
                                         <tr key={r.id}>
                                             <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">{r.name}</td>
-                                            <td className="px-4 py-3 text-sm text-right font-bold text-slate-700 dark:text-slate-300">{r.requiredPeakKw > 0 ? r.requiredPeakKw.toFixed(2) : '-'} kW</td>
-                                            {isMulti ? (
+                                            <td className="px-4 py-3 text-sm text-right text-slate-600 dark:text-slate-400">
+                                                {r.individualPeakKw.toFixed(2)} kW
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-right font-bold text-slate-700 dark:text-slate-300">
+                                                {r.requiredPeakKw > 0 ? r.requiredPeakKw.toFixed(2) : '-'} kW
+                                            </td>
+                                            {isMulti && (
                                                 <>
                                                     <td className="px-4 py-3 text-right">
                                                         <select
@@ -545,9 +592,10 @@ export const HVACSystemsManager: React.FC = () => {
                                                     <td className={`px-4 py-3 text-sm text-right ${r.colorClass}`}>
                                                         {r.index > 0 && r.requiredPeakKw > 0 && r.realCapacityKw > 0 ? r.ratio.toFixed(1) + '%' : '-'}
                                                     </td>
+                                                    <td className={`px-4 py-3 text-sm text-right ${r.index > 0 && r.individualPeakKw > 0 ? (((r.index / 10) / r.individualPeakKw) * 100 >= 100 ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-rose-500 font-bold') : ''}`}>
+                                                        {r.index > 0 && r.individualPeakKw > 0 ? (((r.index / 10) / r.individualPeakKw) * 100).toFixed(1) + '%' : '-'}
+                                                    </td>
                                                 </>
-                                            ) : (
-                                                <td className="px-4 py-3 text-sm text-right text-slate-500 italic">{r.individualPeakKw.toFixed(2)} kW</td>
                                             )}
                                             <td className="px-4 py-3 text-right">
                                                 <button 
@@ -563,7 +611,7 @@ export const HVACSystemsManager: React.FC = () => {
                                         </tr>
                                     ))}
                                     {sys.results.length === 0 && (
-                                        <tr><td colSpan={isMulti ? 6 : 4} className="px-4 py-4 text-center text-sm text-slate-500">Brak przypisanych pomieszczeń do tego układu.</td></tr>
+                                        <tr><td colSpan={isMulti ? 8 : 4} className="px-4 py-4 text-center text-sm text-slate-500">Brak przypisanych pomieszczeń do tego układu.</td></tr>
                                     )}
                                 </tbody>
                             </table>
