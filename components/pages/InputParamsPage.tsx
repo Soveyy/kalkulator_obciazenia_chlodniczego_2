@@ -259,11 +259,7 @@ const InputParamsPage: React.FC = () => {
                 {/* RTS Accumulation Chart */}
                 {currentRoom.accumulation.include && (
                     <Card className="p-6 h-full flex flex-col xl:col-span-6 animate-fade-in border-orange-100 dark:border-orange-900/30 z-10">
-                        <div className="flex flex-col mb-4">
-                            <h3 className="text-base font-bold text-slate-800 dark:text-white leading-tight mb-1">Pogląd krzywych opóźnienia RTS</h3>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">Porównanie rozkładu współczynników akumulacyjności dla masy termicznej na przestrzeni całej doby.</p>
-                        </div>
-                        <div className="flex-1 min-h-[460px]">
+                        <div className="flex-1 min-h-[460px] flex flex-col">
                             <RtsInlineWidget roomId={currentRoom.id} />
                         </div>
                     </Card>

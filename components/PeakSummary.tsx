@@ -41,7 +41,7 @@ const PeakSummary: React.FC = () => {
 
     return (
         <Card className="flex-grow flex flex-col !p-0 overflow-hidden">
-            <div className="bg-slate-50 dark:bg-slate-800/80 px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-center items-center text-center">
+            <div className="bg-slate-50 dark:bg-slate-800/80 px-6 py-4 border-b border-slate-100 dark:border-slate-700 h-[73px] flex justify-center items-center text-center">
                 <h3 className="font-semibold text-slate-800 dark:text-white">
                     Podsumowanie dla: <span className="capitalize text-blue-600 dark:text-blue-400">{MONTH_NAMES[month-1]}</span>
                 </h3>

@@ -231,7 +231,7 @@ const AggregateAnalysisPage: React.FC = () => {
             })
         ];
 
-        chartInstanceRef.current = new Chart(ctx, {
+        const chartConfig: any = {
             type: 'line',
             data: {
                 labels,
@@ -267,7 +267,7 @@ const AggregateAnalysisPage: React.FC = () => {
                         boxPadding: 6,
                         usePointStyle: true,
                         callbacks: {
-                            label: function(context) {
+                            label: function(context: any) {
                                 let label = context.dataset.label || '';
                                 if (label) {
                                     label += ': ';
@@ -307,7 +307,7 @@ const AggregateAnalysisPage: React.FC = () => {
                         },
                         ticks: {
                             color: textColor,
-                            callback: function(value) {
+                            callback: function(value: any) {
                                 return (Number(value) / 1000).toFixed(2) + ' kW';
                             },
                             font: {
@@ -327,14 +327,29 @@ const AggregateAnalysisPage: React.FC = () => {
                     }
                 }
             }
-        });
+        };
 
-        return () => {
+        if (chartInstanceRef.current && chartInstanceRef.current.config.type === chartConfig.type) {
+            chartInstanceRef.current.data = chartConfig.data;
+            chartInstanceRef.current.options = chartConfig.options as any;
+            chartInstanceRef.current.update();
+        } else {
             if (chartInstanceRef.current) {
                 chartInstanceRef.current.destroy();
             }
-        };
+            chartInstanceRef.current = new Chart(ctx, chartConfig);
+        }
+
     }, [aggregateData, theme, state.rooms]);
+
+    useEffect(() => {
+        return () => {
+            if (chartInstanceRef.current) {
+                chartInstanceRef.current.destroy();
+                chartInstanceRef.current = null;
+            }
+        };
+    }, []);
 
     if (state.isCalculating) {
         return (

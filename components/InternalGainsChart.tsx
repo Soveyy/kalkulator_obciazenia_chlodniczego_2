@@ -223,13 +223,26 @@ const InternalGainsChart: React.FC = () => {
       },
     };
 
-    if (chartInstanceRef.current) {
-      chartInstanceRef.current.destroy();
-      chartInstanceRef.current = new Chart(ctx, chartConfig);
+    if (chartInstanceRef.current && chartInstanceRef.current.config.type === chartConfig.type) {
+      chartInstanceRef.current.data = chartConfig.data;
+      chartInstanceRef.current.options = chartConfig.options as any;
+      chartInstanceRef.current.update();
     } else {
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.destroy();
+      }
       chartInstanceRef.current = new Chart(ctx, chartConfig);
     }
   }, [state.activeResults, theme, state.currentMonth, viewMode]);
+
+  useEffect(() => {
+    return () => {
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.destroy();
+        chartInstanceRef.current = null;
+      }
+    };
+  }, []);
 
   if (!state.results) {
     return (

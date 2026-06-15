@@ -174,6 +174,15 @@ const VentilationGainsChart: React.FC = () => {
             chartInstanceRef.current = new Chart(ctx, chartConfig);
         }
     }, [state.activeResults, theme, state.currentMonth]);
+
+    useEffect(() => {
+        return () => {
+            if (chartInstanceRef.current) {
+                chartInstanceRef.current.destroy();
+                chartInstanceRef.current = null;
+            }
+        };
+    }, []);
     
     if (!state.results) {
         return (

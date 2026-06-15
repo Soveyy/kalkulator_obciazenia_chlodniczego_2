@@ -785,7 +785,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             solarMatrix,
             solarInstantMatrix
         }});
-    }, [state.allData, activeRoom.windows, activeRoom.walls, activeRoom.input, state.projectName, activeRoom.accumulation, activeRoom.internalGains, state.isShadingViewActive]);
+    }, [state.allData, activeRoom.windows, activeRoom.walls, activeRoom.input, activeRoom.accumulation, activeRoom.internalGains, state.isShadingViewActive]);
 
 
     const handleCalculate = useCallback(async () => {
@@ -892,7 +892,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             }, 300);
             return () => clearTimeout(handler);
         }
-    }, [activeRoom.windows, activeRoom.walls, activeRoom.input, state.projectName, activeRoom.accumulation, activeRoom.internalGains, performCalculation, state.allData, activeRoom.currentMonth, state.isShadingViewActive, state.activeRoomId]);
+    }, [activeRoom.windows, activeRoom.walls, activeRoom.input, activeRoom.accumulation, activeRoom.internalGains, performCalculation, state.allData, state.isShadingViewActive, state.activeRoomId]);
 
     // Auto calculate ALL rooms when entering Aggregate Analysis
     useEffect(() => {

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
 import { useCalculator } from '../contexts/CalculatorContext';
 import { THERMAL_MASS_OPTIONS } from './ui/CustomThermalMassSelect';
+import { Info } from 'lucide-react';
 
 interface RtsInlineWidgetProps {
     roomId: string;
@@ -45,16 +46,17 @@ const RtsInlineWidget: React.FC<RtsInlineWidgetProps> = ({ roomId }) => {
             const data = state.allData?.rts?.[massType]?.[floorType]?.[selectedGlassP]?.[dataKey] || [];
             const isSelected = thermalMass === massType;
             return {
+                type: 'bar' as const,
                 label: THERMAL_MASS_OPTIONS[massType].label,
                 data: data,
                 borderColor: COLORS[massType],
                 backgroundColor: COLORS[massType],
-                fill: false,
-                tension: 0.3,
-                borderWidth: isSelected ? 3 : 1.5,
-                borderDash: isSelected ? [] : [5, 5],
-                pointRadius: 3,
-                pointHoverRadius: 6,
+                hoverBackgroundColor: COLORS[massType],
+                borderWidth: 0,
+                hoverBorderWidth: 0,
+                barPercentage: 0.98,
+                categoryPercentage: 0.92,
+                borderRadius: 0,
                 zIndex: isSelected ? 10 : 0,
             };
         });
@@ -62,13 +64,17 @@ const RtsInlineWidget: React.FC<RtsInlineWidgetProps> = ({ roomId }) => {
         if (chartInstanceRef.current) {
             const chart = chartInstanceRef.current;
             // Update individual datasets in-place to trigger smooth value transitions
-            datasets.forEach((newD, i) => {
+            datasets.forEach((newD: any, i) => {
                 if (chart.data.datasets[i]) {
                     chart.data.datasets[i].data = [...newD.data];
                     chart.data.datasets[i].borderColor = newD.borderColor;
                     chart.data.datasets[i].backgroundColor = newD.backgroundColor;
+                    (chart.data.datasets[i] as any).hoverBackgroundColor = newD.hoverBackgroundColor;
                     chart.data.datasets[i].borderWidth = newD.borderWidth;
-                    chart.data.datasets[i].borderDash = newD.borderDash;
+                    (chart.data.datasets[i] as any).hoverBorderWidth = newD.hoverBorderWidth;
+                    (chart.data.datasets[i] as any).barPercentage = newD.barPercentage;
+                    (chart.data.datasets[i] as any).categoryPercentage = newD.categoryPercentage;
+                    (chart.data.datasets[i] as any).borderRadius = newD.borderRadius;
                     chart.data.datasets[i].zIndex = newD.zIndex;
                 }
             });
@@ -100,7 +106,7 @@ const RtsInlineWidget: React.FC<RtsInlineWidgetProps> = ({ roomId }) => {
         } else {
             const labels = Array.from({ length: 24 }, (_, i) => `${i}`);
             chartInstanceRef.current = new Chart(ctx, {
-                type: 'line',
+                type: 'bar',
                 data: { labels, datasets },
                 options: {
                     responsive: true,
@@ -162,7 +168,16 @@ const RtsInlineWidget: React.FC<RtsInlineWidgetProps> = ({ roomId }) => {
 
     return (
         <div className="flex flex-col h-full pl-2">
-            <div className="flex justify-end mb-2">
+            <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-slate-800 dark:text-white leading-tight">Podgląd współczynników RTF</h3>
+                    <div className="relative group cursor-help">
+                        <Info className="w-5 h-5 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300" />
+                        <div className="absolute hidden group-hover:block z-50 w-72 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-xl -left-2 top-8 tooltip-triangle font-normal">
+                            RTF - Radiant Time Factors, czyli współczynniki opóźnienia zysków ciepła w masie termicznej budynku w metodzie Radiant Time Series.
+                        </div>
+                    </div>
+                </div>
                 <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-lg inline-flex">
                     <button
                         className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${gainType === 'solar' ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600 dark:text-blue-400' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}

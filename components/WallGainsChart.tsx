@@ -186,12 +186,27 @@ const WallGainsChart: React.FC = () => {
             }
         };
 
-        if (chartInstanceRef.current) {
-            chartInstanceRef.current.destroy();
+        if (chartInstanceRef.current && chartInstanceRef.current.config.type === chartConfig.type) {
+            chartInstanceRef.current.data = chartConfig.data;
+            chartInstanceRef.current.options = chartConfig.options as any;
+            chartInstanceRef.current.update();
+        } else {
+            if (chartInstanceRef.current) {
+                chartInstanceRef.current.destroy();
+            }
+            chartInstanceRef.current = new Chart(ctx, chartConfig);
         }
-        chartInstanceRef.current = new Chart(ctx, chartConfig);
 
     }, [state.activeResults, theme, state.currentMonth, chartType]);
+
+    useEffect(() => {
+        return () => {
+            if (chartInstanceRef.current) {
+                chartInstanceRef.current.destroy();
+                chartInstanceRef.current = null;
+            }
+        };
+    }, []);
     
     if (!state.results) {
         return (

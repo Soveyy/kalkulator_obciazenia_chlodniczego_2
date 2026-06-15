@@ -20,10 +20,6 @@ const RtsVisualizerModal: React.FC = () => {
 
         const ctx = chartRef.current.getContext('2d');
         if (!ctx) return;
-
-        if (chartInstanceRef.current) {
-            chartInstanceRef.current.destroy();
-        }
         
         const { floorType, glassPercentage } = state.accumulation;
         let selectedGlassP: 10 | 50 | 90 = 50;
@@ -64,7 +60,7 @@ const RtsVisualizerModal: React.FC = () => {
         const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
         const textColor = isDarkMode ? '#ecf0f1' : '#333';
         
-        chartInstanceRef.current = new Chart(ctx, {
+        const chartConfig: any = {
             type: 'line',
             data: {
                 labels,
@@ -97,15 +93,29 @@ const RtsVisualizerModal: React.FC = () => {
                     }
                 }
             }
-        });
+        };
 
-        return () => {
+        if (chartInstanceRef.current && chartInstanceRef.current.config.type === chartConfig.type) {
+            chartInstanceRef.current.data = chartConfig.data;
+            chartInstanceRef.current.options = chartConfig.options as any;
+            chartInstanceRef.current.update();
+        } else {
             if (chartInstanceRef.current) {
                 chartInstanceRef.current.destroy();
             }
-        };
+            chartInstanceRef.current = new Chart(ctx, chartConfig);
+        }
 
     }, [isModalOpen, viewType, theme, state.accumulation, state.allData]);
+
+    useEffect(() => {
+        return () => {
+            if (chartInstanceRef.current) {
+                chartInstanceRef.current.destroy();
+                chartInstanceRef.current = null;
+            }
+        };
+    }, []);
 
     const title = `Wizualizacja Krzywych RTS (${viewType === 'solar' ? 'Słoneczne' : 'Niesłoneczne'})`;
     const explanationText = `Wykres pokazuje, jak 1000 W radiacyjnego zysku ciepła (o godz. 0) jest rozkładane w czasie przez masę termiczną budynku. Wyższa wartość o godzinie 0 oznacza większe natychmiastowe obciążenie. Bardziej płaska i "rozciągnięta" krzywa świadczy o lepszej zdolności akumulacyjnej budynku, co skutkuje niższym, ale dłużej trwającym obciążeniem szczytowym.`;
