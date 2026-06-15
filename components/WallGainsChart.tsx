@@ -28,9 +28,12 @@ const WallGainsChart: React.FC = () => {
     }, [handleFullscreenChange]);
 
     useEffect(() => {
-        if (chartInstanceRef.current) {
-            chartInstanceRef.current.resize();
-        }
+        const timer = setTimeout(() => {
+            if (chartInstanceRef.current) {
+                chartInstanceRef.current.resize();
+            }
+        }, 100);
+        return () => clearTimeout(timer);
     }, [isFullscreen]);
 
     const toggleFullscreen = async () => {
@@ -210,8 +213,11 @@ const WallGainsChart: React.FC = () => {
     }
 
     return (
-        <Card className="h-full min-h-[500px] flex flex-col">
-            <div className="relative flex-grow chart-container" ref={chartContainerRef}>
+        <Card className="flex flex-col">
+            <div 
+                className={`relative w-full bg-white dark:bg-slate-900 rounded-lg ${isFullscreen ? 'h-screen p-4 flex flex-col' : 'h-[500px]'}`}
+                ref={chartContainerRef}
+            >
                 <div className="absolute top-2 right-2 z-10 flex gap-2">
                     <button
                         onClick={toggleFullscreen}
@@ -221,7 +227,9 @@ const WallGainsChart: React.FC = () => {
                         {isFullscreen ? <ArrowsShrinkIcon className="w-5 h-5" /> : <ArrowsExpandIcon className="w-5 h-5" />}
                     </button>
                 </div>
-                <canvas ref={chartRef}></canvas>
+                <div className="relative w-full flex-grow h-full">
+                    <canvas ref={chartRef}></canvas>
+                </div>
             </div>
             <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-md border border-slate-200 dark:border-slate-700">

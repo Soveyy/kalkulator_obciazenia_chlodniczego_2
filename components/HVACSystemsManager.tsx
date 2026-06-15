@@ -388,13 +388,13 @@ export const HVACSystemsManager: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-3">
                 <button
                     onClick={() => addSystem('split')}
-                    className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 px-4 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2 font-medium"
+                    className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 px-4 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-all hover:shadow-md hover:-translate-y-[2px] active:scale-95 flex items-center gap-2 font-medium"
                 >
                     <Plus size={16} /> Dodaj układ Split (RAC/PAC)
                 </button>
                 <button
                     onClick={() => addSystem('multi')}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 font-medium shadow-sm"
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-all hover:shadow-md hover:-translate-y-[2px] active:scale-95 flex items-center gap-2 font-medium shadow-sm"
                 >
                     <Plus size={16} /> Dodaj układ Multi-Split (MXZ)
                 </button>

@@ -28,9 +28,12 @@ const VentilationGainsChart: React.FC = () => {
     }, [handleFullscreenChange]);
 
     useEffect(() => {
-        if (chartInstanceRef.current) {
-            chartInstanceRef.current.resize();
-        }
+        const timer = setTimeout(() => {
+            if (chartInstanceRef.current) {
+                chartInstanceRef.current.resize();
+            }
+        }, 100);
+        return () => clearTimeout(timer);
     }, [isFullscreen]);
 
     const toggleFullscreen = async () => {
@@ -181,8 +184,11 @@ const VentilationGainsChart: React.FC = () => {
     }
 
     return (
-        <Card className="h-full min-h-[400px] flex flex-col" >
-            <div className="relative flex-grow chart-container" ref={chartContainerRef}>
+        <Card className="flex flex-col" >
+            <div 
+                className={`relative w-full bg-white dark:bg-slate-900 rounded-lg ${isFullscreen ? 'h-screen p-4 flex flex-col' : 'h-[400px]'}`} 
+                ref={chartContainerRef}
+            >
                  <div className="absolute top-2 right-2 z-10 flex gap-2">
                     <button
                         onClick={toggleFullscreen}
@@ -192,7 +198,9 @@ const VentilationGainsChart: React.FC = () => {
                         {isFullscreen ? <ArrowsShrinkIcon className="w-5 h-5" /> : <ArrowsExpandIcon className="w-5 h-5" />}
                     </button>
                 </div>
-                <canvas ref={chartRef}></canvas>
+                <div className="relative w-full flex-grow h-full">
+                    <canvas ref={chartRef}></canvas>
+                </div>
             </div>
         </Card>
     );

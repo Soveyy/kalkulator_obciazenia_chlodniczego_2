@@ -307,7 +307,7 @@ const InternalGainsPanel: React.FC = () => {
                         <p className="text-sm text-slate-500 text-center py-4">Brak dodanych urządzeń.</p>
                     )}
                     {state.internalGains.equipment.map(item => (
-                        <div key={item.id} className="flex flex-col xl:flex-row gap-2 items-start xl:items-center bg-slate-50 dark:bg-slate-700/50 p-2 rounded border border-slate-200 dark:border-slate-700 transition-colors hover:bg-slate-100 dark:hover:bg-slate-700">
+                        <div key={item.id} className="flex flex-col xl:flex-row gap-2 items-start xl:items-center bg-slate-50 dark:bg-slate-700/50 p-2 rounded border border-slate-200 dark:border-slate-700 transition-all hover:-translate-y-[2px] hover:shadow-md hover:bg-slate-100 dark:hover:bg-slate-700">
                             
                             {/* Name Input */}
                             <div className="w-full xl:flex-1">
@@ -393,7 +393,7 @@ const InternalGainsPanel: React.FC = () => {
                         const catalogItem = ADVANCED_APPLIANCES.find(a => a.id === item.catalogId);
                         if (!catalogItem) return null;
                         return (
-                            <div key={item.id} className="flex flex-col xl:flex-row gap-2 items-start xl:items-center bg-blue-50 dark:bg-blue-900/20 p-2 rounded border border-blue-200 dark:border-blue-800 transition-colors hover:bg-blue-100 dark:hover:bg-blue-900/40">
+                            <div key={item.id} className="flex flex-col xl:flex-row gap-2 items-start xl:items-center bg-blue-50 dark:bg-blue-900/20 p-2 rounded border border-blue-200 dark:border-blue-800 transition-all hover:-translate-y-[2px] hover:shadow-md hover:bg-blue-100 dark:hover:bg-blue-900/40">
                                 
                                 {/* Name Input */}
                                 <div className="w-full xl:flex-1">

@@ -75,7 +75,7 @@ const RoomTabs: React.FC = () => {
                         relative group flex items-center gap-2 px-4 py-2 rounded-t-lg cursor-pointer transition-all border-b-2 flex-shrink-0
                         ${state.activeRoomId === room.id 
                             ? 'bg-white dark:bg-slate-800 border-blue-500 text-blue-600 dark:text-blue-400 font-semibold' 
-                            : 'bg-slate-50 dark:bg-slate-800/50 border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}
+                            : 'bg-slate-50 dark:bg-slate-800/50 border-transparent text-slate-600 dark:text-slate-400 hover:-translate-y-[2px] hover:bg-slate-100 dark:hover:bg-slate-700 active:scale-95'}
                     `}
                 >
                     {editingRoomId === room.id ? (
@@ -132,7 +132,7 @@ const RoomTabs: React.FC = () => {
                 <Tooltip text="Dodaj nowe pomieszczenie (max 6)" position="top">
                     <button
                         onClick={handleAddRoom}
-                        className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-slate-700 transition-colors"
+                        className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 transition-all hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-slate-700 hover:-translate-y-[2px] hover:shadow-md active:scale-95"
                     >
                         <PlusIcon className="w-5 h-5" />
                     </button>
@@ -143,9 +143,9 @@ const RoomTabs: React.FC = () => {
                 <button
                     onClick={() => handleSwitchRoom('aggregate')}
                     className={`
-                        px-4 py-2 rounded-lg cursor-pointer transition-all border-2 text-sm font-bold
+                        px-4 py-2 rounded-lg cursor-pointer transition-all border-2 text-sm font-bold active:scale-95 hover:shadow-md hover:-translate-y-[2px]
                         ${state.activeRoomId === 'aggregate'
-                            ? 'bg-indigo-100 dark:bg-indigo-900/50 border-indigo-700 dark:border-indigo-400 text-indigo-800 dark:text-indigo-200 shadow-md'
+                            ? 'bg-indigo-100 dark:bg-indigo-900/50 border-indigo-700 dark:border-indigo-400 text-indigo-800 dark:text-indigo-200 shadow-md transform -translate-y-0.5'
                             : 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-600 dark:border-indigo-500 text-indigo-700 dark:text-indigo-300 animate-breathe hover:bg-indigo-100 dark:hover:bg-indigo-900/40'}
                     `}
                 >

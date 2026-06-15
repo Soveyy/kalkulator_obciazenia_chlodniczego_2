@@ -132,9 +132,11 @@ const InputParamsPage: React.FC = () => {
                         </div>
                         
                         <div className="flex flex-col gap-4 w-full">
-                            <Tooltip content="Zalecana temperatura do chłodzenia to zazwyczaj 24-26°C.">
                                 <div className="w-full">
-                                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">Temperatura wew. (°C)</label>
+                                    <div className="flex items-center mb-1.5">
+                                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wider">Temperatura wew. (°C)</label>
+                                        <Tooltip text="Zalecana temperatura do chłodzenia to zazwyczaj 24-26°C." position="top" />
+                                    </div>
                                     <Input
                                         type="number"
                                         name="tInternal"
@@ -144,11 +146,12 @@ const InputParamsPage: React.FC = () => {
                                         className="text-base py-2 w-full"
                                     />
                                 </div>
-                            </Tooltip>
                             
-                            <Tooltip content="Dla komfortu zwykle przyjmuje się 50%.">
                                 <div className="w-full">
-                                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">Wilgotność wew. (%)</label>
+                                    <div className="flex items-center mb-1.5">
+                                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wider">Wilgotność wew. (%)</label>
+                                        <Tooltip text="Dla komfortu zwykle przyjmuje się 50%." position="top" />
+                                    </div>
                                     <Input
                                         type="number"
                                         name="rhInternal"
@@ -158,11 +161,12 @@ const InputParamsPage: React.FC = () => {
                                         className="text-base py-2 w-full"
                                     />
                                 </div>
-                            </Tooltip>
                             
-                            <Tooltip content="Powierzchnia pomieszczenia w metrach kwadratowych. Służy do automatycznego przeliczania niektórych zysków.">
                                 <div className="w-full">
-                                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">Powierzchnia (m²)</label>
+                                    <div className="flex items-center mb-1.5">
+                                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wider">Powierzchnia (m²)</label>
+                                        <Tooltip text="Powierzchnia pomieszczenia w metrach kwadratowych. Służy do automatycznego przeliczania niektórych zysków." position="top" />
+                                    </div>
                                     <Input
                                         type="number"
                                         name="roomArea"
@@ -172,7 +176,6 @@ const InputParamsPage: React.FC = () => {
                                         className="text-base py-2 w-full font-semibold text-blue-600 dark:text-blue-400"
                                     />
                                 </div>
-                            </Tooltip>
                         </div>
                     </div>
                 </Card>
@@ -204,19 +207,22 @@ const InputParamsPage: React.FC = () => {
                         
                         {currentRoom.accumulation.include && (
                             <div className="flex flex-col gap-4 animate-fade-in w-full">
-                                <Tooltip content="Wybierz klasę konstrukcji budynku. Budynek lekki szybciej się nagrzewa, ciężki magazynuje ciepło, spłaszczając szczyt.">
                                     <div className="w-full">
-                                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">Konstrukcja budynku</label>
+                                        <div className="flex items-center mb-1.5">
+                                            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wider">Konstrukcja budynku</label>
+                                            <Tooltip text="Wybierz klasę konstrukcji budynku. Budynek lekki szybciej się nagrzewa, ciężki magazynuje ciepło, spłaszczając szczyt." position="top" />
+                                        </div>
                                         <CustomThermalMassSelect 
                                             value={currentRoom.accumulation.thermalMass}
                                             onChange={(val) => handleAccumulationChange({ target: { name: 'thermalMass', value: val } } as any)}
                                         />
                                     </div>
-                                </Tooltip>
                                 
-                                <Tooltip content="Typ podłogi decyduje w jakim stopniu absorbuje promieniowanie słoneczne. Wykładziny tłumią akumulację.">
                                     <div className="w-full">
-                                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">Typ podłogi</label>
+                                        <div className="flex items-center mb-1.5">
+                                            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wider">Typ podłogi</label>
+                                            <Tooltip text="Typ podłogi decyduje w jakim stopniu absorbuje promieniowanie słoneczne. Wykładziny tłumią akumulację." position="top" />
+                                        </div>
                                         <Select
                                             name="floorType"
                                             value={currentRoom.accumulation.floorType}
@@ -228,11 +234,12 @@ const InputParamsPage: React.FC = () => {
                                             <option value="tiles">Płytki / kamień / beton</option>
                                         </Select>
                                     </div>
-                                </Tooltip>
                                 
-                                <Tooltip content="Procentowa powierzchnia ścian zewnętrznych zajęta przez szyby w tym pomieszczeniu (względem całości).">
                                     <div className="w-full">
-                                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">% przeszklenia fasady</label>
+                                        <div className="flex items-center mb-1.5">
+                                            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wider">% przeszklenia fasady</label>
+                                            <Tooltip text="Procentowa powierzchnia ścian zewnętrznych zajęta przez szyby w tym pomieszczeniu (względem całości)." position="top" />
+                                        </div>
                                         <Select
                                             name="glassPercentage"
                                             value={currentRoom.accumulation.glassPercentage}
@@ -244,7 +251,6 @@ const InputParamsPage: React.FC = () => {
                                             <option value="90">90%</option>
                                         </Select>
                                     </div>
-                                </Tooltip>
                             </div>
                         )}
                     </div>
