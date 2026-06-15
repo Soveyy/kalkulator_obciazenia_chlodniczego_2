@@ -4,7 +4,7 @@ import Chart from 'chart.js/auto';
 import { useCalculator } from '../contexts/CalculatorContext';
 import Card from './ui/Card';
 import { ArrowsExpandIcon, ArrowsShrinkIcon } from './Icons';
-import { getChartColor, CHART_COLORS } from '../lib/chartUtils';
+import { getChartColor, CHART_COLORS, updateChartSmoothly } from '../lib/chartUtils';
 
 const reorderDataForLocalTime = (data: number[], offset: number): number[] => {
     if (!data) return Array(24).fill(0);
@@ -132,44 +132,7 @@ const VentilationGainsChart: React.FC = () => {
         };
 
         if (chartInstanceRef.current) {
-            chartInstanceRef.current.data.labels = labels;
-            
-            const currentDatasets = chartInstanceRef.current.data.datasets;
-            if (currentDatasets.length === datasets.length) {
-                 datasets.forEach((newDs, i) => {
-                    currentDatasets[i].data = newDs.data;
-                    currentDatasets[i].label = newDs.label;
-                    currentDatasets[i].backgroundColor = newDs.backgroundColor;
-                });
-            } else {
-                chartInstanceRef.current.data.datasets = datasets;
-            }
-
-             // Update scales colors
-            if (chartInstanceRef.current.options.scales) {
-                 if (chartInstanceRef.current.options.scales.x) {
-                    const xScale = chartInstanceRef.current.options.scales.x as any;
-                    xScale.ticks.color = textColor;
-                    xScale.grid.color = gridColor;
-                    xScale.title.color = textColor;
-                 }
-                 if (chartInstanceRef.current.options.scales.y) {
-                    const yScale = chartInstanceRef.current.options.scales.y as any;
-                    yScale.ticks.color = textColor;
-                    yScale.grid.color = gridColor;
-                    yScale.title.color = textColor;
-                 }
-            }
-             if (chartInstanceRef.current.options.plugins) {
-                 if (chartInstanceRef.current.options.plugins.title) {
-                     chartInstanceRef.current.options.plugins.title.color = textColor;
-                 }
-                 if (chartInstanceRef.current.options.plugins.legend && chartInstanceRef.current.options.plugins.legend.labels) {
-                     chartInstanceRef.current.options.plugins.legend.labels.color = textColor;
-                 }
-            }
-
-            chartInstanceRef.current.update();
+            updateChartSmoothly(chartInstanceRef.current, chartConfig);
         } else {
             chartInstanceRef.current = new Chart(ctx, chartConfig);
         }

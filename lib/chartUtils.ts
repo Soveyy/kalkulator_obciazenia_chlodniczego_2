@@ -1,3 +1,5 @@
+import Chart from 'chart.js/auto';
+
 export const CHART_COLORS = {
     solar: 'rgba(234, 179, 8, 0.8)', // yellow-500
     conduction: 'rgba(234, 88, 12, 0.8)', // orange-600
@@ -42,3 +44,66 @@ export const getChartColor = (category: keyof typeof CHART_COLORS, isLatent: boo
     }
     return baseColor;
 };
+
+export function updateChartSmoothly(chartInstance: Chart | null, newConfig: any) {
+    if (!chartInstance) return;
+
+    if (newConfig.data && newConfig.data.labels) {
+        chartInstance.data.labels = newConfig.data.labels;
+    }
+
+    const currentDatasets = chartInstance.data.datasets || [];
+    const newDatasets = newConfig.data?.datasets || [];
+
+    if (currentDatasets.length === newDatasets.length) {
+        for (let i = 0; i < currentDatasets.length; i++) {
+            const currentDataset = currentDatasets[i] as any;
+            const newDataset = newDatasets[i];
+
+            currentDataset.data = newDataset.data;
+            
+            if (newDataset.label !== undefined) currentDataset.label = newDataset.label;
+            if (newDataset.backgroundColor !== undefined) currentDataset.backgroundColor = newDataset.backgroundColor;
+            if (newDataset.borderColor !== undefined) currentDataset.borderColor = newDataset.borderColor;
+            if (newDataset.borderWidth !== undefined) currentDataset.borderWidth = newDataset.borderWidth;
+            if (newDataset.borderDash !== undefined) currentDataset.borderDash = newDataset.borderDash;
+            if (newDataset.fill !== undefined) currentDataset.fill = newDataset.fill;
+            if (newDataset.tension !== undefined) currentDataset.tension = newDataset.tension;
+            if (newDataset.stack !== undefined) currentDataset.stack = newDataset.stack;
+            if (newDataset.type !== undefined) currentDataset.type = newDataset.type;
+            if (newDataset._meta !== undefined) (currentDataset as any)._meta = newDataset._meta;
+        }
+    } else {
+        const datasetMap = new Map(currentDatasets.map(d => [d.label, d]));
+        const mergedDatasets = newDatasets.map((newDataset: any) => {
+            const existing = datasetMap.get(newDataset.label);
+            if (existing) {
+                existing.data = newDataset.data;
+                if (newDataset.backgroundColor !== undefined) existing.backgroundColor = newDataset.backgroundColor;
+                if (newDataset.borderColor !== undefined) existing.borderColor = newDataset.borderColor;
+                if (newDataset.stack !== undefined) existing.stack = newDataset.stack;
+                if (newDataset.type !== undefined) existing.type = newDataset.type;
+                return existing;
+            }
+            return newDataset;
+        });
+        chartInstance.data.datasets = mergedDatasets;
+    }
+
+    if (newConfig.options) {
+        chartInstance.options = {
+            ...chartInstance.options,
+            ...newConfig.options,
+            scales: {
+                ...chartInstance.options.scales,
+                ...newConfig.options.scales
+            },
+            plugins: {
+                ...chartInstance.options.plugins,
+                ...newConfig.options.plugins
+            }
+        };
+    }
+
+    chartInstance.update();
+}

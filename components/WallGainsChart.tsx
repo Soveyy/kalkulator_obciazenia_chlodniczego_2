@@ -3,7 +3,7 @@ import Chart from 'chart.js/auto';
 import { useCalculator } from '../contexts/CalculatorContext';
 import Card from './ui/Card';
 import { ArrowsExpandIcon, ArrowsShrinkIcon } from './Icons';
-import { CHART_COLORS } from '../lib/chartUtils';
+import { CHART_COLORS, updateChartSmoothly } from '../lib/chartUtils';
 
 const reorderDataForLocalTime = (data: number[], offset: number): number[] => {
     if (!data) return Array(24).fill(0);
@@ -187,9 +187,7 @@ const WallGainsChart: React.FC = () => {
         };
 
         if (chartInstanceRef.current && chartInstanceRef.current.config.type === chartConfig.type) {
-            chartInstanceRef.current.data = chartConfig.data;
-            chartInstanceRef.current.options = chartConfig.options as any;
-            chartInstanceRef.current.update();
+            updateChartSmoothly(chartInstanceRef.current, chartConfig);
         } else {
             if (chartInstanceRef.current) {
                 chartInstanceRef.current.destroy();
