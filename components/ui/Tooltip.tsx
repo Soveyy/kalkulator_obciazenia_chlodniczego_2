@@ -65,7 +65,7 @@ const Tooltip: React.FC<TooltipProps> = ({ text, content, position = 'bottom', c
         onBlur={handleBlur}
       >
         {children}
-        <span className={`absolute z-50 w-max max-w-[220px] transform rounded-md bg-slate-800 px-2.5 py-2 text-[11px] leading-tight font-medium text-white transition-all dark:bg-slate-700 pointer-events-none shadow-xl border border-white/10 ${positionClasses[position]} ${visible ? 'scale-100 opacity-100' : 'scale-95 opacity-0 pointer-events-none'}`}>
+        <span className={`absolute z-50 w-max max-w-[220px] transform rounded-md bg-slate-800 px-2.5 py-2 text-[11px] leading-tight text-white transition-all dark:bg-slate-700 pointer-events-none shadow-xl border border-white/10 normal-case text-left font-normal ${positionClasses[position]} ${visible ? 'scale-100 opacity-100' : 'scale-95 opacity-0 pointer-events-none'}`}>
           {displayValue}
         </span>
       </div>
@@ -80,7 +80,7 @@ const Tooltip: React.FC<TooltipProps> = ({ text, content, position = 'bottom', c
       onClick={handleInteraction}
     >
       <InformationCircleIcon className="w-4 h-4 text-slate-400 dark:text-slate-500 cursor-help" />
-      <span className={`absolute z-50 w-max max-w-[180px] transform rounded-md bg-slate-800 px-2 py-1.5 text-[11px] leading-tight font-medium text-white transition-all dark:bg-slate-700 pointer-events-none shadow-xl border border-white/10 ${positionClasses[position]} ${visible ? 'scale-100 opacity-100' : 'scale-95 opacity-0 pointer-events-none'}`}>
+      <span className={`absolute z-50 w-max max-w-[180px] transform rounded-md bg-slate-800 px-2 py-1.5 text-[11px] leading-tight text-white transition-all dark:bg-slate-700 pointer-events-none shadow-xl border border-white/10 normal-case text-left font-normal ${positionClasses[position]} ${visible ? 'scale-100 opacity-100' : 'scale-95 opacity-0 pointer-events-none'}`}>
         {displayValue}
       </span>
     </span>
