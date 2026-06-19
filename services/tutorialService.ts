@@ -27,7 +27,7 @@ export const createTutorial = (onComplete: () => void): Driver => {
         element: '#room-tabs-container',
         popover: {
           title: 'Zarządzanie Pomieszczeniami',
-          description: 'Na samej górze możesz dodawać nowe pomieszczenia (maksymalnie 6), powielać je i edytować nazwy. Dla konfiguracji z wieloma pokojami automatycznie odblokowany zostanie moduł "Analiza Zbiorcza" do doboru systemów klimatyzacji typu Multi-Split.',
+          description: 'Na samej górze możesz dodawać nowe pomieszczenia (maksymalnie 10), powielać je i edytować nazwy. Dla konfiguracji z wieloma pokojami automatycznie odblokowany zostanie moduł "Analiza Zbiorcza" do doboru systemów klimatyzacji typu Multi-Split.',
           side: "bottom",
           align: 'start'
         }

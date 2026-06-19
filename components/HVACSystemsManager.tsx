@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useCalculator } from '../contexts/CalculatorContext';
 import Card from './ui/Card';
-import { Plus, Trash2, Info, ChevronDown, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Info, ChevronDown, CheckCircle2, AlertTriangle, Download } from 'lucide-react';
 import Tooltip from './ui/Tooltip';
 import { HVACSystem } from '../types';
+import { generateHVACExportPayload } from '../lib/exportUtils';
 
 interface Combination {
     indoorUnits: number[];
@@ -163,6 +164,17 @@ export const HVACSystemsManager: React.FC = () => {
     }, [db]);
 
     // Handle adding system safely
+    const handleExportToClipboard = async () => {
+        try {
+            const payload = generateHVACExportPayload(state);
+            await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+            dispatch({ type: 'ADD_TOAST', payload: { message: 'Skopiowano konfigurację urządzeń do schowka!', type: 'success' } });
+        } catch (error) {
+            console.error('Failed to copy to clipboard', error);
+            dispatch({ type: 'ADD_TOAST', payload: { message: 'Błąd podczas kopiowania do schowka', type: 'danger' } });
+        }
+    };
+
     const addSystem = (type: 'split' | 'multi') => {
         const id = `sys-${Date.now()}`;
         const newSys: HVACSystem = {
@@ -197,8 +209,8 @@ export const HVACSystemsManager: React.FC = () => {
                 for (let h = 0; h < 24; h++) {
                     let sum = 0;
                     for (const r of roomsInSystem) {
-                        if (r.yearlyMatrix) {
-                            sum += r.yearlyMatrix[selectedMonthIndex][h];
+                        if (r.yearlyMatrix && r.yearlyMatrix[selectedMonthIndex]) {
+                            sum += r.yearlyMatrix[selectedMonthIndex][h] || 0;
                         }
                     }
                     if (sum > maxSystemPeak) {
@@ -210,8 +222,8 @@ export const HVACSystemsManager: React.FC = () => {
                 // Now round the total maxSystemPeak properly
                 let roundedSumAtPeak = 0;
                 for (const r of roomsInSystem) {
-                    if (r.yearlyMatrix) {
-                        roundedSumAtPeak += Number((r.yearlyMatrix[selectedMonthIndex][peakHour] / 1000).toFixed(2));
+                    if (r.yearlyMatrix && r.yearlyMatrix[selectedMonthIndex]) {
+                        roundedSumAtPeak += Number(((r.yearlyMatrix[selectedMonthIndex][peakHour] || 0) / 1000).toFixed(2));
                     }
                 }
                 maxSystemPeak = roundedSumAtPeak * 1000;
@@ -262,7 +274,7 @@ export const HVACSystemsManager: React.FC = () => {
             let finalResults = roomsInSystem.map(r => {
                 const configUnit = sys.indoorUnits.find(u => u.roomId === r.id);
                 // peakLoad at the system's hour using rounded value
-                const rawPeakVal = r.yearlyMatrix ? r.yearlyMatrix[peakMonth][peakHour] : 0;
+                const rawPeakVal = r.yearlyMatrix && r.yearlyMatrix[peakMonth] ? r.yearlyMatrix[peakMonth][peakHour] || 0 : 0;
                 const requiredPeakW = Number((rawPeakVal / 1000).toFixed(2)) * 1000;
                 const individualWorstW = r.monthlyPeaks ? Math.max(...r.monthlyPeaks.map((p: any) => p.peak)) : 0;
                 
@@ -385,18 +397,26 @@ export const HVACSystemsManager: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col md:flex-row gap-3 justify-between">
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                        onClick={() => addSystem('split')}
+                        className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 px-4 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-all hover:shadow-md hover:-translate-y-[2px] active:scale-95 flex items-center gap-2 font-medium"
+                    >
+                        <Plus size={16} /> Dodaj układ Split (RAC/PAC)
+                    </button>
+                    <button
+                        onClick={() => addSystem('multi')}
+                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-all hover:shadow-md hover:-translate-y-[2px] active:scale-95 flex items-center gap-2 font-medium shadow-sm"
+                    >
+                        <Plus size={16} /> Dodaj układ Multi-Split (MXZ)
+                    </button>
+                </div>
                 <button
-                    onClick={() => addSystem('split')}
-                    className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 px-4 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-all hover:shadow-md hover:-translate-y-[2px] active:scale-95 flex items-center gap-2 font-medium"
+                    onClick={handleExportToClipboard}
+                    className="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 px-4 py-2 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-800/60 transition-all hover:shadow-md hover:-translate-y-[2px] active:scale-95 flex items-center gap-2 font-medium justify-center"
                 >
-                    <Plus size={16} /> Dodaj układ Split (RAC/PAC)
-                </button>
-                <button
-                    onClick={() => addSystem('multi')}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-all hover:shadow-md hover:-translate-y-[2px] active:scale-95 flex items-center gap-2 font-medium shadow-sm"
-                >
-                    <Plus size={16} /> Dodaj układ Multi-Split (MXZ)
+                    <Download size={16} /> Skopiuj do kosztorysu
                 </button>
             </div>
 

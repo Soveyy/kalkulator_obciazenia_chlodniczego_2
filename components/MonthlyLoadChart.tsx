@@ -21,10 +21,15 @@ const MonthlyLoadChart: React.FC = () => {
     const maxPeak = Math.max(...data.map(d => d.peak));
     const labelColor = theme === 'dark' ? '#f8fafc' : '#0f172a';
 
+    // Calculate a dynamic key to force safe unmounting/remounting on data change
+    const peaksHash = data.map(d => `${d.name}:${d.peak}`).join(',');
+    const barChartKey = `monthly-bar-${peaksHash}`;
+
     return (
         <div className="h-[350px] w-full max-w-xl mx-auto mt-4">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer key="monthly-bar-stable" width="100%" height="100%">
                 <BarChart
+                    key={barChartKey}
                     data={data}
                     margin={{ top: 30, right: 30, left: 20, bottom: 20 }}
                     barCategoryGap="5%"
@@ -44,6 +49,7 @@ const MonthlyLoadChart: React.FC = () => {
                         tickFormatter={(value) => (value / 1000).toFixed(2)}
                     />
                     <Tooltip
+                        isAnimationActive={false}
                         cursor={false}
                         contentStyle={{ 
                             borderRadius: '12px', 

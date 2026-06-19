@@ -213,6 +213,30 @@ export interface SavedProject {
     isLocal?: boolean;
 }
 
+export interface HVACExportPayload {
+  version: "1.0";
+  projectName: string;
+  exportDate: string;
+  systems: SystemConfig[];
+  unassignedRooms: RoomCoolingRequirement[];
+}
+
+export interface SystemConfig {
+  id: string;
+  type: 'SINGLE_SPLIT' | 'MULTI_SPLIT' | 'VRF';
+  requiredOutdoorCapacity: number;
+  indoorUnits: RoomCoolingRequirement[];
+}
+
+export interface RoomCoolingRequirement {
+  id: string;
+  roomName: string;
+  floorArea: number;
+  maxCoolingLoadW: number;
+  sensibleHeatRatio: number;
+  recommendedUnitCapacity: number;
+}
+
 export interface SystemUnit {
     roomId: string;
     index: number;

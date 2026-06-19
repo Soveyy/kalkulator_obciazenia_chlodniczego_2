@@ -417,8 +417,8 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
                 for (let h = 0; h < 24; h++) {
                     let sum = 0;
                     for (const r of roomsInSystem) {
-                        if (r.yearlyMatrix) {
-                            sum += r.yearlyMatrix[selectedMonthIndex][h];
+                        if (r.yearlyMatrix && r.yearlyMatrix[selectedMonthIndex]) {
+                            sum += r.yearlyMatrix[selectedMonthIndex][h] || 0;
                         }
                     }
                     if (sum > maxSystemPeak) {
@@ -430,8 +430,8 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
                 // Now snap maxSystemPeak to sum of rounded components at the chosen peakHour
                 let sumAtPeak = 0;
                 for (const r of roomsInSystem) {
-                    if (r.yearlyMatrix) {
-                        sumAtPeak += Number((r.yearlyMatrix[selectedMonthIndex][peakHour] / 1000).toFixed(2));
+                    if (r.yearlyMatrix && r.yearlyMatrix[selectedMonthIndex]) {
+                        sumAtPeak += Number(((r.yearlyMatrix[selectedMonthIndex][peakHour] || 0) / 1000).toFixed(2));
                     }
                 }
                 maxSystemPeak = sumAtPeak * 1000;
@@ -441,7 +441,7 @@ export const generateAggregatePdfReport = async (state: any, aggregateData: any,
                 const room = state.rooms.find((r: any) => r.id === unit.roomId);
                 if (room) {
                     const reqMax = room.monthlyPeaks ? Math.max(...room.monthlyPeaks.map((p: any) => p.peak)) : 0;
-                    const rawSimultaneous = room.yearlyMatrix ? room.yearlyMatrix[peakMonth][peakHour] : 0;
+                    const rawSimultaneous = room.yearlyMatrix && room.yearlyMatrix[peakMonth] ? room.yearlyMatrix[peakMonth][peakHour] || 0 : 0;
                     const simultaneous = Number((rawSimultaneous / 1000).toFixed(2)) * 1000;
                     
                     systemTableData.push([

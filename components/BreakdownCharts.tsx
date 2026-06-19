@@ -156,13 +156,20 @@ const BreakdownCharts: React.FC = () => {
         if (index !== -1) setActiveTypeIndex(index);
     };
 
+    // Calculate dynamic keys for both charts to force safe unmounting/remounting on data change
+    const sourceHash = sourceData.map(d => `${d.name}:${d.value}`).join(',') + '-' + sourceData.length;
+    const sourceChartKey = `pie-source-${sourceHash}`;
+
+    const typeHash = typeData.map(d => `${d.name}:${d.value}`).join(',') + '-' + typeData.length;
+    const typeChartKey = `pie-type-${typeHash}`;
+
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card className="flex flex-col items-center p-6 border-t-4 border-blue-500 hover:shadow-md transition-shadow overflow-visible">
                 <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Źródła Zysków</h3>
                 <div className="w-full h-[420px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart margin={{ top: 30, bottom: 30 }}>
+                    <ResponsiveContainer key="pie-source-stable" width="100%" height="100%">
+                        <PieChart key={sourceChartKey} margin={{ top: 30, bottom: 30 }}>
                             <Pie
                                 activeIndex={activeSourceIndex !== null ? activeSourceIndex : undefined}
                                 activeShape={renderActiveShape}
@@ -188,7 +195,7 @@ const BreakdownCharts: React.FC = () => {
                                     />
                                 ))}
                             </Pie>
-                            <Tooltip formatter={(value: number) => `${(value / 1000).toFixed(2)} kW`} />
+                            <Tooltip isAnimationActive={false} formatter={(value: number) => `${(value / 1000).toFixed(2)} kW`} />
                             <Legend 
                                 verticalAlign="bottom" 
                                 height={40} 
@@ -203,8 +210,8 @@ const BreakdownCharts: React.FC = () => {
             <Card className="flex flex-col items-center p-6 border-t-4 border-orange-500 hover:shadow-md transition-shadow overflow-visible">
                 <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Rodzaj Ciepła</h3>
                 <div className="w-full h-[420px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart margin={{ top: 30, bottom: 30 }}>
+                    <ResponsiveContainer key="pie-type-stable" width="100%" height="100%">
+                        <PieChart key={typeChartKey} margin={{ top: 30, bottom: 30 }}>
                             <Pie
                                 activeIndex={activeTypeIndex !== null ? activeTypeIndex : undefined}
                                 activeShape={renderActiveShape}
@@ -230,7 +237,7 @@ const BreakdownCharts: React.FC = () => {
                                     />
                                 ))}
                             </Pie>
-                            <Tooltip formatter={(value: number) => `${(value / 1000).toFixed(2)} kW`} />
+                            <Tooltip isAnimationActive={false} formatter={(value: number) => `${(value / 1000).toFixed(2)} kW`} />
                             <Legend 
                                 verticalAlign="bottom" 
                                 height={40} 

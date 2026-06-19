@@ -391,8 +391,8 @@ function calculatorReducer(state: State, action: Action): State {
 
             const newRooms = state.rooms.map(room => {
                 const tExtProfile = generateTemperatureProfile(newMonth, state.allData!);
-                const resultsWithShading = calculateGainsForMonth(room.windows, room.walls, room.input, tExtProfile, newMonth, state.allData!, room.accumulation, room.internalGains, false);
-                const resultsWithoutShading = calculateGainsForMonth(room.windows, room.walls, room.input, tExtProfile, newMonth, state.allData!, room.accumulation, room.internalGains, true);
+                const resultsWithShading = calculateGainsForMonth(room.windows || [], room.walls || [], room.input, tExtProfile, newMonth, state.allData!, room.accumulation, room.internalGains, false);
+                const resultsWithoutShading = calculateGainsForMonth(room.windows || [], room.walls || [], room.input, tExtProfile, newMonth, state.allData!, room.accumulation, room.internalGains, true);
 
                 const newResults = { withShading: resultsWithShading, withoutShading: resultsWithoutShading };
 

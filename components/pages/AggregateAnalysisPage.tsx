@@ -9,6 +9,7 @@ import { generateAggregatePdfReport } from '../../services/aggregateReportGenera
 import HVACSystemsManager from '../HVACSystemsManager';
 import SankeyChart from '../SankeyChart';
 import SolarHeatMap from '../SolarHeatMap';
+import { exportRoomsToExcel } from '../../lib/exportUtils';
 
 const AggregateAnalysisPage: React.FC = () => {
     const { state, theme, dispatch, handleCalculate, isCalculating } = useCalculator();
@@ -21,6 +22,11 @@ const AggregateAnalysisPage: React.FC = () => {
 
     const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         dispatch({ type: 'RECALCULATE_ALL_ROOMS', payload: e.target.value });
+    };
+
+    const handleExportExcel = () => {
+        if (!state.rooms || state.rooms.length === 0) return;
+        exportRoomsToExcel(state.rooms, state.projectName);
     };
 
     const handleGenerateReport = async () => {
@@ -112,22 +118,28 @@ const AggregateAnalysisPage: React.FC = () => {
             // sum matrices
             if (room.yearlyMatrix) {
                 for (let m = 0; m < 12; m++) {
-                    for (let h = 0; h < 24; h++) {
-                        aggregateYearlyMatrix[m][h] += room.yearlyMatrix[m][h];
+                    if (room.yearlyMatrix[m]) {
+                        for (let h = 0; h < 24; h++) {
+                            aggregateYearlyMatrix[m][h] += room.yearlyMatrix[m][h] || 0;
+                        }
                     }
                 }
             }
             if (room.solarMatrix) {
                 for (let m = 0; m < 12; m++) {
-                    for (let h = 0; h < 24; h++) {
-                        aggregateSolarMatrix[m][h] += room.solarMatrix[m][h];
+                    if (room.solarMatrix[m]) {
+                        for (let h = 0; h < 24; h++) {
+                            aggregateSolarMatrix[m][h] += room.solarMatrix[m][h] || 0;
+                        }
                     }
                 }
             }
             if (room.solarInstantMatrix) {
                 for (let m = 0; m < 12; m++) {
-                    for (let h = 0; h < 24; h++) {
-                        aggregateSolarInstantMatrix[m][h] += room.solarInstantMatrix[m][h];
+                    if (room.solarInstantMatrix[m]) {
+                        for (let h = 0; h < 24; h++) {
+                            aggregateSolarInstantMatrix[m][h] += room.solarInstantMatrix[m][h] || 0;
+                        }
                     }
                 }
             }
@@ -176,6 +188,7 @@ const AggregateAnalysisPage: React.FC = () => {
 
         if (chartInstanceRef.current) {
             chartInstanceRef.current.destroy();
+            chartInstanceRef.current = null;
         }
 
         const isDarkMode = theme === 'dark';
@@ -419,28 +432,42 @@ const AggregateAnalysisPage: React.FC = () => {
                         <p className="text-sm text-slate-500">Miesiąc wymiarujący, analiza układów oraz wyniki dla wszystkich pomieszczeń analizowanych w projekcie.</p>
                     </div>
                     
-                    <button
-                        onClick={handleGenerateReport}
-                        disabled={isGeneratingPdf || aggregateData.roomProfiles.length === 0}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
-                    >
-                        {isGeneratingPdf ? (
-                            <>
-                                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Generowanie...
-                            </>
-                        ) : (
-                            <>
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                Wygeneruj raport zbiorczy PDF
-                            </>
-                        )}
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button
+                            onClick={handleExportExcel}
+                            disabled={aggregateData.roomProfiles.length === 0}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
+                            title="Eksportuj zestawienie obciążeń chłodniczych wszystkich pomieszczeń do pliku Excel (.xls)"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Eksportuj do Excela
+                        </button>
+
+                        <button
+                            onClick={handleGenerateReport}
+                            disabled={isGeneratingPdf || aggregateData.roomProfiles.length === 0}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
+                        >
+                            {isGeneratingPdf ? (
+                                <>
+                                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Generowanie...
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    Wygeneruj raport zbiorczy PDF
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </div>
             </Card>
 
@@ -566,6 +593,7 @@ const AggregateAnalysisPage: React.FC = () => {
                         </div>
 
                         <SolarHeatMap 
+                            key={`solarHeat-${currentMonth}`}
                             customYearlyMatrix={aggregateData.aggregateYearlyMatrix}
                             customSolarMatrix={aggregateData.aggregateSolarMatrix}
                             customSolarInstantMatrix={aggregateData.aggregateSolarInstantMatrix}

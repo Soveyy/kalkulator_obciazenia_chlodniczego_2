@@ -172,11 +172,15 @@ const SankeyChart: React.FC<SankeyChartProps> = ({ customResults }) => {
     // Calculate total load for percentage calculation
     const totalInputLoad = Math.round(totalLoad);
 
+    // Create a dynamic key to force Recharts to cleanly unmount/remount on data change
+    const sankeyKey = `sankey-${nodes.length}-${links.length}-${totalInputLoad}`;
+
     return (
         <div className="w-full overflow-x-auto pb-4">
             <div className="min-w-[800px] h-[500px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key="sankey-rc-stable" width="100%" height="100%">
                     <Sankey
+                        key={sankeyKey}
                         data={data}
                         nodePadding={50}
                         margin={{ top: 40, right: 140, bottom: 40, left: 140 }}
@@ -184,6 +188,7 @@ const SankeyChart: React.FC<SankeyChartProps> = ({ customResults }) => {
                         node={(props) => renderSankeyNode({ ...props, totalValue: totalInputLoad })}
                     >
                         <Tooltip 
+                            isAnimationActive={false}
                             formatter={(value: number) => `${(value / 1000).toFixed(2)} kW`}
                             contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                         />

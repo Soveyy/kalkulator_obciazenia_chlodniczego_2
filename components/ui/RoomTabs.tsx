@@ -17,10 +17,10 @@ const RoomTabs: React.FC = () => {
     }, [editingRoomId]);
 
     const handleAddRoom = () => {
-        if (state.rooms.length < 6) {
+        if (state.rooms.length < 10) {
             dispatch({ type: 'ADD_ROOM' });
         } else {
-            dispatch({ type: 'ADD_TOAST', payload: { message: 'Maksymalna liczba pomieszczeń to 6.', type: 'danger' } });
+            dispatch({ type: 'ADD_TOAST', payload: { message: 'Maksymalna liczba pomieszczeń to 10.', type: 'danger' } });
         }
     };
 
@@ -37,10 +37,10 @@ const RoomTabs: React.FC = () => {
 
     const handleDuplicateRoom = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (state.rooms.length < 6) {
+        if (state.rooms.length < 10) {
             dispatch({ type: 'DUPLICATE_ROOM', payload: id });
         } else {
-            dispatch({ type: 'ADD_TOAST', payload: { message: 'Maksymalna liczba pomieszczeń to 6.', type: 'danger' } });
+            dispatch({ type: 'ADD_TOAST', payload: { message: 'Maksymalna liczba pomieszczeń to 10.', type: 'danger' } });
         }
     };
 
@@ -104,7 +104,7 @@ const RoomTabs: React.FC = () => {
                                 >
                                     <PencilIcon className="w-3.5 h-3.5" />
                                 </button>
-                                {state.rooms.length < 6 && (
+                                {state.rooms.length < 10 && (
                                     <button 
                                         onClick={(e) => handleDuplicateRoom(room.id, e)}
                                         className="p-1 text-slate-400 hover:text-green-500 rounded hover:bg-slate-200 dark:hover:bg-slate-600"
@@ -128,8 +128,8 @@ const RoomTabs: React.FC = () => {
                 </div>
             ))}
 
-            {state.rooms.length < 6 && (
-                <Tooltip text="Dodaj nowe pomieszczenie (max 6)" position="top">
+            {state.rooms.length < 10 && (
+                <Tooltip text="Dodaj nowe pomieszczenie (max 10)" position="top">
                     <button
                         onClick={handleAddRoom}
                         className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 transition-all hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-slate-700 hover:-translate-y-[2px] hover:shadow-md active:scale-95"
