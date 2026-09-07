@@ -115,7 +115,7 @@ function getShadingFactors(window: Window, allData: AllData, hour: number, month
     return { iac_beam: iac, iac_diff: iac, fr: factors.fr, is_indoor };
 }
 
-function applyRTS(radiantGains: number[], rtsFactors: number[]): number[] {
+export function applyRTS(radiantGains: number[], rtsFactors: number[]): number[] {
     const coolingLoad = Array(24).fill(0);
     for (let n = 0; n < 24; n++) {
         let currentLoad = 0;

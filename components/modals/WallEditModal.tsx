@@ -149,7 +149,7 @@ const WallEditModal: React.FC = () => {
 
                     <div>
                         <label className={`block text-sm font-medium mb-1 ${errors.includes('area') ? 'text-red-500' : 'text-slate-700 dark:text-slate-300'}`}>
-                            Powierzchnia (m²)
+                            {isRoof ? 'Powierzchnia stropodachu (m²)' : 'Powierzchnia netto ściany (m²)'}
                         </label>
                         <Input
                             type="number"
@@ -158,6 +158,11 @@ const WallEditModal: React.FC = () => {
                             min="0.1"
                             step="0.1"
                         />
+                        {!isRoof && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                Wpisz wartość ręcznie po odjęciu powierzchni okien i drzwi. Program nie odejmuje ich automatycznie.
+                            </p>
+                        )}
                     </div>
 
                     <div>

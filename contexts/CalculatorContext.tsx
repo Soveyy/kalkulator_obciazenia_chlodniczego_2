@@ -6,66 +6,19 @@ import { loadAllData } from '../services/dataService';
 import { generatePdfReport } from '../services/reportGenerator';
 import { MONTH_NAMES, ANALYSIS_MONTHS } from '../constants';
 import LZString from 'lz-string';
-import { db, auth } from '../firebase';
+import { db, auth, isFirebaseConfigured } from '../firebase';
 import { collection, doc, setDoc, getDocs, deleteDoc, getDoc, query, onSnapshot, serverTimestamp, where } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
+import { createInitialRoomState } from '../data/defaults';
+import {
+    createProjectSnapshot,
+    MAX_SHARE_PAYLOAD_LENGTH,
+    parseProjectDataJson,
+    sanitizeProjectData,
+    sanitizeSavedProject,
+} from '../services/projectDataService';
 
-const initialRoomState: RoomState = {
-    id: 'room-1',
-    name: 'Pomieszczenie 1',
-    windows: [],
-    walls: [],
-    input: { tInternal: '24', rhInternal: '50', roomArea: '' },
-    accumulation: {
-        include: true,
-        thermalMass: 'very_heavy',
-        floorType: 'panels',
-        glassPercentage: 50
-    },
-    internalGains: {
-        people: {
-            enabled: false,
-            count: 1,
-            activityLevel: 'seated_very_light',
-            startHour: 8,
-            endHour: 16,
-        },
-        lighting: {
-            enabled: false,
-            type: 'led_troffer',
-            powerDensity: 8.0,
-            startHour: 8,
-            endHour: 16,
-        },
-        equipment: [],
-        advancedAppliances: [],
-        ventilation: {
-            enabled: false,
-            type: 'none',
-            airflow: 150,
-            exchangerType: 'counterflow_hrv',
-            heatRecoveryEfficiency: 85,
-            moistureRecoveryEfficiency: 0,
-            naturalVentilationAirflow: 150,
-            includeInfiltration: false,
-            exteriorWallPerimeter: '',
-            roomHeight: 2.7,
-            buildingStories: '1',
-            tightnessClass: 'average',
-            shieldingClass: '3',
-            windSpeed: 3.4,
-        },
-    },
-    results: null,
-    activeResults: null,
-    currentMonth: '7',
-    resultMessage: '',
-    tExtProfile: [],
-    monthlyPeaks: [],
-    yearlyMatrix: null,
-    solarMatrix: null,
-    solarInstantMatrix: null,
-};
+const initialRoomState = createInitialRoomState();
 
 const initialState: State = {
     projectName: 'Mój Projekt',
@@ -106,11 +59,7 @@ function calculatorReducer(state: State, action: Action): State {
     switch (action.type) {
         case 'ADD_ROOM': {
             const newId = `room-${Date.now()}`;
-            const newRoom: RoomState = {
-                ...initialRoomState,
-                id: newId,
-                name: `Pomieszczenie ${state.rooms.length + 1}`
-            };
+            const newRoom = createInitialRoomState(newId, `Pomieszczenie ${state.rooms.length + 1}`);
             return {
                 ...state,
                 rooms: [...state.rooms, newRoom],
@@ -387,7 +336,7 @@ function calculatorReducer(state: State, action: Action): State {
             if (!state.allData) return state;
             const newMonth = action.payload;
             const monthName = MONTH_NAMES[parseInt(newMonth, 10) - 1];
-            const message = `Wyniki dla wszystkich pomieszczeń obliczone dla wybranego miesiąca: <strong>${monthName}</strong>.`;
+            const message = `Wyniki dla wszystkich pomieszczeń obliczone dla wybranego miesiąca: ${monthName}.`;
 
             const newRooms = state.rooms.map(room => {
                 const tExtProfile = generateTemperatureProfile(newMonth, state.allData!);
@@ -574,10 +523,10 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
         const initialTheme = savedTheme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
         
         const savedTutorialMode = localStorage.getItem('hvac_tutorial_mode');
-        const initialTutorialMode = savedTutorialMode ? JSON.parse(savedTutorialMode) : false;
+        const initialTutorialMode = savedTutorialMode === 'true';
         
         const savedHasSeenWelcome = localStorage.getItem('hvac_has_seen_welcome');
-        const initialHasSeenWelcome = savedHasSeenWelcome ? JSON.parse(savedHasSeenWelcome) : false;
+        const initialHasSeenWelcome = savedHasSeenWelcome === 'true';
 
         dispatch({ type: 'SET_STATE', payload: { 
             theme: initialTheme,
@@ -594,7 +543,16 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             if (savedProjectsStr) {
                 try {
                     const parsed = JSON.parse(savedProjectsStr);
-                    return parsed.map((p: any) => ({ ...p, isLocal: true }));
+                    if (!Array.isArray(parsed)) throw new Error('Lista projektów nie jest tablicą.');
+
+                    return parsed.flatMap((project: unknown) => {
+                        try {
+                            return [sanitizeSavedProject(project, 'local')];
+                        } catch (error) {
+                            console.warn('Pominięto uszkodzony projekt lokalny.', error);
+                            return [];
+                        }
+                    });
                 } catch (e) {
                     console.error("Failed to parse local projects", e);
                 }
@@ -607,7 +565,15 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
         let currentLocalProjects = localProjects;
         let unsubscribeSnapshot: (() => void) | undefined;
 
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
+        if (!auth || !db) {
+            dispatch({ type: 'SET_SAVED_PROJECTS', payload: currentLocalProjects });
+            return;
+        }
+
+        const firebaseAuth = auth;
+        const firestoreDb = db;
+
+        const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
             // Clean up existing snapshot listener if auth state changes
             if (unsubscribeSnapshot) {
                 unsubscribeSnapshot();
@@ -615,18 +581,16 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             }
 
             if (user) {
-                const projectsRef = collection(db, 'users', user.uid, 'projects');
+                const projectsRef = collection(firestoreDb, 'users', user.uid, 'projects');
                 const q = query(projectsRef, where('userId', '==', user.uid));
                 unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
                     const cloudProjects: SavedProject[] = [];
-                    snapshot.forEach(doc => {
-                        const data = doc.data();
-                        cloudProjects.push({
-                            name: data.name,
-                            date: data.date,
-                            data: JSON.parse(data.data),
-                            isCloud: true
-                        });
+                    snapshot.forEach(projectDocument => {
+                        try {
+                            cloudProjects.push(sanitizeSavedProject(projectDocument.data(), 'cloud'));
+                        } catch (error) {
+                            console.warn(`Pominięto uszkodzony projekt z chmury: ${projectDocument.id}.`, error);
+                        }
                     });
                     
                     // Merge local and cloud projects
@@ -672,15 +636,18 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
 
         if (data) {
             try {
-                const decompressed = LZString.decompressFromEncodedURIComponent(data);
-                if (decompressed) {
-                    const projectData = JSON.parse(decompressed);
-                    dispatch({ type: 'SET_STATE', payload: projectData });
-                    dispatch({ type: 'ADD_TOAST', payload: { message: 'Projekt wczytany z linku!', type: 'success' } });
-                    
-                    // Clean URL
-                    window.history.replaceState({}, document.title, window.location.pathname);
+                if (data.length > MAX_SHARE_PAYLOAD_LENGTH) {
+                    throw new Error('Dane udostępnionego projektu są zbyt duże.');
                 }
+                const decompressed = LZString.decompressFromEncodedURIComponent(data);
+                if (!decompressed) throw new Error('Nie udało się rozpakować danych projektu.');
+
+                const projectData = parseProjectDataJson(decompressed);
+                dispatch({ type: 'SET_STATE', payload: projectData });
+                dispatch({ type: 'ADD_TOAST', payload: { message: 'Projekt wczytany z linku i sprawdzony.', type: 'success' } });
+
+                // Clean URL after a successful import.
+                window.history.replaceState({}, document.title, window.location.pathname);
             } catch (e) {
                 console.error("Failed to load project from URL", e);
                 dispatch({ type: 'ADD_TOAST', payload: { message: 'Nie udało się wczytać projektu z linku.', type: 'danger' } });
@@ -831,7 +798,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             const monthName = MONTH_NAMES[parseInt(buildingWorstMonth, 10) - 1];
             const now = new Date();
             const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            const message = `<span class="inline-flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-green-500 animate-[spin_3s_linear_infinite]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Przeliczono automatycznie o ${timeString} dla całego budynku.</span>`;
+            const message = `Przeliczono automatycznie o ${timeString} dla całego budynku.`;
 
             // Second pass: generate results for the building's worst month
             const newRooms = state.rooms.map((room, index) => {
@@ -880,12 +847,11 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                     activeRoom.internalGains,
                     !state.isShadingViewActive
                 );
-                const worstMonthName = MONTH_NAMES[parseInt(worstMonth, 10) - 1];
                 const now = new Date();
                 const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                 
                 // Only show critical month message
-                const message = `<span class="inline-flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-green-500 animate-[spin_3s_linear_infinite]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Przeliczono automatycznie o ${timeString}.</span>`;
+                const message = `Przeliczono automatycznie o ${timeString}.`;
                 
                 // Recalculate for current viewing month (don't force switch)
                 performCalculation(activeRoom.currentMonth || worstMonth, message);
@@ -923,43 +889,56 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
     const enhancedDispatch = useCallback((action: Action) => {
         if (action.type === 'SAVE_PROJECT') {
             // Legacy save
-            const projectData = {
+            const projectData = createProjectSnapshot({
                 projectName: state.projectName,
                 rooms: state.rooms,
                 activeRoomId: state.activeRoomId,
                 systems: state.systems,
-            };
+            });
             localStorage.setItem('heatGainProject', JSON.stringify(projectData));
             dispatch({ type: 'ADD_TOAST', payload: { message: 'Projekt zapisany (szybki zapis)!', type: 'success' } });
         } else if (action.type === 'LOAD_PROJECT') {
             // Legacy load
             const savedProject = localStorage.getItem('heatGainProject');
             if (savedProject) {
-                const projectData = JSON.parse(savedProject);
-                dispatch({ type: 'SET_STATE', payload: projectData });
-                dispatch({ type: 'ADD_TOAST', payload: { message: 'Projekt wczytany!', type: 'success' } });
+                try {
+                    const projectData = parseProjectDataJson(savedProject);
+                    dispatch({ type: 'SET_STATE', payload: projectData });
+                    dispatch({ type: 'ADD_TOAST', payload: { message: 'Projekt wczytany i sprawdzony.', type: 'success' } });
+                } catch (error) {
+                    console.error('Failed to load quick save', error);
+                    dispatch({ type: 'ADD_TOAST', payload: { message: 'Szybki zapis jest uszkodzony lub ma nieprawidłowy format.', type: 'danger' } });
+                }
             } else {
                 dispatch({ type: 'ADD_TOAST', payload: { message: 'Nie znaleziono szybkiego zapisu.', type: 'info' } });
             }
         } else if (action.type === 'SAVE_PROJECT_AS') {
             const name = action.payload;
-            const projectData = {
+            const projectData = createProjectSnapshot({
                 projectName: name,
                 rooms: state.rooms,
                 activeRoomId: state.activeRoomId,
                 systems: state.systems,
-            };
+            });
             
             const newProject: SavedProject = {
                 name,
                 date: new Date().toISOString(),
-                data: projectData
+                data: projectData,
+                isLocal: true,
             };
 
-            const updatedLocalProjects = [...state.savedProjects.filter(p => !p.isCloud && p.name !== name), newProject];
+            const updatedLocalProjects = [...state.savedProjects.filter(p => p.isLocal && p.name !== name), newProject];
             localStorage.setItem('hvac_saved_projects', JSON.stringify(updatedLocalProjects.map(p => ({name: p.name, date: p.date, data: p.data}))));
+            const cloudVersion = state.savedProjects.find(p => p.name === name && p.isCloud);
+            const updatedSavedProjects = [
+                ...state.savedProjects.filter(p => p.name !== name),
+                cloudVersion ? { ...cloudVersion, ...newProject, isCloud: true, isLocal: true } : newProject,
+            ];
+            dispatch({ type: 'SET_SAVED_PROJECTS', payload: updatedSavedProjects });
 
-            if (auth.currentUser) {
+            const currentUser = auth?.currentUser;
+            if (currentUser && db) {
                 // Check if user has reached max limit
                 if (state.savedProjects.filter(p => p.isCloud).length >= 100 && !state.savedProjects.find(p => p.name === name && p.isCloud)) {
                     dispatch({ type: 'ADD_TOAST', payload: { message: 'Osiągnięto limit 100 projektów w chmurze.', type: 'danger' } });
@@ -969,27 +948,18 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                     return;
                 }
 
-                const firestoreDoc = {
-                    name,
-                    date: new Date().toISOString(),
-                    data: JSON.stringify(projectData),
-                    userId: auth.currentUser.uid,
-                    createdAt: new Date().toISOString(), // For fallback
-                    updatedAt: new Date().toISOString()  // For fallback, will use serverTimestamp or Date.now string? Actually rule expects timestamp, but if we send ISO string, rule might fail if we don't pass true Date object. Firestore web sdk converts Date, but let's just use string in rules? No, rules expect timestamp.
-                };
-                
                 // Firestore payload
                 const firestorePayload = {
                     name,
                     date: new Date().toISOString(),
                     data: JSON.stringify(projectData),
-                    userId: auth.currentUser.uid,
+                    userId: currentUser.uid,
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp()
                 };
 
                 const projectId = name.replace(/[^a-zA-Z0-9_-]/g, '_');
-                setDoc(doc(db, 'users', auth.currentUser.uid, 'projects', projectId), firestorePayload, { merge: true })
+                setDoc(doc(db, 'users', currentUser.uid, 'projects', projectId), firestorePayload, { merge: true })
                     .then(() => {
                         dispatch({ type: 'SET_INPUT', payload: { ...activeRoom.input, projectName: name } });
                         dispatch({ type: 'ADD_TOAST', payload: { message: `Projekt "${name}" zapisany!`, type: 'success' } });
@@ -998,15 +968,24 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                         console.error('Failed to save', e);
                         dispatch({ type: 'ADD_TOAST', payload: { message: 'Błąd zapisu projektu w chmurze.', type: 'danger' } });
                     });
-            } else {
+            } else if (isFirebaseConfigured) {
                 dispatch({ type: 'ADD_TOAST', payload: { message: `Zaloguj się, aby zapisać projekt w chmurze!`, type: 'danger' } });
+            } else {
+                dispatch({ type: 'SET_INPUT', payload: { ...activeRoom.input, projectName: name } });
+                dispatch({ type: 'ADD_TOAST', payload: { message: `Projekt "${name}" zapisany lokalnie.`, type: 'success' } });
             }
 
         } else if (action.type === 'LOAD_PROJECT_FROM_LIST') {
             const project = state.savedProjects.find(p => p.name === action.payload);
             if (project) {
-                dispatch({ type: 'SET_STATE', payload: project.data });
-                dispatch({ type: 'ADD_TOAST', payload: { message: `Projekt "${project.name}" wczytany!`, type: 'success' } });
+                try {
+                    const projectData = sanitizeProjectData(project.data);
+                    dispatch({ type: 'SET_STATE', payload: projectData });
+                    dispatch({ type: 'ADD_TOAST', payload: { message: `Projekt "${project.name}" wczytany i sprawdzony.`, type: 'success' } });
+                } catch (error) {
+                    console.error('Failed to load saved project', error);
+                    dispatch({ type: 'ADD_TOAST', payload: { message: `Projekt "${project.name}" jest uszkodzony lub ma nieprawidłowy format.`, type: 'danger' } });
+                }
             }
         } else if (action.type === 'DELETE_PROJECT') {
             const projectToDelete = state.savedProjects.find(p => p.name === action.payload);
@@ -1018,9 +997,10 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                 localStorage.setItem('hvac_saved_projects', JSON.stringify(updatedLocalProjects.map(p => ({name: p.name, date: p.date, data: p.data}))));
             }
             
-            if (isCloud && auth.currentUser) {
+            const currentUser = auth?.currentUser;
+            if (isCloud && currentUser && db) {
                 const projectId = action.payload.replace(/[^a-zA-Z0-9_-]/g, '_');
-                deleteDoc(doc(db, 'users', auth.currentUser.uid, 'projects', projectId))
+                deleteDoc(doc(db, 'users', currentUser.uid, 'projects', projectId))
                     .then(() => {
                         dispatch({ type: 'ADD_TOAST', payload: { message: 'Projekt usunięty z chmury.', type: 'info' } });
                     })
@@ -1037,7 +1017,8 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
 
         } else if (action.type === 'SYNC_PROJECT') {
             const projectToSync = state.savedProjects.find(p => p.name === action.payload);
-            if (projectToSync && projectToSync.isLocal && !projectToSync.isCloud && auth.currentUser) {
+            const currentUser = auth?.currentUser;
+            if (projectToSync && projectToSync.isLocal && !projectToSync.isCloud && currentUser && db) {
                 
                 if (state.savedProjects.filter(p => p.isCloud).length >= 100) {
                     dispatch({ type: 'ADD_TOAST', payload: { message: 'Osiągnięto limit 100 projektów w chmurze.', type: 'danger' } });
@@ -1048,13 +1029,13 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                     name: projectToSync.name,
                     date: projectToSync.date,
                     data: JSON.stringify(projectToSync.data),
-                    userId: auth.currentUser.uid,
+                    userId: currentUser.uid,
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp()
                 };
 
                 const projectId = projectToSync.name.replace(/[^a-zA-Z0-9_-]/g, '_');
-                setDoc(doc(db, 'users', auth.currentUser.uid, 'projects', projectId), firestoreDoc, { merge: true })
+                setDoc(doc(db, 'users', currentUser.uid, 'projects', projectId), firestoreDoc, { merge: true })
                     .then(() => {
                         dispatch({ type: 'ADD_TOAST', payload: { message: `Projekt "${projectToSync.name}" zsynchronizowany z chmurą!`, type: 'success' } });
                     })
@@ -1065,24 +1046,12 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             }
         } else if (action.type === 'GENERATE_SHARE_LINK') {
             // Strip out massive calculated arrays to keep the URL short
-            const strippedRooms = state.rooms.map(room => ({
-                ...room,
-                results: null,
-                activeResults: null,
-                tExtProfile: [],
-                monthlyPeaks: [],
-                yearlyMatrix: null,
-                solarMatrix: null,
-                solarInstantMatrix: null,
-                resultMessage: ''
-            }));
-
-            const projectData = {
+            const projectData = createProjectSnapshot({
                 projectName: state.projectName,
-                rooms: strippedRooms,
+                rooms: state.rooms,
                 activeRoomId: state.activeRoomId,
                 systems: state.systems,
-            };
+            });
             const json = JSON.stringify(projectData);
             const compressed = LZString.compressToEncodedURIComponent(json);
             
@@ -1098,7 +1067,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
         } else if (action.type === 'RESET_PROJECT') {
             dispatch({ type: 'SET_STATE', payload: {
                 projectName: initialState.projectName,
-                rooms: initialState.rooms,
+                rooms: [createInitialRoomState()],
                 activeRoomId: initialState.activeRoomId,
                 systems: initialState.systems,
             }});

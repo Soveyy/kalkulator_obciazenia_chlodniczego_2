@@ -81,6 +81,9 @@ const VentilationPanel: React.FC = () => {
                 )}
                 <div className="space-y-4">
                     <Checkbox id="infiltration_enabled" label="Uwzględniaj infiltrację" name="includeInfiltration" checked={ventilation.includeInfiltration} onChange={handleChange} />
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Infiltracja jest szacowana uproszczoną metodą ELA. Dla szczelnie zamkniętego pomieszczenia podczas pracy klimatyzacji jej wpływ jest zwykle niewielki; wynik nie zastępuje pomiaru szczelności budynku.
+                    </p>
                     {ventilation.includeInfiltration && (
                         <div className="pl-4 border-l-2 border-slate-200 dark:border-slate-700 space-y-4 mt-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

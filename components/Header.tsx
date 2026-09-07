@@ -7,7 +7,7 @@ import { LogOut, User as UserIcon } from 'lucide-react';
 
 const Header: React.FC = () => {
     const { theme, toggleTheme, dispatch } = useCalculator();
-    const user = auth.currentUser;
+    const user = auth?.currentUser;
 
     return (
         <header className="mb-4">
@@ -56,13 +56,15 @@ const Header: React.FC = () => {
                             </span>
                         </div>
                     )}
-                    <button
-                        onClick={logout}
-                        className="p-2 rounded-full bg-red-100/50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
-                        title="Wyloguj się"
-                    >
-                        <LogOut className="w-5 h-5" />
-                    </button>
+                    {user && (
+                        <button
+                            onClick={logout}
+                            className="p-2 rounded-full bg-red-100/50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
+                            title="Wyloguj się"
+                        >
+                            <LogOut className="w-5 h-5" />
+                        </button>
+                    )}
                     <button
                         onClick={toggleTheme}
                         className="p-2 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"

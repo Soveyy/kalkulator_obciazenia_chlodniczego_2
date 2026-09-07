@@ -396,10 +396,13 @@ const AggregateAnalysisPage: React.FC = () => {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex-1">
                         <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-0.5">Wybrany miesiąc obliczeń</h3>
-                        <div 
-                            className="text-slate-600 dark:text-slate-400 text-sm"
-                            dangerouslySetInnerHTML={{ __html: resultMessage }}
-                        />
+                        <div className="text-slate-600 dark:text-slate-400 text-sm inline-flex items-center gap-2">
+                            <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" />
+                            <span>{resultMessage}</span>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            Automatyczny miesiąc wymiarujący jest celowo wybierany tylko z okresu kwiecień–wrzesień.
+                        </p>
                     </div>
                     <div className="flex items-center gap-2">
                         <label htmlFor="global-month-select" className="text-sm font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">

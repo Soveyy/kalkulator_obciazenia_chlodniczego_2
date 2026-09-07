@@ -55,7 +55,7 @@ const WallCard: React.FC<WallCardProps> = ({ wall }) => {
         <p>Wykończenie: <strong className="text-slate-800 dark:text-slate-100">{materialData?.label || 'Nieznane'} (α={materialData?.absorptance || 0.65})</strong></p>
         {!isRoof && <p>Kierunek: <strong className="text-slate-800 dark:text-slate-100">{dirLabel.split(' (')[0]}</strong></p>}
         <p>wsp. U: <strong className="text-slate-800 dark:text-slate-100">{wall.u} W/(m²·K)</strong></p>
-        <p>Powierzchnia: <strong className="text-slate-800 dark:text-slate-100">{wall.area} m²</strong></p>
+        <p>{isRoof ? 'Powierzchnia' : 'Powierzchnia netto'}: <strong className="text-slate-800 dark:text-slate-100">{wall.area} m²</strong></p>
       </div>
       <div className="grid grid-cols-3 gap-2 mt-auto">
         <Button onClick={handleEdit} className="py-1 px-2 text-xs"><PencilIcon className="w-4 h-4 inline-block mr-1"/>Edytuj</Button>

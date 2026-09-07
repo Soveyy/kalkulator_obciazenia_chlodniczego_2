@@ -1,20 +1,42 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Kalkulator obciążenia chłodniczego HVAC
 
-# Run and deploy your AI Studio app
+Aplikacja React/Vite do obliczania obciążenia chłodniczego metodą ASHRAE RTS.
 
-This contains everything you need to run your app locally.
+## Podgląd lokalny
 
-View your app in AI Studio: https://ai.studio/apps/915e68e8-e88a-4da6-8f38-11e5a750703e
+Wymagany jest Node.js. Repozytorium ma dodatkowy poziom katalogu, dlatego polecenia aplikacji uruchamiaj w folderze:
 
-## Run Locally
+```text
+C:\Users\Sovey\Desktop\Kalkulator_HVAC_projekt_ChatGPT\github_kod\kalkulator_obciazenia_chlodniczego_2
+```
 
-**Prerequisites:**  Node.js
+Pierwsze uruchomienie:
 
+```powershell
+cd C:\Users\Sovey\Desktop\Kalkulator_HVAC_projekt_ChatGPT\github_kod\kalkulator_obciazenia_chlodniczego_2
+npm install
+npm run dev
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Następnie otwórz [http://localhost:3000](http://localhost:3000). Serwer Vite automatycznie odświeża aplikację po zapisaniu zmian w kodzie. Przy kolejnych sesjach wystarczy `npm run dev`. Bez pliku `.env.local` kalkulator działa lokalnie, ale logowanie i synchronizacja projektów z chmurą są wyłączone.
+
+## Kontrola przed wysłaniem zmian
+
+```powershell
+npm run lint
+npm test
+npm run build
+```
+
+## Bezpieczny przepływ przez GitHub Desktop
+
+1. Upewnij się, że w lewym górnym rogu jest wybrana gałąź `develop`.
+2. Obejrzyj zmiany lokalnie pod adresem `http://localhost:3000`.
+3. Uruchom lint, testy i build.
+4. W GitHub Desktop wpisz opis i wybierz **Commit to develop**.
+5. Wybierz **Push origin**. Vercel może wtedy przygotować podgląd gałęzi `develop`.
+6. Nie przełączaj ani nie wysyłaj zmian bezpośrednio na `main`; produkcję aktualizuj dopiero po zaakceptowaniu podglądu.
+
+## Konfiguracja Firebase
+
+Do funkcji logowania i zapisu w chmurze służą zmienne `VITE_FIREBASE_*` opisane w `.env.example`. Lokalny plik `.env.local` nie jest zapisywany w Git.
