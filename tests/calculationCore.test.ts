@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ANALYSIS_MONTHS } from '../constants';
 import { RTS_PRESET_IDS } from '../data/rtsPresets';
-import { applyRTS, generateAshraeTemperatureProfile } from '../services/calculationService';
+import { CTS_PRESET_IDS } from '../data/ctsPresets';
+import { applyRTS, generateAshraeTemperatureProfile, getOpaqueSurfaceSolarGeometry } from '../services/calculationService';
+import type { Wall } from '../types';
 
 describe('podstawowe niezmienniki silnika obliczeniowego', () => {
     it('ogranicza automatyczny wybór miesiąca do kwietnia–września', () => {
@@ -36,6 +38,39 @@ describe('podstawowe niezmienniki silnika obliczeniowego', () => {
         expect(load.reduce((sum, value) => sum + value, 0)).toBeCloseTo(100, 10);
     });
 
+    it('dobiera promieniowanie i poprawkę długofalową do nachylenia przegrody', () => {
+        const base: Pick<Wall, 'id' | 'u' | 'area' | 'material'> = {
+            id: 1,
+            u: 0.15,
+            area: 20,
+            material: 'metal_new',
+        };
+        const flatRoof = getOpaqueSurfaceSolarGeometry({
+            ...base,
+            type: 'stropodach_zelbetowy_ocieplony',
+            direction: 'W',
+            tilt: 0,
+        });
+        const pitchedRoof = getOpaqueSurfaceSolarGeometry({
+            ...base,
+            type: 'dach_skosny_drewniany',
+            direction: 'SW',
+            tilt: 45,
+        });
+        const wall = getOpaqueSurfaceSolarGeometry({
+            ...base,
+            type: 'sciana_murowana_ocieplona',
+            direction: 'E',
+            tilt: 90,
+        });
+
+        expect(flatRoof).toMatchObject({ isRoof: true, direction: 'S', tilt: 0, tiltKey: '0' });
+        expect(flatRoof.longwaveCorrection).toBeCloseTo(63, 10);
+        expect(pitchedRoof).toMatchObject({ isRoof: true, direction: 'SW', tilt: 45, tiltKey: '45' });
+        expect(pitchedRoof.longwaveCorrection).toBeCloseTo(63 * Math.SQRT1_2, 10);
+        expect(wall).toMatchObject({ isRoof: false, direction: 'E', tilt: 90, tiltKey: '90', longwaveCorrection: 0 });
+    });
+
     it('chroni kompletną bibliotekę dziewięciu presetów RTS oraz tabele CTS', () => {
         const rts = JSON.parse(readFileSync(new URL('../public/data/rts_factors.json', import.meta.url), 'utf8'));
         const cts = JSON.parse(readFileSync(new URL('../public/data/cts_factors.json', import.meta.url), 'utf8'));
@@ -56,9 +91,12 @@ describe('podstawowe niezmienniki silnika obliczeniowego', () => {
             }
         }
 
+        expect(Object.keys(cts.cts_coefficients).sort()).toEqual([...CTS_PRESET_IDS].sort());
+        expect(Object.keys(cts.metadata.presets).sort()).toEqual([...CTS_PRESET_IDS].sort());
         for (const series of Object.values(cts.cts_coefficients) as number[][]) {
             expect(series).toHaveLength(24);
-            expect(series.reduce((sum, value) => sum + value, 0)).toBeCloseTo(1, 2);
+            expect(series.every(value => Number.isFinite(value) && value >= 0)).toBe(true);
+            expect(series.reduce((sum, value) => sum + value, 0)).toBeCloseTo(1, 8);
         }
     });
 });

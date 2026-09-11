@@ -13,6 +13,7 @@ import {
     Window,
 } from '../types';
 import { createInitialRoomState } from '../data/defaults';
+import { CTS_PRESET_IDS, CTS_PRESETS } from '../data/ctsPresets';
 
 export type ProjectData = Pick<State, 'projectName' | 'rooms' | 'activeRoomId' | 'systems'>;
 
@@ -174,13 +175,26 @@ function sanitizeWalls(value: unknown): Wall[] {
         if (seenIds.has(id)) throw new Error('Projekt zawiera zduplikowane identyfikatory przegród.');
         seenIds.add(id);
 
+        const legacyTypeMap: Record<string, Wall['type']> = {
+            sciana_ocieplona: 'sciana_murowana_ocieplona',
+            sciana_nieocieplona: 'sciana_murowana_nieocieplona',
+            stropodach_ocieplony: 'stropodach_zelbetowy_ocieplony',
+        };
+        const rawType = typeof item.type === 'string' ? item.type : '';
+        const migratedType = legacyTypeMap[rawType] || rawType;
+        const type = enumValue(migratedType, CTS_PRESET_IDS, 'sciana_murowana_ocieplona');
+        const preset = CTS_PRESETS[type];
+        const requestedTilt = numberValue(item.tilt, preset.defaultTilt, 0, 90);
+        const tilt = preset.allowedTilts.includes(requestedTilt) ? requestedTilt : preset.defaultTilt;
+
         return {
             id,
-            type: enumValue(item.type, ['sciana_ocieplona', 'sciana_nieocieplona', 'stropodach_ocieplony'] as const, 'sciana_ocieplona'),
-            direction: text(item.direction, 'S', 8),
-            u: numberValue(item.u, 0.2, 0.01, 20),
+            type,
+            direction: tilt === 0 ? preset.defaultDirection : text(item.direction, preset.defaultDirection, 8),
+            tilt,
+            u: numberValue(item.u, preset.defaultU, 0.01, 20),
             area: numberValue(item.area, 1, 0.01, 10_000),
-            material: text(item.material, 'brick_red', 60),
+            material: text(item.material, preset.defaultMaterial, 60),
         };
     });
 }

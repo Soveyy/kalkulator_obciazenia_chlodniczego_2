@@ -35,7 +35,7 @@ const MethodologyModal: React.FC = () => {
                         </p>
                     </li>
                     <li>
-                        <strong className="font-semibold text-slate-800 dark:text-slate-100">Przegrody Nieprzezroczyste (Ściany Zewnętrzne i Stropodachy)</strong>
+                        <strong className="font-semibold text-slate-800 dark:text-slate-100">Przegrody nieprzezroczyste (ściany i dachy)</strong>
                         <p className="mt-1 pl-4 border-l-2 border-slate-200 dark:border-slate-700">
                             Wpływ przegród masywnych obliczany jest na bazie tzw. temperatury słoneczno-powietrznej (Sol-Air Temperature). Oznacza to, że uwzględniana jest nie tylko sucha różnica temperatur między zewnątrz a wewnątrz budynku, lecz także intensywne nagrzewanie się fasady i dachu z powodu pochłaniania promieni słonecznych. Współczynnik absorpcji zależy bezpośrednio od wybranego koloru elewacji.
                         </p>

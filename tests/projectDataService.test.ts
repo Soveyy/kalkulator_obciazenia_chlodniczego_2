@@ -80,6 +80,32 @@ describe('bezpieczne wczytywanie projektu', () => {
         expect(project.rooms[0].accumulation).not.toHaveProperty('thermalMass');
     });
 
+    it('migruje dawne typy przegród i uzupełnia ich geometrię', () => {
+        const room = createInitialRoomState();
+        const project = sanitizeProjectData({
+            projectName: 'Migracja CTS',
+            rooms: [{
+                ...room,
+                walls: [
+                    { id: 1, type: 'sciana_ocieplona', direction: 'E', u: 0.2, area: 10, material: 'paint_white' },
+                    { id: 2, type: 'sciana_nieocieplona', direction: 'W', u: 1.3, area: 8, material: 'brick_red' },
+                    { id: 3, type: 'stropodach_ocieplony', direction: 'N', u: 0.15, area: 20, material: 'shingles_black' },
+                ],
+            }],
+            activeRoomId: room.id,
+            systems: [],
+        });
+
+        expect(project.rooms[0].walls.map(wall => wall.type)).toEqual([
+            'sciana_murowana_ocieplona',
+            'sciana_murowana_nieocieplona',
+            'stropodach_zelbetowy_ocieplony',
+        ]);
+        expect(project.rooms[0].walls.map(wall => wall.tilt)).toEqual([90, 90, 0]);
+        expect(project.rooms[0].walls[0]).toMatchObject({ direction: 'E', u: 0.2, material: 'paint_white' });
+        expect(project.rooms[0].walls[2].direction).toBe('S');
+    });
+
     it('odrzuca niedozwolone klucze i projekt bez pomieszczeń', () => {
         expect(() => parseProjectDataJson('{"projectName":"X","rooms":[],"__proto__":{"polluted":true}}'))
             .toThrow(/niedozwolone pole/i);

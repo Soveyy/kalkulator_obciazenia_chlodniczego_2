@@ -18,10 +18,21 @@ export interface Overhang {
     distanceAbove: number; // Odległość pionowa nad oknem
 }
 
+export type OpaquePartitionType =
+  | 'sciana_murowana_ocieplona'
+  | 'sciana_murowana_nieocieplona'
+  | 'sciana_szkieletowa_ocieplona'
+  | 'sciana_warstwowa_pir'
+  | 'stropodach_zelbetowy_ocieplony'
+  | 'dach_skosny_drewniany'
+  | 'dach_lekki_pir';
+
 export interface Wall {
   id: number;
-  type: 'sciana_ocieplona' | 'sciana_nieocieplona' | 'stropodach_ocieplony';
+  type: OpaquePartitionType;
   direction: string;
+  /** Nachylenie od poziomu: 0° = dach płaski, 90° = ściana pionowa. */
+  tilt: number;
   u: number;
   area: number;
   material?: string;

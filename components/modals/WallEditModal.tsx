@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Select from '../ui/Select';
 import Tooltip from '../ui/Tooltip';
 import { useCalculator } from '../../contexts/CalculatorContext';
-import { Wall } from '../../types';
+import type { OpaquePartitionType, Wall } from '../../types';
 import { WINDOW_DIRECTIONS, WALL_MATERIALS } from '../../constants';
+import { CTS_PRESET_IDS, CTS_PRESETS, isRoofPreset } from '../../data/ctsPresets';
 
 const WallEditModal: React.FC = () => {
     const { state, dispatch } = useCalculator();
@@ -18,27 +19,39 @@ const WallEditModal: React.FC = () => {
     const [wall, setWall] = useState<any | null>(null);
     const [errors, setErrors] = useState<string[]>([]);
 
+    const preset = wall ? CTS_PRESETS[wall.type as OpaquePartitionType] : null;
+    const isRoof = wall && preset ? isRoofPreset(wall.type as OpaquePartitionType) : false;
+    const tilt = Number(wall?.tilt ?? preset?.defaultTilt ?? 90);
+    const requiresDirection = Boolean(wall && (!isRoof || tilt > 0));
+
     useEffect(() => {
         if (isModalOpen) {
             if (isNew) {
-                const defaultWall: any = {
+                const defaultPreset = CTS_PRESETS.sciana_murowana_ocieplona;
+                setWall({
                     id: 0,
-                    type: 'sciana_ocieplona',
+                    type: defaultPreset.id,
                     direction: '',
-                    u: 0.2,
+                    tilt: defaultPreset.defaultTilt,
+                    u: defaultPreset.defaultU,
                     area: '',
-                    material: 'brick_red'
-                };
-                setWall(defaultWall);
+                    material: defaultPreset.defaultMaterial,
+                });
                 dispatch({ type: 'SET_SELECTED_DIRECTION', payload: null });
                 setErrors([]);
             } else {
                 const originalWall = activeRoom.walls?.find(w => w.id === wallId);
                 if (originalWall) {
                     const wallCopy = JSON.parse(JSON.stringify(originalWall));
-                    if (!wallCopy.material) wallCopy.material = 'brick_red';
+                    const loadedPreset = CTS_PRESETS[wallCopy.type as OpaquePartitionType] || CTS_PRESETS.sciana_murowana_ocieplona;
+                    if (!wallCopy.material) wallCopy.material = loadedPreset.defaultMaterial;
+                    if (!Number.isFinite(Number(wallCopy.tilt))) wallCopy.tilt = loadedPreset.defaultTilt;
                     setWall(wallCopy);
-                    dispatch({ type: 'SET_SELECTED_DIRECTION', payload: wallCopy.direction });
+                    dispatch({
+                        type: 'SET_SELECTED_DIRECTION',
+                        payload: Number(wallCopy.tilt) === 0 ? null : wallCopy.direction,
+                    });
+                    setErrors([]);
                 }
             }
         } else {
@@ -47,158 +60,258 @@ const WallEditModal: React.FC = () => {
     }, [isModalOpen, wallId, activeRoom.walls, isNew]);
 
     useEffect(() => {
-        if (wall && state.selectedDirection && state.selectedDirection !== wall.direction) {
-            setWall((prev: any) => prev ? { ...prev, direction: state.selectedDirection! } : null);
+        if (wall && requiresDirection && state.selectedDirection && state.selectedDirection !== wall.direction) {
+            setWall((previous: any) => previous ? { ...previous, direction: state.selectedDirection! } : null);
         }
-    }, [state.selectedDirection]);
+    }, [state.selectedDirection, requiresDirection]);
 
-    const handleClose = () => dispatch({ type: 'SET_MODAL', payload: { isOpen: false } });
-
-    const handleSave = () => {
-        if (wall) {
-            const newErrors: string[] = [];
-            
-            if (!wall.area || wall.area === '' || wall.area <= 0) newErrors.push('area');
-            if (wall.type !== 'stropodach_ocieplony' && !wall.direction) newErrors.push('direction');
-            if (wall.u === '' || wall.u <= 0 || wall.u > 10) newErrors.push('u');
-
-            if (newErrors.length > 0) {
-                setErrors(newErrors);
-                let message = 'Proszę poprawić błędy w formularzu.';
-                if (newErrors.includes('area')) message = 'Powierzchnia musi być większa od 0.';
-                if (newErrors.includes('u')) message = 'wsp. U musi być w zakresie 0 - 10.';
-                if (newErrors.includes('direction')) message = 'Proszę wybrać kierunek świata.';
-                
-                dispatch({ type: 'ADD_TOAST', payload: { message, type: 'danger' } });
-                return;
-            }
-
-            const wallToSave: Wall = {
-                id: isNew ? Date.now() : wall.id,
-                type: wall.type,
-                direction: wall.type === 'stropodach_ocieplony' ? 'S' : wall.direction,
-                u: Number(wall.u),
-                area: Number(wall.area),
-                material: wall.material || 'brick_red'
-            };
-
-            if (isNew) {
-                dispatch({ type: 'ADD_WALL', payload: wallToSave });
-            } else {
-                dispatch({ type: 'UPDATE_WALL', payload: wallToSave });
-            }
-            handleClose();
-        }
+    const handleClose = () => {
+        dispatch({ type: 'SET_SELECTED_DIRECTION', payload: null });
+        dispatch({ type: 'SET_MODAL', payload: { isOpen: false } });
     };
 
-    if (!isModalOpen || !wall) return null;
+    const handlePresetChange = (nextType: OpaquePartitionType) => {
+        const nextPreset = CTS_PRESETS[nextType];
+        setWall((previous: any) => ({
+            ...previous,
+            type: nextType,
+            u: nextPreset.defaultU,
+            tilt: nextPreset.defaultTilt,
+            direction: nextPreset.defaultTilt === 0
+                ? nextPreset.defaultDirection
+                : previous.direction || nextPreset.defaultDirection,
+            material: nextPreset.defaultMaterial,
+        }));
+        dispatch({
+            type: 'SET_SELECTED_DIRECTION',
+            payload: nextPreset.defaultTilt === 0 ? null : wall.direction || nextPreset.defaultDirection,
+        });
+        setErrors([]);
+    };
 
-    const isRoof = wall.type === 'stropodach_ocieplony';
-    const sameTypeWalls = (activeRoom.walls || []).filter(w => (w.type === 'stropodach_ocieplony') === isRoof);
-    const index = sameTypeWalls.findIndex(w => w.id === wall.id) + 1;
-    const title = isRoof ? `Stropodach ${index}` : `Ściana ${index}`;
-    const modalTitle = isNew ? (isRoof ? 'Dodaj Stropodach' : 'Dodaj Ścianę') : `Edytuj ${title}`;
+    const handleTiltChange = (nextTilt: number) => {
+        setWall((previous: any) => ({
+            ...previous,
+            tilt: nextTilt,
+            direction: nextTilt === 0 ? 'S' : previous.direction || preset?.defaultDirection || 'S',
+        }));
+        dispatch({
+            type: 'SET_SELECTED_DIRECTION',
+            payload: nextTilt === 0 ? null : wall.direction || preset?.defaultDirection || 'S',
+        });
+        setErrors(current => current.filter(error => error !== 'tilt' && error !== 'direction'));
+    };
+
+    const handleSave = () => {
+        if (!wall || !preset) return;
+
+        const newErrors: string[] = [];
+        const numericTilt = Number(wall.tilt);
+
+        if (!wall.area || wall.area === '' || Number(wall.area) <= 0) newErrors.push('area');
+        if (requiresDirection && !wall.direction) newErrors.push('direction');
+        if (!preset.allowedTilts.includes(numericTilt)) newErrors.push('tilt');
+        if (wall.u === '' || Number(wall.u) <= 0 || Number(wall.u) > 10) newErrors.push('u');
+
+        if (newErrors.length > 0) {
+            setErrors(newErrors);
+            let message = 'Proszę poprawić błędy w formularzu.';
+            if (newErrors.includes('area')) message = 'Powierzchnia musi być większa od 0.';
+            else if (newErrors.includes('u')) message = 'Współczynnik U musi być w zakresie 0–10 W/(m²·K).';
+            else if (newErrors.includes('direction')) message = 'Wybierz kierunek świata dla tej powierzchni.';
+            else if (newErrors.includes('tilt')) message = 'Wybierz dostępny kąt nachylenia.';
+
+            dispatch({ type: 'ADD_TOAST', payload: { message, type: 'danger' } });
+            return;
+        }
+
+        const wallToSave: Wall = {
+            id: isNew ? Date.now() : wall.id,
+            type: wall.type,
+            direction: numericTilt === 0 ? 'S' : wall.direction,
+            tilt: numericTilt,
+            u: Number(wall.u),
+            area: Number(wall.area),
+            material: wall.material || preset.defaultMaterial,
+        };
+
+        if (isNew) dispatch({ type: 'ADD_WALL', payload: wallToSave });
+        else dispatch({ type: 'UPDATE_WALL', payload: wallToSave });
+        handleClose();
+    };
+
+    if (!isModalOpen || !wall || !preset) return null;
+
+    const sameGroupWalls = (activeRoom.walls || []).filter(existing => isRoofPreset(existing.type) === isRoof);
+    const index = sameGroupWalls.findIndex(existing => existing.id === wall.id) + 1;
+    const genericTitle = isRoof ? `Dach ${Math.max(index, 1)}` : `Ściana ${Math.max(index, 1)}`;
+    const modalTitle = isNew ? 'Dodaj przegrodę nieprzezroczystą' : `Edytuj: ${genericTitle}`;
+    const wallPresetIds = CTS_PRESET_IDS.filter(id => CTS_PRESETS[id].group === 'wall');
+    const roofPresetIds = CTS_PRESET_IDS.filter(id => CTS_PRESETS[id].group === 'roof');
+    const uReferenceTooltip = isRoof
+        ? 'Maksymalne U wg WT dla dachów, stropodachów i stropów pod nieogrzewanymi poddaszami (ti ≥ 16°C):\nWT 2021: 0,15\nWT 2017–2020: 0,18\nWT 2014–2016: 0,20\nWT 2008 / 2009–2013: 0,25 W/(m²·K)\nDla budynków władz publicznych poziom WT 2021 obowiązywał od 2019 r.\nJeśli znasz U projektowe, wpisz je zamiast wartości granicznej.'
+        : 'Maksymalne U wg WT dla ścian zewnętrznych (ti ≥ 16°C):\nWT 2021: 0,20\nWT 2017–2020: 0,23\nWT 2014–2016: 0,25\nWT 2008 / 2009–2013: 0,30 W/(m²·K)\nDla budynków władz publicznych poziom WT 2021 obowiązywał od 2019 r.\nJeśli znasz U projektowe, wpisz je zamiast wartości granicznej.';
 
     return (
-        <Modal isOpen={isModalOpen} onClose={handleClose} title={modalTitle}>
-            <div className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                            Typ przegrody
-                        </label>
-                        <Select
-                            value={wall.type}
-                            onChange={(e) => setWall({ ...wall, type: e.target.value })}
-                        >
-                            <option value="sciana_ocieplona">Ściana ocieplona</option>
-                            <option value="sciana_nieocieplona">Ściana nieocieplona</option>
-                            <option value="stropodach_ocieplony">Stropodach ocieplony</option>
-                        </Select>
-                    </div>
+        <Modal
+            isOpen={isModalOpen}
+            onClose={handleClose}
+            title={modalTitle}
+            maxWidth="max-w-3xl"
+            disableBackdropClick={true}
+            footer={<>
+                <Button variant="secondary" onClick={handleClose}>Anuluj</Button>
+                <Button onClick={handleSave}>{isNew ? 'Dodaj przegrodę' : 'Zapisz zmiany'}</Button>
+            </>}
+        >
+            <div className="space-y-5">
+                <div>
+                    <label className="flex items-center text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Typ przegrody
+                        <Tooltip text="Preset wybiera kształt odpowiedzi CTS i uzupełnia reprezentatywne U. Wartość U możesz następnie zastąpić danymi z projektu lub karty produktu." />
+                    </label>
+                    <Select
+                        value={wall.type}
+                        onChange={(event) => handlePresetChange(event.target.value as OpaquePartitionType)}
+                    >
+                        <optgroup label="Ściany zewnętrzne">
+                            {wallPresetIds.map(id => (
+                                <option key={id} value={id}>{CTS_PRESETS[id].label} — {CTS_PRESETS[id].menuDescription}</option>
+                            ))}
+                        </optgroup>
+                        <optgroup label="Dachy i stropodachy">
+                            {roofPresetIds.map(id => (
+                                <option key={id} value={id}>{CTS_PRESETS[id].label} — {CTS_PRESETS[id].menuDescription}</option>
+                            ))}
+                        </optgroup>
+                    </Select>
+                </div>
 
-                    {!isRoof && (
+                <section className="rounded-lg border border-blue-200 bg-blue-50/70 p-4 text-sm text-slate-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-slate-200">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                            <h3 className="text-base font-semibold text-slate-900 dark:text-white">{preset.label}</h3>
+                            <p className="mt-1">{preset.recommendedFor}</p>
+                        </div>
+                        <span className="rounded-full bg-white px-3 py-1 font-medium text-blue-700 shadow-sm dark:bg-slate-800 dark:text-blue-300">
+                            U referencyjne: {preset.defaultU.toFixed(3)} W/(m²·K)
+                        </span>
+                    </div>
+                    <dl className="mt-3 grid gap-2">
+                        <div>
+                            <dt className="font-semibold text-slate-900 dark:text-white">Warstwy modelu CTS</dt>
+                            <dd>{preset.layers}</dd>
+                        </div>
+                        <div>
+                            <dt className="font-semibold text-slate-900 dark:text-white">Charakter odpowiedzi</dt>
+                            <dd>{preset.thermalResponse}</dd>
+                        </div>
+                    </dl>
+                    {preset.note && (
+                        <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                            {preset.note}
+                        </p>
+                    )}
+                </section>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {requiresDirection && (
                         <div>
                             <label className={`block text-sm font-medium mb-1 ${errors.includes('direction') ? 'text-red-500' : 'text-slate-700 dark:text-slate-300'}`}>
-                                Kierunek świata
+                                {isRoof ? 'Kierunek spadku połaci' : 'Kierunek świata'}
                             </label>
                             <Select
                                 value={wall.direction}
-                                onChange={(e) => {
-                                    setWall({ ...wall, direction: e.target.value });
-                                    dispatch({ type: 'SET_SELECTED_DIRECTION', payload: e.target.value });
+                                onChange={(event) => {
+                                    setWall({ ...wall, direction: event.target.value });
+                                    dispatch({ type: 'SET_SELECTED_DIRECTION', payload: event.target.value });
                                 }}
                                 onMouseLeave={() => dispatch({ type: 'SET_HOVERED_DIRECTION', payload: null })}
                             >
                                 <option value="">Wybierz kierunek...</option>
-                                {WINDOW_DIRECTIONS.map(dir => (
-                                    <option 
-                                        key={dir.value} 
-                                        value={dir.value}
-                                        onMouseEnter={() => dispatch({ type: 'SET_HOVERED_DIRECTION', payload: dir.value })}
+                                {WINDOW_DIRECTIONS.map(direction => (
+                                    <option
+                                        key={direction.value}
+                                        value={direction.value}
+                                        onMouseEnter={() => dispatch({ type: 'SET_HOVERED_DIRECTION', payload: direction.value })}
                                     >
-                                        {dir.label}
+                                        {direction.label}
                                     </option>
                                 ))}
                             </Select>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 italic">
-                                Możesz również wybrać kierunek klikając na kompas po prawej stronie.
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                {isRoof ? 'Kierunek, w który opada połać. Możesz użyć kompasu po prawej stronie.' : 'Możesz również wskazać kierunek na kompasie.'}
                             </p>
+                        </div>
+                    )}
+
+                    {isRoof && (
+                        <div>
+                            <label className={`flex items-center text-sm font-medium mb-1 ${errors.includes('tilt') ? 'text-red-500' : 'text-slate-700 dark:text-slate-300'}`}>
+                                Nachylenie połaci
+                                <Tooltip text="Kąt od poziomu: 0° oznacza dach płaski. Wybierz najbliższą wartość dostępną w bazie promieniowania słonecznego." />
+                            </label>
+                            {preset.allowedTilts.length === 1 ? (
+                                <div className="rounded-md border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200">
+                                    0° — powierzchnia pozioma
+                                </div>
+                            ) : (
+                                <Select value={tilt} onChange={(event) => handleTiltChange(Number(event.target.value))}>
+                                    {preset.allowedTilts.map(value => (
+                                        <option key={value} value={value}>{value}°{value === 0 ? ' — dach płaski' : ''}</option>
+                                    ))}
+                                </Select>
+                            )}
                         </div>
                     )}
 
                     <div>
                         <label className={`block text-sm font-medium mb-1 ${errors.includes('area') ? 'text-red-500' : 'text-slate-700 dark:text-slate-300'}`}>
-                            {isRoof ? 'Powierzchnia stropodachu (m²)' : 'Powierzchnia netto ściany (m²)'}
+                            {isRoof ? 'Rzeczywista powierzchnia połaci (m²)' : 'Powierzchnia netto ściany (m²)'}
                         </label>
                         <Input
                             type="number"
                             value={wall.area}
-                            onChange={(e) => setWall({ ...wall, area: e.target.value })}
+                            onChange={(event) => setWall({ ...wall, area: event.target.value })}
                             min="0.1"
                             step="0.1"
                         />
-                        {!isRoof && (
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                Wpisz wartość ręcznie po odjęciu powierzchni okien i drzwi. Program nie odejmuje ich automatycznie.
-                            </p>
-                        )}
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            {isRoof
+                                ? 'Podaj pole po skosie, a nie rzut poziomy dachu.'
+                                : 'Wpisz pole po odjęciu okien i drzwi; program nie odejmuje ich automatycznie.'}
+                        </p>
                     </div>
 
                     <div>
                         <label className={`flex items-center text-sm font-medium mb-1 ${errors.includes('u') ? 'text-red-500' : 'text-slate-700 dark:text-slate-300'}`}>
-                            wsp. U (W/m²K)
-                            <Tooltip text="Współczynnik przenikania ciepła [W/m²K]. Typowe wartości U dla ścian: WT2021 = 0.20, WT2017 = 0.23, WT2014 = 0.25. Dla dachów: WT2021 = 0.15, WT2017 = 0.18." />
+                            Współczynnik U (W/m²·K)
+                            <Tooltip text={uReferenceTooltip} />
                         </label>
                         <Input
                             type="number"
                             value={wall.u}
-                            onChange={(e) => setWall({ ...wall, u: e.target.value })}
+                            onChange={(event) => setWall({ ...wall, u: event.target.value })}
                             min="0.05"
                             max="10"
-                            step="0.01"
+                            step="0.001"
                         />
                     </div>
 
                     <div className="sm:col-span-2">
                         <label className="flex items-center text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                            Wykończenie zewnętrzne (Absorpcja)
-                            <Tooltip text="Wykończenie zewnętrzne ściany i kolor elewacji jest istotny pod kątem absorpcji promieniowania słonecznego. Im wyższa absorpcja i ciemniejszy kolor, tym bardziej nagrzewa się powierzchnia, co zwiększa zyski ciepła." />
+                            Wykończenie zewnętrzne i kolor
+                            <Tooltip text="To ustawienie określa absorpcję promieniowania słonecznego używaną do temperatury zastępczej. Nie zmienia warstw ani współczynników CTS presetu." />
                         </label>
                         <Select
-                            value={wall.material || 'brick_red'}
-                            onChange={(e) => setWall({ ...wall, material: e.target.value })}
+                            value={wall.material || preset.defaultMaterial}
+                            onChange={(event) => setWall({ ...wall, material: event.target.value })}
                         >
-                            {Object.entries(WALL_MATERIALS).map(([key, data]) => (
-                                <option key={key} value={key}>{data.label} (α = {data.absorptance})</option>
+                            {Object.entries(WALL_MATERIALS).map(([key, material]) => (
+                                <option key={key} value={key}>{material.label} (α = {material.absorptance})</option>
                             ))}
                         </Select>
                     </div>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-700">
-                    <Button variant="secondary" onClick={handleClose}>Anuluj</Button>
-                    <Button onClick={handleSave}>Zapisz</Button>
                 </div>
             </div>
         </Modal>

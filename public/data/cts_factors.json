@@ -1,7 +1,102 @@
 {
+  "metadata": {
+    "schema_version": 2,
+    "generator": "CTS/RTS v4.1",
+    "method": "24-hour periodic unit pulse, implicit 1D FDM, hourly means",
+    "layer_order": "external_to_internal",
+    "surface_resistances_m2K_W": {
+      "external": 0.04,
+      "internal_wall": 0.13,
+      "internal_roof_downward_heat_flow": 0.17
+    },
+    "time_step_seconds": 30,
+    "presets": {
+      "sciana_murowana_ocieplona": {
+        "element_type": "wall",
+        "reference_u_W_m2K": 0.165988,
+        "areal_heat_capacity_kJ_m2K": 243,
+        "layers": [
+          "tynk cementowo-wapienny 15 mm",
+          "EPS 200 mm",
+          "Porotherm 25 P+W 250 mm",
+          "tynk gipsowy 15 mm"
+        ]
+      },
+      "sciana_murowana_nieocieplona": {
+        "element_type": "wall",
+        "reference_u_W_m2K": 1.355203,
+        "areal_heat_capacity_kJ_m2K": 653,
+        "layers": [
+          "tynk cementowo-wapienny 20 mm",
+          "cegła pełna 380 mm",
+          "tynk gipsowy 20 mm"
+        ]
+      },
+      "sciana_szkieletowa_ocieplona": {
+        "element_type": "wall",
+        "reference_u_W_m2K": 0.185236,
+        "areal_heat_capacity_kJ_m2K": 42,
+        "layers": [
+          "EPS 100 mm",
+          "OSB 12 mm",
+          "szkielet drewniany + wełna 150 mm, warstwa zastępcza 15/85",
+          "płyta g-k 12.5 mm"
+        ]
+      },
+      "sciana_warstwowa_pir": {
+        "element_type": "wall",
+        "reference_u_W_m2K": 0.177792,
+        "areal_heat_capacity_kJ_m2K": 8,
+        "layers": [
+          "blacha stalowa 0.5 mm",
+          "PIR 120 mm",
+          "blacha stalowa 0.4 mm"
+        ]
+      },
+      "stropodach_zelbetowy_ocieplony": {
+        "element_type": "roof",
+        "reference_u_W_m2K": 0.135809,
+        "areal_heat_capacity_kJ_m2K": 526,
+        "layers": [
+          "papa wielowarstwowa 9.5 mm",
+          "EPS dachowy 250 mm",
+          "paroizolacja bitumiczna 4 mm",
+          "żelbet 200 mm",
+          "tynk gipsowy 15 mm"
+        ]
+      },
+      "dach_skosny_drewniany": {
+        "element_type": "roof",
+        "reference_u_W_m2K": 0.118401,
+        "areal_heat_capacity_kJ_m2K": 71,
+        "layers": [
+          "blachodachówka 0.6 mm",
+          "membrana 2 mm",
+          "pełne deskowanie / OSB 22 mm",
+          "krokwie + wełna 200 mm, warstwa zastępcza 15/85",
+          "wełna mineralna podkrokwiowa 150 mm",
+          "płyta g-k 12.5 mm"
+        ]
+      },
+      "dach_lekki_pir": {
+        "element_type": "roof",
+        "reference_u_W_m2K": 0.133641,
+        "areal_heat_capacity_kJ_m2K": 10,
+        "layers": [
+          "blacha stalowa 0.5 mm",
+          "PIR 160 mm",
+          "blacha stalowa 0.4 mm"
+        ]
+      }
+    }
+  },
   "cts_coefficients": {
-    "sciana_ocieplona": [0.033, 0.032, 0.030, 0.030, 0.031, 0.034, 0.038, 0.043, 0.047, 0.049, 0.051, 0.052, 0.052, 0.051, 0.050, 0.049, 0.047, 0.045, 0.044, 0.042, 0.040, 0.038, 0.037, 0.035],
-    "sciana_nieocieplona": [0.009, 0.009, 0.017, 0.038, 0.062, 0.078, 0.086, 0.087, 0.083, 0.076, 0.068, 0.061, 0.053, 0.046, 0.040, 0.035, 0.030, 0.026, 0.022, 0.019, 0.017, 0.014, 0.012, 0.010],
-    "stropodach_ocieplony": [0.030, 0.030, 0.031, 0.036, 0.044, 0.049, 0.052, 0.053, 0.053, 0.052, 0.051, 0.049, 0.048, 0.046, 0.044, 0.043, 0.041, 0.040, 0.038, 0.037, 0.035, 0.034, 0.033, 0.032]
+    "sciana_murowana_ocieplona": [0.032641236, 0.031277641, 0.030073478, 0.029998967, 0.032573226, 0.037364584, 0.042560369, 0.046837683, 0.049746581, 0.051352888, 0.051907984, 0.051682452, 0.050906153, 0.049756586, 0.048364549, 0.046823982, 0.045201267, 0.043542749, 0.041880404, 0.040235998, 0.038624077, 0.037054102, 0.035531968, 0.034061077],
+    "sciana_murowana_nieocieplona": [0.033103643, 0.031391585, 0.029801392, 0.028913555, 0.029934879, 0.03315477, 0.037630596, 0.042217088, 0.046155768, 0.049110908, 0.05102791, 0.051998507, 0.052172965, 0.051711999, 0.050763928, 0.049455922, 0.04789241, 0.046156761, 0.044314191, 0.042414894, 0.040496934, 0.038588751, 0.036711236, 0.034879408],
+    "sciana_szkieletowa_ocieplona": [0.00986227, 0.013457517, 0.040875117, 0.072903318, 0.087515845, 0.089106329, 0.084447026, 0.077356923, 0.06966372, 0.062182925, 0.055246496, 0.048961445, 0.04333331, 0.038324482, 0.033881441, 0.029947208, 0.026466811, 0.023389467, 0.020669249, 0.018265069, 0.01614038, 0.014262771, 0.01260355, 0.011137332],
+    "sciana_warstwowa_pir": [0.110313417, 0.519434048, 0.257584268, 0.07884561, 0.0236735, 0.007103742, 0.00213159, 0.000639617, 0.000191927, 0.000057591, 0.000017281, 0.000005185, 0.000001556, 0.000000467, 0.00000014, 0.000000042, 0.000000013, 0.000000004, 0.000000001, 0, 0, 0, 0, 0],
+    "stropodach_zelbetowy_ocieplony": [0.033135031, 0.032122199, 0.031694981, 0.033849003, 0.038675943, 0.043763765, 0.047532176, 0.049708414, 0.050584771, 0.050551815, 0.049934746, 0.048965028, 0.047795302, 0.04652187, 0.045203722, 0.043876184, 0.042559962, 0.041266891, 0.040003483, 0.038773096, 0.037577227, 0.036416292, 0.035290078, 0.034198023],
+    "dach_skosny_drewniany": [0.019045398, 0.017259319, 0.016077321, 0.018948483, 0.029876441, 0.045344171, 0.058915543, 0.06743544, 0.070923776, 0.070665969, 0.068035243, 0.064090142, 0.059539701, 0.054821316, 0.050188137, 0.045776808, 0.04165343, 0.037842779, 0.034346214, 0.031152398, 0.028243607, 0.025599373, 0.023198549, 0.021020442],
+    "dach_lekki_pir": [0.018917426, 0.267821055, 0.328102347, 0.188814977, 0.09702609, 0.049131978, 0.024830382, 0.01254546, 0.006338318, 0.00320228, 0.001617873, 0.00081739, 0.000412966, 0.000208641, 0.000105411, 0.000053256, 0.000026906, 0.000013594, 0.000006868, 0.00000347, 0.000001753, 0.000000886, 0.000000447, 0.000000226]
   }
 }

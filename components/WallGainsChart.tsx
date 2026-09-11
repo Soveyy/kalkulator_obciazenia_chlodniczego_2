@@ -90,7 +90,7 @@ const WallGainsChart: React.FC = () => {
         if (chartType === 'line') {
              datasets.push({ 
                  type: 'line',
-                 label: 'Obciążenie chłodnicze - Ściany', 
+                 label: 'Obciążenie chłodnicze — przegrody',
                  data: reorderDataForLocalTime(wallsCS.total, offset), 
                  borderColor: CHART_COLORS.conduction, 
                  backgroundColor: CHART_COLORS.conduction.replace(/[\d\.]+\)$/g, '0.2)'), // Convert opacity
@@ -105,7 +105,7 @@ const WallGainsChart: React.FC = () => {
             if (indWalls.length === 0) {
                  datasets.push({
                     type: 'bar',
-                    label: 'Suma (wymaga przeliczenia w ukrytej zakładce "Podsumowanie")',
+                        label: 'Suma przegród',
                     data: reorderDataForLocalTime(wallsCS.total, offset),
                     backgroundColor: CHART_COLORS.conduction,
                     stack: 'walls',
@@ -156,7 +156,7 @@ const WallGainsChart: React.FC = () => {
                     },
                     yLoad: { 
                         position: 'left', 
-                        title: { display: true, text: 'Obciążenie chłodnicze od ścian (kW)', color: textColor }, 
+                        title: { display: true, text: 'Obciążenie od przegród nieprzezroczystych (kW)', color: textColor },
                         ticks: { color: textColor, callback: function(value: any) { return (Number(value) / 1000).toFixed(2); } }, 
                         grid: { color: gridColor }, 
                         beginAtZero: true,
@@ -165,7 +165,7 @@ const WallGainsChart: React.FC = () => {
                 },
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
-                    title: { display: true, text: 'Obciążenie chłodnicze od ścian', color: textColor, font: { size: 16 } },
+                    title: { display: true, text: 'Obciążenie od ścian i dachów', color: textColor, font: { size: 16 } },
                     legend: { labels: { color: textColor } },
                     tooltip: { 
                         mode: 'index',
@@ -209,7 +209,7 @@ const WallGainsChart: React.FC = () => {
     if (!state.results) {
         return (
             <Card className="flex items-center justify-center h-full min-h-[500px]">
-                <p className="text-slate-500 text-center px-4">Przejdź do zakładki "Podsumowanie" i uruchom obliczenia, aby zobaczyć wykres obciążenia od ścian.</p>
+                <p className="text-slate-500 text-center px-4">Przejdź do zakładki "Podsumowanie" i uruchom obliczenia, aby zobaczyć wykres obciążenia od przegród.</p>
             </Card>
         );
     }
@@ -218,8 +218,8 @@ const WallGainsChart: React.FC = () => {
         return (
             <Card className="flex items-center justify-center h-full min-h-[500px]">
                 <div className="text-center px-4">
-                    <p className="text-slate-500 mb-2">Brak zdefiniowanych ścian w projekcie.</p>
-                    <p className="text-xs text-slate-400">Dodaj ściany/stropodachy w zakładce "Ściany", aby zobaczyć analizę zysków.</p>
+                    <p className="text-slate-500 mb-2">Brak zdefiniowanych przegród w projekcie.</p>
+                    <p className="text-xs text-slate-400">Dodaj ściany albo połacie dachu w zakładce "Ściany", aby zobaczyć analizę zysków.</p>
                 </div>
             </Card>
         );
@@ -256,7 +256,7 @@ const WallGainsChart: React.FC = () => {
                         onClick={() => setChartType('bar')}
                         className={`px-3 py-1 text-sm font-medium rounded ${chartType === 'bar' ? 'bg-white dark:bg-slate-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
                     >
-                        Rozbicie na ściany (Słupkowy)
+                        Rozbicie na przegrody (Słupkowy)
                     </button>
                 </div>
             </div>

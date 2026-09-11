@@ -4,6 +4,7 @@ import autoTable from 'jspdf-autotable';
 import Chart from 'chart.js/auto';
 import { MONTH_NAMES, LIGHTING_TYPES } from '../constants';
 import { FLOOR_TYPE_LABELS, RTS_PRESETS } from '../data/rtsPresets';
+import { CTS_PRESETS } from '../data/ctsPresets';
 
 // Helper to fetch font as base64
 async function fetchFont(url: string): Promise<string> {
@@ -493,29 +494,28 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
     doc.setFontSize(10);
     doc.setFont('Roboto', 'bold');
     doc.setTextColor(0);
-    doc.text('3.2 Ściany i przegrody nieprzezroczyste', margin, yPos);
+    doc.text('3.2 Przegrody nieprzezroczyste', margin, yPos);
     yPos += 6;
 
-    const WALL_TYPES: Record<string, string> = {
-        'sciana_ocieplona': 'Ściana ocieplona',
-        'sciana_nieocieplona': 'Ściana nieocieplona',
-        'stropodach_ocieplony': 'Stropodach ocieplony'
-    };
-
-    const wallsBody = walls && walls.length > 0 ? walls.map((w: any) => [
-        WALL_TYPES[w.type] || w.type,
-        w.type === 'stropodach_ocieplony' ? '-' : w.direction,
-        w.area.toFixed(2),
-        w.u.toFixed(2)
-    ]) : [];
+    const wallsBody = walls && walls.length > 0 ? walls.map((w: any) => {
+        const preset = CTS_PRESETS[w.type as keyof typeof CTS_PRESETS];
+        const tilt = Number(w.tilt ?? preset?.defaultTilt ?? 90);
+        const orientation = tilt === 0 ? 'pozioma · 0°' : `${w.direction} · ${tilt}°`;
+        return [
+            preset?.label || w.type,
+            orientation,
+            w.area.toFixed(2),
+            w.u.toFixed(3),
+        ];
+    }) : [];
 
     if (wallsBody.length === 0) {
-        wallsBody.push(['Brak ścian', '-', '-', '-']);
+        wallsBody.push(['Brak przegród', '-', '-', '-']);
     }
 
     autoTable(doc, {
         startY: yPos,
-        head: [['Typ przegrody', 'Kierunek', 'Powierzchnia [m²]', 'Wsp. U [W/m²K]']],
+        head: [['Typ przegrody', 'Orientacja', 'Powierzchnia [m²]', 'Wsp. U [W/m²K]']],
         body: wallsBody,
         theme: 'grid',
         headStyles: { fillColor: [241, 245, 249], textColor: 50, fontStyle: 'bold', lineColor: 200, font: 'Roboto' },

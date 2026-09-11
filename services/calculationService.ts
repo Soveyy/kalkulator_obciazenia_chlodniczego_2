@@ -2,6 +2,7 @@
 import { Window, Wall, AccumulationSettings, InternalGains, AllData, InputState, CalculationResults, Shading, CalculationResultData } from '../types';
 import { PEOPLE_ACTIVITY_LEVELS, LIGHTING_TYPES, VENTILATION_EXCHANGER_TYPES, EQUIPMENT_PRESETS, WALL_MATERIALS, ANALYSIS_MONTHS } from '../constants';
 import { ADVANCED_APPLIANCES } from '../data/advancedAppliances';
+import { CTS_PRESETS, isRoofPreset } from '../data/ctsPresets';
 import { SHGC_DIFFUSE_MULTIPLIERS, SHGC_DIRECT_CORRECTION_CURVES } from '../src/config/shgcConfig';
 
 
@@ -15,6 +16,34 @@ const ASHRAE_TEMPERATURE_FRACTIONS = [
 // wypada ~10:40 UTC. Poprawka sprowadza się do frac[(h+1) % 24], co w pełni pokrywa
 // się z procedurą ASHRAE bez interpolacji.
 const SOLAR_TIME_INDEX_SHIFT = 1;
+
+export interface OpaqueSurfaceSolarGeometry {
+    isRoof: boolean;
+    direction: string;
+    tilt: number;
+    tiltKey: string;
+    longwaveCorrection: number;
+}
+
+/**
+ * Geometria używana do pobrania promieniowania i wyznaczenia temperatury sol-air.
+ * Kąt jest liczony od poziomu. Uproszczona poprawka długofalowa ASHRAE ma
+ * 63 W/m² dla dachu poziomego i zanika dla powierzchni pionowej.
+ */
+export function getOpaqueSurfaceSolarGeometry(wall: Wall): OpaqueSurfaceSolarGeometry {
+    const preset = CTS_PRESETS[wall.type];
+    const isRoof = isRoofPreset(wall.type);
+    const requestedTilt = Number.isFinite(wall.tilt) ? wall.tilt : preset.defaultTilt;
+    const tilt = preset.allowedTilts.includes(requestedTilt) ? requestedTilt : preset.defaultTilt;
+
+    return {
+        isRoof,
+        direction: tilt === 0 ? preset.defaultDirection : wall.direction || preset.defaultDirection,
+        tilt,
+        tiltKey: String(tilt),
+        longwaveCorrection: isRoof ? 63 * Math.max(0, Math.cos(tilt * Math.PI / 180)) : 0,
+    };
+}
 
 export function generateAshraeTemperatureProfile(peakTemp: number, dailyRange: number): number[] {
     return Array.from({ length: 24 }).map((_, h) => {
@@ -680,10 +709,8 @@ export function calculateGainsForMonth(
             const h_o = 17;
             const epsilon = 0.9;
             
-            const isRoof = wall.type === 'stropodach_ocieplony';
-            const delta_R = isRoof ? 63 : 0;
-            const direction = isRoof ? 'S' : wall.direction;
-            const tiltStr = isRoof ? '0' : '90';
+            const solarGeometry = getOpaqueSurfaceSolarGeometry(wall);
+            const { isRoof, direction, tiltKey: tiltStr, longwaveCorrection: delta_R } = solarGeometry;
             
             const nsrdbDirData = allData.nsrdb[month]?.[direction]?.[tiltStr];
             const ctsCoeffs = allData.cts?.cts_coefficients?.[wall.type] || Array(24).fill(0);
@@ -719,7 +746,11 @@ export function calculateGainsForMonth(
             const wallLoadRadiant_RTS = accumulation.include ? applyRTS(wallLoadRadiant, rtsFactorsNonSolar) : wallLoadRadiant;
             const wallLoadTotal = Array(24).fill(0).map((_, h) => q_cond[h] * (isRoof ? 0.40 : 0.54) + wallLoadRadiant_RTS[h]);
             
-            const title = isRoof ? `Stropodach ${index + 1}` : `Ściana ${index + 1} (${wall.direction})`;
+            const preset = CTS_PRESETS[wall.type];
+            const orientation = solarGeometry.tilt === 0
+                ? 'poziomy'
+                : `${solarGeometry.direction}, ${solarGeometry.tilt}°`;
+            const title = `${preset.label} ${index + 1} (${orientation})`;
             
             individualWallsData.push({
                 id: wall.id,

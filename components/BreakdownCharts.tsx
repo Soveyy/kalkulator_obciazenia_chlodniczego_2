@@ -6,7 +6,7 @@ import { CHART_COLORS } from '../lib/chartUtils';
 
 const NODE_COLORS: Record<string, string> = {
     'Okna': CHART_COLORS.solar,
-    'Ściany': CHART_COLORS.conduction,
+    'Przegrody': CHART_COLORS.conduction,
     'Ludzie': CHART_COLORS.people,
     'Oświetlenie': CHART_COLORS.lighting,
     'Sprzęt': CHART_COLORS.equipment,
@@ -117,7 +117,7 @@ const BreakdownCharts: React.FC = () => {
 
     const sourceData = [
         { name: 'Okna', value: Math.round(windowsLoad) },
-        { name: 'Ściany', value: Math.round(wallsLoad) },
+        { name: 'Przegrody', value: Math.round(wallsLoad) },
         { name: 'Ludzie', value: Math.round(peopleSensible + peopleLatent) },
         { name: 'Oświetlenie', value: Math.round(lightingLoad) },
         { name: 'Sprzęt', value: Math.round(equipmentLoad) },
