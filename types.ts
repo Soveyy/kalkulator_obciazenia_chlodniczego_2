@@ -40,9 +40,20 @@ export interface Window {
   overhang?: Overhang;
 }
 
+export type RtsPresetId =
+    | 'heavy'
+    | 'medium'
+    | 'attic'
+    | 'single_storey'
+    | 'office'
+    | 'light'
+    | 'large_panel'
+    | 'tenement'
+    | 'warehouse';
+
 export interface AccumulationSettings {
     include: boolean;
-    thermalMass: 'light' | 'medium' | 'heavy' | 'very_heavy';
+    rtsPreset: RtsPresetId;
     floorType: 'panels' | 'tiles' | 'carpet';
     glassPercentage: 10 | 50 | 90;
 }

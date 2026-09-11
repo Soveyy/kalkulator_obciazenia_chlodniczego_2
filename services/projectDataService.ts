@@ -187,9 +187,11 @@ function sanitizeWalls(value: unknown): Wall[] {
 
 function sanitizeAccumulation(value: unknown, fallback: AccumulationSettings): AccumulationSettings {
     const source = recordOrEmpty(value);
+    const rawPreset = source.rtsPreset ?? source.thermalMass;
+    const migratedPreset = rawPreset === 'very_heavy' ? 'heavy' : rawPreset;
     return {
         include: booleanValue(source.include, fallback.include),
-        thermalMass: enumValue(source.thermalMass, ['light', 'medium', 'heavy', 'very_heavy'] as const, fallback.thermalMass),
+        rtsPreset: enumValue(migratedPreset, ['heavy', 'medium', 'attic', 'single_storey', 'office', 'light', 'large_panel', 'tenement', 'warehouse'] as const, fallback.rtsPreset),
         floorType: enumValue(source.floorType, ['panels', 'tiles', 'carpet'] as const, fallback.floorType),
         glassPercentage: enumValue(source.glassPercentage, [10, 50, 90] as const, fallback.glassPercentage),
     };

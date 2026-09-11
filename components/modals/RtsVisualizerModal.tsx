@@ -3,6 +3,7 @@ import Chart from 'chart.js/auto';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import { useCalculator } from '../../contexts/CalculatorContext';
+import { RTS_PRESET_IDS, RTS_PRESETS } from '../../data/rtsPresets';
 
 const RtsVisualizerModal: React.FC = () => {
     const { state, dispatch, theme } = useCalculator();
@@ -27,28 +28,14 @@ const RtsVisualizerModal: React.FC = () => {
         else if (glassPercentage <= 70) selectedGlassP = 50;
         else selectedGlassP = 90;
 
-        const thermalMassTypes: ('light' | 'medium' | 'heavy' | 'very_heavy')[] = ['light', 'medium', 'heavy', 'very_heavy'];
-        const massLabels: { [key: string]: string } = {
-            light: 'Lekka',
-            medium: 'Średnia',
-            heavy: 'Ciężka',
-            very_heavy: 'Bardzo ciężka'
-        };
-
-        const colors = [
-            '#3498db', // blue
-            '#2ecc71', // green
-            '#f1c40f', // yellow
-            '#e74c3c'  // red
-        ];
-
-        const datasets = thermalMassTypes.map((mass, index) => {
-            const data = state.allData?.rts?.[mass]?.[floorType]?.[selectedGlassP]?.[viewType] || [];
+        const datasets = RTS_PRESET_IDS.map(presetId => {
+            const data = state.allData?.rts?.[presetId]?.[floorType]?.[selectedGlassP]?.[viewType] || [];
+            const color = RTS_PRESETS[presetId].color;
             return {
-                label: `Masa ${massLabels[mass]}`,
+                label: RTS_PRESETS[presetId].label,
                 data: data,
-                borderColor: colors[index],
-                backgroundColor: `${colors[index]}33`,
+                borderColor: color,
+                backgroundColor: `${color}33`,
                 fill: false,
                 tension: 0.2,
                 borderWidth: 2
@@ -118,7 +105,7 @@ const RtsVisualizerModal: React.FC = () => {
     }, []);
 
     const title = `Wizualizacja Krzywych RTS (${viewType === 'solar' ? 'Słoneczne' : 'Niesłoneczne'})`;
-    const explanationText = `Wykres pokazuje, jak 1000 W radiacyjnego zysku ciepła (o godz. 0) jest rozkładane w czasie przez masę termiczną budynku. Wyższa wartość o godzinie 0 oznacza większe natychmiastowe obciążenie. Bardziej płaska i "rozciągnięta" krzywa świadczy o lepszej zdolności akumulacyjnej budynku, co skutkuje niższym, ale dłużej trwającym obciążeniem szczytowym.`;
+    const explanationText = `Wykres pokazuje, jak 1000 W radiacyjnego zysku ciepła (o godz. 0) jest rozkładane w czasie przez każdy typ budynku lub pomieszczenia. Wyższa wartość o godzinie 0 oznacza większe natychmiastowe obciążenie. Bardziej płaska i "rozciągnięta" krzywa oznacza większą zdolność akumulacji ciepła.`;
 
     const footerContent = (
         <div className="w-full flex justify-between items-center">

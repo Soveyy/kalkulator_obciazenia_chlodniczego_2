@@ -3,6 +3,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Chart from 'chart.js/auto';
 import { MONTH_NAMES, LIGHTING_TYPES } from '../constants';
+import { FLOOR_TYPE_LABELS, RTS_PRESETS } from '../data/rtsPresets';
 
 // Helper to fetch font as base64
 async function fetchFont(url: string): Promise<string> {
@@ -256,19 +257,8 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
     
     const acc = accumulation;
     if (acc && acc.include) {
-        const THERMAL_MASS_TYPES: Record<string, string> = {
-            'light': 'Lekka',
-            'medium': 'Średnia',
-            'heavy': 'Ciężka',
-            'very_heavy': 'Bardzo ciężka'
-        };
-        const FLOOR_TYPES: Record<string, string> = {
-            'panels': 'Panele',
-            'tiles': 'Płytki',
-            'carpet': 'Wykładzina'
-        };
-        allParams.push(['Masa termiczna', THERMAL_MASS_TYPES[acc.thermalMass] || acc.thermalMass]);
-        allParams.push(['Typ podłogi', FLOOR_TYPES[acc.floorType] || acc.floorType]);
+        allParams.push(['Typ budynku / pomieszczenia', RTS_PRESETS[acc.rtsPreset]?.label || acc.rtsPreset]);
+        allParams.push(['Typ podłogi', FLOOR_TYPE_LABELS[acc.floorType] || acc.floorType]);
     } else {
         allParams.push(['Akumulacja ciepła', 'Pominięta']);
     }

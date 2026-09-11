@@ -54,6 +54,32 @@ describe('bezpieczne wczytywanie projektu', () => {
         expect(project.rooms[0].input.tInternal).toBe('23');
     });
 
+    it.each([
+        ['very_heavy', 'heavy'],
+        ['heavy', 'heavy'],
+        ['medium', 'medium'],
+        ['light', 'light'],
+    ])('migruje dawny typ masy %s do presetu %s', (legacyType, expectedPreset) => {
+        const room = createInitialRoomState();
+        const project = sanitizeProjectData({
+            projectName: 'Migracja RTS',
+            rooms: [{
+                ...room,
+                accumulation: {
+                    include: true,
+                    thermalMass: legacyType,
+                    floorType: 'panels',
+                    glassPercentage: 50,
+                },
+            }],
+            activeRoomId: room.id,
+            systems: [],
+        });
+
+        expect(project.rooms[0].accumulation.rtsPreset).toBe(expectedPreset);
+        expect(project.rooms[0].accumulation).not.toHaveProperty('thermalMass');
+    });
+
     it('odrzuca niedozwolone klucze i projekt bez pomieszczeń', () => {
         expect(() => parseProjectDataJson('{"projectName":"X","rooms":[],"__proto__":{"polluted":true}}'))
             .toThrow(/niedozwolone pole/i);

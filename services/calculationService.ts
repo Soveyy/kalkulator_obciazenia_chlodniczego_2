@@ -128,7 +128,7 @@ export function applyRTS(radiantGains: number[], rtsFactors: number[]): number[]
 }
 
 function getRtsFactors(accumulation: AccumulationSettings, allData: AllData, solar: boolean): number[] {
-    const { thermalMass, floorType, glassPercentage } = accumulation;
+    const { rtsPreset, floorType, glassPercentage } = accumulation;
     const rtsSeriesType = solar ? 'solar' : 'nonsolar';
     
     const fallbackFactors = allData.rts['medium']['panels']['50'][rtsSeriesType];
@@ -139,7 +139,7 @@ function getRtsFactors(accumulation: AccumulationSettings, allData: AllData, sol
         else if (glassPercentage <= 70) selectedGlassP = 50;
         else selectedGlassP = 90;
 
-        const factors = allData.rts[thermalMass]?.[floorType]?.[selectedGlassP]?.[rtsSeriesType];
+        const factors = allData.rts[rtsPreset]?.[floorType]?.[selectedGlassP]?.[rtsSeriesType];
         return factors || fallbackFactors;
     } catch(e) {
         console.error("Could not find RTS factors, using fallback.", e);

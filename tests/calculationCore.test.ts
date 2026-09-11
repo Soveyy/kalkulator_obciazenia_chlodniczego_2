@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ANALYSIS_MONTHS } from '../constants';
+import { RTS_PRESET_IDS } from '../data/rtsPresets';
 import { applyRTS, generateAshraeTemperatureProfile } from '../services/calculationService';
 
 describe('podstawowe niezmienniki silnika obliczeniowego', () => {
@@ -35,16 +36,23 @@ describe('podstawowe niezmienniki silnika obliczeniowego', () => {
         expect(load.reduce((sum, value) => sum + value, 0)).toBeCloseTo(100, 10);
     });
 
-    it('chroni format docelowego presetu very_heavy oraz tabel CTS', () => {
+    it('chroni kompletną bibliotekę dziewięciu presetów RTS oraz tabele CTS', () => {
         const rts = JSON.parse(readFileSync(new URL('../public/data/rts_factors.json', import.meta.url), 'utf8'));
         const cts = JSON.parse(readFileSync(new URL('../public/data/cts_factors.json', import.meta.url), 'utf8'));
 
-        for (const floorType of Object.values(rts.very_heavy) as Record<string, { solar: number[]; nonsolar: number[] }>[]) {
-            for (const series of Object.values(floorType)) {
-                expect(series.solar).toHaveLength(24);
-                expect(series.nonsolar).toHaveLength(24);
-                expect(series.solar.reduce((sum, value) => sum + value, 0)).toBeCloseTo(1, 2);
-                expect(series.nonsolar.reduce((sum, value) => sum + value, 0)).toBeCloseTo(1, 2);
+        expect(Object.keys(rts).sort()).toEqual([...RTS_PRESET_IDS].sort());
+        for (const presetId of RTS_PRESET_IDS) {
+            expect(Object.keys(rts[presetId])).toEqual(['panels', 'tiles', 'carpet']);
+            for (const floorType of ['panels', 'tiles', 'carpet']) {
+                expect(Object.keys(rts[presetId][floorType])).toEqual(['10', '50', '90']);
+                for (const glassPercentage of ['10', '50', '90']) {
+                    const series = rts[presetId][floorType][glassPercentage];
+                    for (const values of [series.solar, series.nonsolar] as number[][]) {
+                        expect(values).toHaveLength(24);
+                        expect(values.every(value => Number.isFinite(value) && value >= 0)).toBe(true);
+                        expect(values.reduce((sum, value) => sum + value, 0)).toBeCloseTo(1, 10);
+                    }
+                }
             }
         }
 

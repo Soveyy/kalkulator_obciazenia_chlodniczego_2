@@ -11,7 +11,7 @@ export const createInitialRoomState = (
     input: { tInternal: '24', rhInternal: '50', roomArea: '' },
     accumulation: {
         include: true,
-        thermalMass: 'very_heavy',
+        rtsPreset: 'heavy',
         floorType: 'panels',
         glassPercentage: 50
     },
