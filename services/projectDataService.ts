@@ -14,6 +14,7 @@ import {
 } from '../types';
 import { createInitialRoomState } from '../data/defaults';
 import { CTS_PRESET_IDS, CTS_PRESETS } from '../data/ctsPresets';
+import { UNCONDITIONED_PARTITION_IDS, UNCONDITIONED_PARTITION_PRESETS } from '../data/unconditionedPresets';
 
 export type ProjectData = Pick<State, 'projectName' | 'rooms' | 'activeRoomId' | 'systems'>;
 
@@ -184,17 +185,34 @@ function sanitizeWalls(value: unknown): Wall[] {
         const migratedType = legacyTypeMap[rawType] || rawType;
         const type = enumValue(migratedType, CTS_PRESET_IDS, 'sciana_murowana_ocieplona');
         const preset = CTS_PRESETS[type];
+        const boundaryType = enumValue(item.boundaryType, ['external', 'unconditioned'] as const, 'external');
+        const unconditionedType = enumValue(
+            item.unconditionedType,
+            UNCONDITIONED_PARTITION_IDS,
+            'ceiling_hot_attic'
+        );
+        const unconditionedPreset = UNCONDITIONED_PARTITION_PRESETS[unconditionedType];
         const requestedTilt = numberValue(item.tilt, preset.defaultTilt, 0, 90);
         const tilt = preset.allowedTilts.includes(requestedTilt) ? requestedTilt : preset.defaultTilt;
 
         return {
             id,
+            boundaryType,
             type,
             direction: tilt === 0 ? preset.defaultDirection : text(item.direction, preset.defaultDirection, 8),
             tilt,
             u: numberValue(item.u, preset.defaultU, 0.01, 20),
             area: numberValue(item.area, 1, 0.01, 10_000),
             material: text(item.material, preset.defaultMaterial, 60),
+            ...(boundaryType === 'unconditioned' ? {
+                unconditionedType,
+                adjacentTemperature: numberValue(
+                    item.adjacentTemperature,
+                    unconditionedPreset.defaultTemperature,
+                    -50,
+                    100
+                ),
+            } : {}),
         };
     });
 }

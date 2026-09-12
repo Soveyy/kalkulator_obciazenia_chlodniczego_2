@@ -5,6 +5,7 @@ import Chart from 'chart.js/auto';
 import { MONTH_NAMES, LIGHTING_TYPES } from '../constants';
 import { FLOOR_TYPE_LABELS, RTS_PRESETS } from '../data/rtsPresets';
 import { CTS_PRESETS } from '../data/ctsPresets';
+import { UNCONDITIONED_PARTITION_PRESETS } from '../data/unconditionedPresets';
 
 // Helper to fetch font as base64
 async function fetchFont(url: string): Promise<string> {
@@ -360,7 +361,7 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
     
     doc.setFont('Roboto', 'normal');
     doc.setTextColor(71, 85, 105);
-    const methodologyText = 'Obliczenia wykorzystują model całkowicie bezchmurnego nieba (Clear Sky) dla wybranego miesiąca. Zgodnie z metodyką ASHRAE RTS (Radiant Time Series), algorytm zakłada, że takie same, ekstremalne warunki pogodowe oraz wewnętrzne profile zysków ciepła powtarzają się przez kilka dni z rzędu, co pozwala na pełne uwzględnienie zjawiska akumulacji ciepła w masie budynku.';
+    const methodologyText = 'Obciążenie projektowe oszacowano metodą opartą na ASHRAE RTS, z pogodą i modelem Clear Sky dla Warszawy. Przegrody zewnętrzne wykorzystują Sol-Air i CTS, natomiast przegrody do nieklimatyzowanych przestrzeni są świadomie uproszczone do stałego U × A × ΔT. Wynik służy do doboru klimatyzacji w małych obiektach i nie jest pełną symulacją energetyczną budynku.';
     const splitMethodology = doc.splitTextToSize(methodologyText, pageWidth - (2 * margin) - 10);
     doc.text(splitMethodology, margin + 5, yPos + 11);
 
@@ -498,6 +499,17 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
     yPos += 6;
 
     const wallsBody = walls && walls.length > 0 ? walls.map((w: any) => {
+        if (w.boundaryType === 'unconditioned') {
+            const unconditionedPreset = UNCONDITIONED_PARTITION_PRESETS[
+                w.unconditionedType as keyof typeof UNCONDITIONED_PARTITION_PRESETS
+            ] || UNCONDITIONED_PARTITION_PRESETS.ceiling_hot_attic;
+            return [
+                unconditionedPreset.label,
+                `stała temperatura: ${Number(w.adjacentTemperature ?? 50).toFixed(1)}°C`,
+                w.area.toFixed(2),
+                w.u.toFixed(3),
+            ];
+        }
         const preset = CTS_PRESETS[w.type as keyof typeof CTS_PRESETS];
         const tilt = Number(w.tilt ?? preset?.defaultTilt ?? 90);
         const orientation = tilt === 0 ? 'pozioma · 0°' : `${w.direction} · ${tilt}°`;
@@ -515,7 +527,7 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
 
     autoTable(doc, {
         startY: yPos,
-        head: [['Typ przegrody', 'Orientacja', 'Powierzchnia [m²]', 'Wsp. U [W/m²K]']],
+        head: [['Typ przegrody', 'Orientacja / warunki', 'Powierzchnia [m²]', 'Wsp. U [W/m²K]']],
         body: wallsBody,
         theme: 'grid',
         headStyles: { fillColor: [241, 245, 249], textColor: 50, fontStyle: 'bold', lineColor: 200, font: 'Roboto' },

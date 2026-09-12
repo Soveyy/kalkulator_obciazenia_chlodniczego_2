@@ -43,13 +43,13 @@ const SummaryPage: React.FC = () => {
                     )}
                     <span className="text-sm font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">Wentylacja</span>
                 </div>
-                <div className="flex items-center gap-1.5" title={validation.walls ? "Zdefiniowano przegrody nieprzezroczyste." : "Pomijasz zyski od ścian i dachów."}>
+                <div className="flex items-center gap-1.5" title={validation.walls ? "Zdefiniowano przegrody nieprzezroczyste." : "Pomijasz zyski od przegród nieprzezroczystych."}>
                     {validation.walls ? (
                         <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
                     ) : (
                         <Info className="w-5 h-5 text-orange-400 shrink-0" />
                     )}
-                    <span className="text-sm font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">Ściany / dachy</span>
+                    <span className="text-sm font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">Przegrody</span>
                 </div>
             </div>
             

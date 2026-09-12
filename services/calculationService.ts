@@ -3,6 +3,7 @@ import { Window, Wall, AccumulationSettings, InternalGains, AllData, InputState,
 import { PEOPLE_ACTIVITY_LEVELS, LIGHTING_TYPES, VENTILATION_EXCHANGER_TYPES, EQUIPMENT_PRESETS, WALL_MATERIALS, ANALYSIS_MONTHS } from '../constants';
 import { ADVANCED_APPLIANCES } from '../data/advancedAppliances';
 import { CTS_PRESETS, isRoofPreset } from '../data/ctsPresets';
+import { UNCONDITIONED_PARTITION_PRESETS } from '../data/unconditionedPresets';
 import { SHGC_DIFFUSE_MULTIPLIERS, SHGC_DIRECT_CORRECTION_CURVES } from '../src/config/shgcConfig';
 
 
@@ -705,6 +706,29 @@ export function calculateGainsForMonth(
         walls.forEach((wall, index) => {
             const area = wall.area;
             const U = wall.u;
+
+            if (wall.boundaryType === 'unconditioned') {
+                const adjacentTemperature = wall.adjacentTemperature ?? 50;
+                const steadyLoad = U * area * (adjacentTemperature - tInternal);
+                const steadyLoadProfile = Array(24).fill(steadyLoad);
+                const unconditionedPreset = UNCONDITIONED_PARTITION_PRESETS[
+                    wall.unconditionedType || 'ceiling_hot_attic'
+                ];
+
+                for (let hour = 0; hour < 24; hour++) {
+                    // Świadome uproszczenie: stałe przewodzenie U × A × ΔT,
+                    // bez Sol-Air, CTS oraz dodatkowego opóźnienia RTS.
+                    wallConvectiveGains[hour] += steadyLoad;
+                }
+
+                individualWallsData.push({
+                    id: wall.id,
+                    title: `${unconditionedPreset.label} ${index + 1} (${adjacentTemperature}°C)`,
+                    sensible: steadyLoadProfile,
+                });
+                return;
+            }
+
             const alpha = WALL_MATERIALS[wall.material || 'brick_red']?.absorptance ?? 0.65;
             const h_o = 17;
             const epsilon = 0.9;

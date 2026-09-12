@@ -27,8 +27,15 @@ export type OpaquePartitionType =
   | 'dach_skosny_drewniany'
   | 'dach_lekki_pir';
 
+export type UnconditionedPartitionType =
+  | 'ceiling_hot_attic'
+  | 'wall_unconditioned_space'
+  | 'floor_unconditioned_space';
+
 export interface Wall {
   id: number;
+  /** Brak pola w starszych projektach oznacza przegrodę zewnętrzną. */
+  boundaryType?: 'external' | 'unconditioned';
   type: OpaquePartitionType;
   direction: string;
   /** Nachylenie od poziomu: 0° = dach płaski, 90° = ściana pionowa. */
@@ -36,6 +43,9 @@ export interface Wall {
   u: number;
   area: number;
   material?: string;
+  unconditionedType?: UnconditionedPartitionType;
+  /** Stała temperatura po drugiej stronie przegrody [°C]. */
+  adjacentTemperature?: number;
 }
 
 export interface Window {

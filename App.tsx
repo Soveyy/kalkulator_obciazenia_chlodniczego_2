@@ -15,6 +15,7 @@ import RtsAnalysisPage from './components/pages/RtsAnalysisPage';
 import MethodologyModal from './components/modals/MethodologyModal';
 import WindowEditModal from './components/modals/WindowEditModal';
 import WallEditModal from './components/modals/WallEditModal';
+import UnconditionedWallEditModal from './components/modals/UnconditionedWallEditModal';
 import BulkShadingModal from './components/modals/BulkShadingModal';
 import RtsVisualizerModal from './components/modals/RtsVisualizerModal';
 import CompassHelper from './components/CompassHelper';
@@ -152,6 +153,7 @@ const App: React.FC = () => {
           <MethodologyModal />
           <WindowEditModal />
           <WallEditModal />
+          <UnconditionedWallEditModal />
           <BulkShadingModal />
           <RtsVisualizerModal />
           <ProjectListModal />

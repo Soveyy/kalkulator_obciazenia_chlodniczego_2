@@ -219,7 +219,7 @@ const WallGainsChart: React.FC = () => {
             <Card className="flex items-center justify-center h-full min-h-[500px]">
                 <div className="text-center px-4">
                     <p className="text-slate-500 mb-2">Brak zdefiniowanych przegród w projekcie.</p>
-                    <p className="text-xs text-slate-400">Dodaj ściany albo połacie dachu w zakładce "Ściany", aby zobaczyć analizę zysków.</p>
+                    <p className="text-xs text-slate-400">Dodaj przegrody zewnętrzne lub przegrody do nieklimatyzowanych przestrzeni w zakładce "Ściany", aby zobaczyć analizę zysków.</p>
                 </div>
             </Card>
         );

@@ -127,6 +127,7 @@ const WallEditModal: React.FC = () => {
 
         const wallToSave: Wall = {
             id: isNew ? Date.now() : wall.id,
+            boundaryType: 'external',
             type: wall.type,
             direction: numericTilt === 0 ? 'S' : wall.direction,
             tilt: numericTilt,
