@@ -3,6 +3,9 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Chart from 'chart.js/auto';
 import { MONTH_NAMES, LIGHTING_TYPES } from '../constants';
+import { FLOOR_TYPE_LABELS, RTS_PRESETS } from '../data/rtsPresets';
+import { CTS_PRESETS } from '../data/ctsPresets';
+import { UNCONDITIONED_PARTITION_PRESETS } from '../data/unconditionedPresets';
 
 // Helper to fetch font as base64
 async function fetchFont(url: string): Promise<string> {
@@ -256,19 +259,8 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
     
     const acc = accumulation;
     if (acc && acc.include) {
-        const THERMAL_MASS_TYPES: Record<string, string> = {
-            'light': 'Lekka',
-            'medium': 'Średnia',
-            'heavy': 'Ciężka',
-            'very_heavy': 'Bardzo ciężka'
-        };
-        const FLOOR_TYPES: Record<string, string> = {
-            'panels': 'Panele',
-            'tiles': 'Płytki',
-            'carpet': 'Wykładzina'
-        };
-        allParams.push(['Masa termiczna', THERMAL_MASS_TYPES[acc.thermalMass] || acc.thermalMass]);
-        allParams.push(['Typ podłogi', FLOOR_TYPES[acc.floorType] || acc.floorType]);
+        allParams.push(['Typ budynku / pomieszczenia', RTS_PRESETS[acc.rtsPreset]?.label || acc.rtsPreset]);
+        allParams.push(['Typ podłogi', FLOOR_TYPE_LABELS[acc.floorType] || acc.floorType]);
     } else {
         allParams.push(['Akumulacja ciepła', 'Pominięta']);
     }
@@ -369,7 +361,7 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
     
     doc.setFont('Roboto', 'normal');
     doc.setTextColor(71, 85, 105);
-    const methodologyText = 'Obliczenia wykorzystują model całkowicie bezchmurnego nieba (Clear Sky) dla wybranego miesiąca. Zgodnie z metodyką ASHRAE RTS (Radiant Time Series), algorytm zakłada, że takie same, ekstremalne warunki pogodowe oraz wewnętrzne profile zysków ciepła powtarzają się przez kilka dni z rzędu, co pozwala na pełne uwzględnienie zjawiska akumulacji ciepła w masie budynku.';
+    const methodologyText = 'Obciążenie projektowe oszacowano metodą opartą na ASHRAE RTS, z pogodą i modelem Clear Sky dla Warszawy. Przegrody zewnętrzne wykorzystują Sol-Air i CTS, natomiast przegrody do nieklimatyzowanych przestrzeni są świadomie uproszczone do stałego U × A × ΔT. Wynik służy do doboru klimatyzacji w małych obiektach i nie jest pełną symulacją energetyczną budynku.';
     const splitMethodology = doc.splitTextToSize(methodologyText, pageWidth - (2 * margin) - 10);
     doc.text(splitMethodology, margin + 5, yPos + 11);
 
@@ -503,29 +495,39 @@ export const generatePdfReport = async (state: any, activeRoom: any) => {
     doc.setFontSize(10);
     doc.setFont('Roboto', 'bold');
     doc.setTextColor(0);
-    doc.text('3.2 Ściany i przegrody nieprzezroczyste', margin, yPos);
+    doc.text('3.2 Przegrody nieprzezroczyste', margin, yPos);
     yPos += 6;
 
-    const WALL_TYPES: Record<string, string> = {
-        'sciana_ocieplona': 'Ściana ocieplona',
-        'sciana_nieocieplona': 'Ściana nieocieplona',
-        'stropodach_ocieplony': 'Stropodach ocieplony'
-    };
-
-    const wallsBody = walls && walls.length > 0 ? walls.map((w: any) => [
-        WALL_TYPES[w.type] || w.type,
-        w.type === 'stropodach_ocieplony' ? '-' : w.direction,
-        w.area.toFixed(2),
-        w.u.toFixed(2)
-    ]) : [];
+    const wallsBody = walls && walls.length > 0 ? walls.map((w: any) => {
+        if (w.boundaryType === 'unconditioned') {
+            const unconditionedPreset = UNCONDITIONED_PARTITION_PRESETS[
+                w.unconditionedType as keyof typeof UNCONDITIONED_PARTITION_PRESETS
+            ] || UNCONDITIONED_PARTITION_PRESETS.ceiling_hot_attic;
+            return [
+                unconditionedPreset.label,
+                `stała temperatura: ${Number(w.adjacentTemperature ?? 50).toFixed(1)}°C`,
+                w.area.toFixed(2),
+                w.u.toFixed(3),
+            ];
+        }
+        const preset = CTS_PRESETS[w.type as keyof typeof CTS_PRESETS];
+        const tilt = Number(w.tilt ?? preset?.defaultTilt ?? 90);
+        const orientation = tilt === 0 ? 'pozioma · 0°' : `${w.direction} · ${tilt}°`;
+        return [
+            preset?.label || w.type,
+            orientation,
+            w.area.toFixed(2),
+            w.u.toFixed(3),
+        ];
+    }) : [];
 
     if (wallsBody.length === 0) {
-        wallsBody.push(['Brak ścian', '-', '-', '-']);
+        wallsBody.push(['Brak przegród', '-', '-', '-']);
     }
 
     autoTable(doc, {
         startY: yPos,
-        head: [['Typ przegrody', 'Kierunek', 'Powierzchnia [m²]', 'Wsp. U [W/m²K]']],
+        head: [['Typ przegrody', 'Orientacja / warunki', 'Powierzchnia [m²]', 'Wsp. U [W/m²K]']],
         body: wallsBody,
         theme: 'grid',
         headStyles: { fillColor: [241, 245, 249], textColor: 50, fontStyle: 'bold', lineColor: 200, font: 'Roboto' },

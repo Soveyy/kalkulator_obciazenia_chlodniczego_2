@@ -18,13 +18,34 @@ export interface Overhang {
     distanceAbove: number; // Odległość pionowa nad oknem
 }
 
+export type OpaquePartitionType =
+  | 'sciana_murowana_ocieplona'
+  | 'sciana_murowana_nieocieplona'
+  | 'sciana_szkieletowa_ocieplona'
+  | 'sciana_warstwowa_pir'
+  | 'stropodach_zelbetowy_ocieplony'
+  | 'dach_skosny_drewniany'
+  | 'dach_lekki_pir';
+
+export type UnconditionedPartitionType =
+  | 'ceiling_hot_attic'
+  | 'wall_unconditioned_space'
+  | 'floor_unconditioned_space';
+
 export interface Wall {
   id: number;
-  type: 'sciana_ocieplona' | 'sciana_nieocieplona' | 'stropodach_ocieplony';
+  /** Brak pola w starszych projektach oznacza przegrodę zewnętrzną. */
+  boundaryType?: 'external' | 'unconditioned';
+  type: OpaquePartitionType;
   direction: string;
+  /** Nachylenie od poziomu: 0° = dach płaski, 90° = ściana pionowa. */
+  tilt: number;
   u: number;
   area: number;
   material?: string;
+  unconditionedType?: UnconditionedPartitionType;
+  /** Stała temperatura po drugiej stronie przegrody [°C]. */
+  adjacentTemperature?: number;
 }
 
 export interface Window {
@@ -40,9 +61,20 @@ export interface Window {
   overhang?: Overhang;
 }
 
+export type RtsPresetId =
+    | 'heavy'
+    | 'medium'
+    | 'attic'
+    | 'single_storey'
+    | 'office'
+    | 'light'
+    | 'large_panel'
+    | 'tenement'
+    | 'warehouse';
+
 export interface AccumulationSettings {
     include: boolean;
-    thermalMass: 'light' | 'medium' | 'heavy' | 'very_heavy';
+    rtsPreset: RtsPresetId;
     floorType: 'panels' | 'tiles' | 'carpet';
     glassPercentage: 10 | 50 | 90;
 }

@@ -1,19 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
 import { useCalculator } from '../contexts/CalculatorContext';
-import { THERMAL_MASS_OPTIONS } from './ui/CustomThermalMassSelect';
+import { RTS_PRESET_IDS, RTS_PRESETS } from '../data/rtsPresets';
 import { Info } from 'lucide-react';
 
 interface RtsInlineWidgetProps {
     roomId: string;
 }
-
-const COLORS: Record<string, string> = {
-    light: '#3b82f6', // blue-500
-    medium: '#10b981', // emerald-500
-    heavy: '#f59e0b', // amber-500
-    very_heavy: '#8b5cf6', // violet-500
-};
 
 const RtsInlineWidget: React.FC<RtsInlineWidgetProps> = ({ roomId }) => {
     const { state, theme } = useCalculator();
@@ -24,7 +17,7 @@ const RtsInlineWidget: React.FC<RtsInlineWidgetProps> = ({ roomId }) => {
     const room = state.rooms.find(r => r.id === roomId);
     const floorType = room?.accumulation?.floorType || 'carpet';
     const glassPercentage = room?.accumulation?.glassPercentage || 50;
-    const thermalMass = room?.accumulation?.thermalMass || 'medium';
+    const rtsPreset = room?.accumulation?.rtsPreset || 'heavy';
 
     let selectedGlassP: 10 | 50 | 90 = 50;
     if (glassPercentage <= 30) selectedGlassP = 10;
@@ -41,43 +34,30 @@ const RtsInlineWidget: React.FC<RtsInlineWidgetProps> = ({ roomId }) => {
         const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
         const textColor = isDarkMode ? '#ecf0f1' : '#333';
 
-        const datasets = Object.keys(THERMAL_MASS_OPTIONS).map(massType => {
+        const datasets = RTS_PRESET_IDS.map(presetId => {
             const dataKey = gainType === 'non_solar' ? 'nonsolar' : 'solar';
-            const data = state.allData?.rts?.[massType]?.[floorType]?.[selectedGlassP]?.[dataKey] || [];
-            const isSelected = thermalMass === massType;
+            const data = state.allData?.rts?.[presetId]?.[floorType]?.[selectedGlassP]?.[dataKey] || [];
+            const isSelected = rtsPreset === presetId;
+            const color = RTS_PRESETS[presetId].color;
             return {
                 type: 'bar' as const,
-                label: THERMAL_MASS_OPTIONS[massType].label,
+                label: RTS_PRESETS[presetId].label,
                 data: data,
-                borderColor: COLORS[massType],
-                backgroundColor: COLORS[massType],
-                hoverBackgroundColor: COLORS[massType],
-                borderWidth: 0,
-                hoverBorderWidth: 0,
+                borderColor: color,
+                backgroundColor: isSelected ? color : `${color}2e`,
+                hoverBackgroundColor: color,
+                borderWidth: isSelected ? 1 : 0,
+                hoverBorderWidth: 1,
                 barPercentage: 0.98,
                 categoryPercentage: 0.92,
                 borderRadius: 0,
-                zIndex: isSelected ? 10 : 0,
+                order: isSelected ? 0 : 1,
             };
         });
 
         if (chartInstanceRef.current) {
             const chart = chartInstanceRef.current;
-            // Update individual datasets in-place to trigger smooth value transitions
-            datasets.forEach((newD: any, i) => {
-                if (chart.data.datasets[i]) {
-                    chart.data.datasets[i].data = [...newD.data];
-                    chart.data.datasets[i].borderColor = newD.borderColor;
-                    chart.data.datasets[i].backgroundColor = newD.backgroundColor;
-                    (chart.data.datasets[i] as any).hoverBackgroundColor = newD.hoverBackgroundColor;
-                    chart.data.datasets[i].borderWidth = newD.borderWidth;
-                    (chart.data.datasets[i] as any).hoverBorderWidth = newD.hoverBorderWidth;
-                    (chart.data.datasets[i] as any).barPercentage = newD.barPercentage;
-                    (chart.data.datasets[i] as any).categoryPercentage = newD.categoryPercentage;
-                    (chart.data.datasets[i] as any).borderRadius = newD.borderRadius;
-                    chart.data.datasets[i].zIndex = newD.zIndex;
-                }
-            });
+            chart.data.datasets = datasets as any;
             
             if (chart.options.scales?.x) {
                 if (chart.options.scales.x.title) {
@@ -124,7 +104,7 @@ const RtsInlineWidget: React.FC<RtsInlineWidgetProps> = ({ roomId }) => {
                         y: {
                             title: { display: true, text: 'Współczynnik RTS (%)', color: textColor, font: { size: 11 } },
                             min: 0,
-                            max: 0.6,
+                            suggestedMax: 0.7,
                             ticks: { 
                                 color: textColor, 
                                 font: { size: 10 }, 
@@ -139,7 +119,7 @@ const RtsInlineWidget: React.FC<RtsInlineWidgetProps> = ({ roomId }) => {
                         legend: {
                             display: true,
                             position: 'top',
-                            labels: { color: textColor, font: { size: 11 }, usePointStyle: true, boxWidth: 6 }
+                            labels: { color: textColor, font: { size: 10 }, usePointStyle: true, boxWidth: 6 }
                         },
                         tooltip: {
                             callbacks: {
@@ -153,7 +133,7 @@ const RtsInlineWidget: React.FC<RtsInlineWidgetProps> = ({ roomId }) => {
             });
         }
 
-    }, [theme, state.allData, gainType, floorType, selectedGlassP, thermalMass, roomId]);
+    }, [theme, state.allData, gainType, floorType, selectedGlassP, rtsPreset, roomId]);
 
     useEffect(() => {
         return () => {
@@ -174,7 +154,7 @@ const RtsInlineWidget: React.FC<RtsInlineWidgetProps> = ({ roomId }) => {
                     <div className="relative group cursor-help">
                         <Info className="w-5 h-5 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300" />
                         <div className="absolute hidden group-hover:block z-50 w-72 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-xl -left-2 top-8 tooltip-triangle font-normal">
-                            RTF - Radiant Time Factors, czyli współczynniki opóźnienia zysków ciepła w masie termicznej budynku w metodzie Radiant Time Series.
+                            RTF - Radiant Time Factors, czyli współczynniki opisujące, jak wybrany typ budynku lub pomieszczenia opóźnia zyski radiacyjne w metodzie Radiant Time Series.
                         </div>
                     </div>
                 </div>

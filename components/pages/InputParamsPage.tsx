@@ -6,7 +6,8 @@ import Select from '../ui/Select';
 import Checkbox from '../ui/Checkbox';
 import Tooltip from '../ui/Tooltip';
 import RtsInlineWidget from '../RtsInlineWidget';
-import CustomThermalMassSelect from '../ui/CustomThermalMassSelect';
+import RtsPresetDetails from '../RtsPresetDetails';
+import CustomRtsPresetSelect from '../ui/CustomRtsPresetSelect';
 
 const InputParamsPage: React.FC = () => {
     const { state, dispatch, helpMode } = useCalculator();
@@ -209,12 +210,12 @@ const InputParamsPage: React.FC = () => {
                             <div className="flex flex-col gap-4 animate-fade-in w-full">
                                     <div className="w-full">
                                         <div className="flex items-center mb-1.5">
-                                            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wider">Konstrukcja budynku</label>
-                                            <Tooltip text="Wybierz klasę konstrukcji budynku. Budynek lekki szybciej się nagrzewa, ciężki magazynuje ciepło, spłaszczając szczyt." position="top" />
+                                            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wider">Typ budynku / pomieszczenia</label>
+                                            <Tooltip text="Wybór określa reprezentatywną geometrię i konstrukcję przegród, a przez to wpływa na akumulację ciepła oraz godzinowy rozkład obciążenia." position="top" />
                                         </div>
-                                        <CustomThermalMassSelect 
-                                            value={currentRoom.accumulation.thermalMass}
-                                            onChange={(val) => handleAccumulationChange({ target: { name: 'thermalMass', value: val } } as any)}
+                                        <CustomRtsPresetSelect
+                                            value={currentRoom.accumulation.rtsPreset}
+                                            onChange={(val) => handleAccumulationChange({ target: { name: 'rtsPreset', value: val } } as any)}
                                         />
                                     </div>
                                 
@@ -266,6 +267,10 @@ const InputParamsPage: React.FC = () => {
                 )}
             </div>
 
+            {currentRoom.accumulation.include && (
+                <RtsPresetDetails accumulation={currentRoom.accumulation} />
+            )}
+
             {helpMode && (
                 <Card className="p-4 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 animate-fade-in shadow-md">
                     <div className="flex items-start gap-4">
@@ -275,7 +280,7 @@ const InputParamsPage: React.FC = () => {
                             <ul className="list-disc pl-5 text-sm text-amber-700 dark:text-amber-300 space-y-1">
                                 <li><strong>Powierzchnia pomieszczenia</strong> posłuży później m.in. do wstępnego szacowania zysków od oświetlenia lub rozkładu obciążenia na m².</li>
                                 <li><strong>Temperatura wewnętrzna</strong> wpływa na zyski przez przegrody i infiltrację we wszystkich kolejnych krokach. Projektowa wartość latem to najczęściej 24-26°C.</li>
-                                <li><strong>Akumulacja ciepła (Bezwładność RTS)</strong> - fizyczne zjawisko pochłaniania energii promieniowania słonecznego i wewnętrznego przez masywne elementy budynku (ściany, podłogi). Energia ta nie obciąża klimatyzacji natychmiast, lecz jest magazynowana i oddawana do powietrza z opóźnieniem (nawet po wielu godzinach). Konstrukcja ciężka (np. mury z betonu) z dobrze eksponowaną podłogą skutecznie wypłaszcza i obniża popołudniowy szczyt obciążenia chłodniczego, co pozwala na dobór mniejszego klimatyzatora. Zauważ jak grube linie na wykresie powyżej (Twoja wybrana opcja) kształtują profil.</li>
+                                <li><strong>Akumulacja ciepła (Bezwładność RTS)</strong> - fizyczne zjawisko pochłaniania energii promieniowania słonecznego i wewnętrznego przez ściany, podłogi, stropy i wyposażenie. Energia ta nie obciąża klimatyzacji natychmiast, lecz jest oddawana do powietrza z opóźnieniem. Wybierz typ budynku lub pomieszczenia na podstawie elementów opisanych w karcie pod wykresem.</li>
                             </ul>
                         </div>
                     </div>

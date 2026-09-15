@@ -5,7 +5,7 @@ import { CHART_COLORS } from '../lib/chartUtils';
 
 const NODE_COLORS: Record<string, string> = {
     'Okna': CHART_COLORS.solar,
-    'Ściany': CHART_COLORS.conduction,
+    'Przegrody': CHART_COLORS.conduction,
     'Ludzie': CHART_COLORS.people,
     'Oświetlenie': CHART_COLORS.lighting,
     'Sprzęt': CHART_COLORS.equipment,
@@ -136,7 +136,7 @@ const SankeyChart: React.FC<SankeyChartProps> = ({ customResults }) => {
 
     const rawLinks = [
         { sourceName: 'Okna', targetName: 'Ciepło Jawne', value: Math.round(windowsLoad) },
-        { sourceName: 'Ściany', targetName: 'Ciepło Jawne', value: Math.round(wallsLoad) },
+        { sourceName: 'Przegrody', targetName: 'Ciepło Jawne', value: Math.round(wallsLoad) },
         { sourceName: 'Ludzie', targetName: 'Ciepło Jawne', value: Math.round(peopleSensible) },
         { sourceName: 'Ludzie', targetName: 'Ciepło Utajone', value: Math.round(peopleLatent) },
         { sourceName: 'Oświetlenie', targetName: 'Ciepło Jawne', value: Math.round(lightingLoad) },

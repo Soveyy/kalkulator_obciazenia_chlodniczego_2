@@ -15,6 +15,7 @@ import RtsAnalysisPage from './components/pages/RtsAnalysisPage';
 import MethodologyModal from './components/modals/MethodologyModal';
 import WindowEditModal from './components/modals/WindowEditModal';
 import WallEditModal from './components/modals/WallEditModal';
+import UnconditionedWallEditModal from './components/modals/UnconditionedWallEditModal';
 import BulkShadingModal from './components/modals/BulkShadingModal';
 import RtsVisualizerModal from './components/modals/RtsVisualizerModal';
 import CompassHelper from './components/CompassHelper';
@@ -22,7 +23,7 @@ import KPIDashboard from './components/KPIDashboard';
 import ProjectListModal from './components/modals/ProjectListModal';
 import ToastContainer from './components/ToastContainer';
 import { LoginOverlay } from './components/LoginOverlay';
-import { auth } from './firebase';
+import { auth, isFirebaseConfigured, isLocalPreviewMode } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 
 import { motion, AnimatePresence } from 'motion/react';
@@ -114,6 +115,11 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
@@ -125,15 +131,29 @@ const App: React.FC = () => {
     return <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900 text-slate-500">Ładowanie...</div>;
   }
 
+  if (!isFirebaseConfigured && !isLocalPreviewMode) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900 p-6">
+        <div className="max-w-lg rounded-xl bg-white dark:bg-slate-800 p-6 shadow-lg text-center">
+          <h1 className="text-xl font-bold text-slate-800 dark:text-white">Brak konfiguracji Firebase</h1>
+          <p className="mt-2 text-slate-600 dark:text-slate-300">
+            W środowisku produkcyjnym wymagane są zmienne VITE_FIREBASE_*. Tryb bez logowania jest dostępny wyłącznie podczas lokalnego podglądu developerskiego.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <CalculatorProvider>
-      {!user && <LoginOverlay />}
-      {user && (
+      {isFirebaseConfigured && !user && <LoginOverlay />}
+      {(isLocalPreviewMode || user) && (
         <>
           <AppContent />
           <MethodologyModal />
           <WindowEditModal />
           <WallEditModal />
+          <UnconditionedWallEditModal />
           <BulkShadingModal />
           <RtsVisualizerModal />
           <ProjectListModal />

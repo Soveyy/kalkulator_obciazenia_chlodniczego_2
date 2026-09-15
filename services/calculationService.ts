@@ -2,6 +2,8 @@
 import { Window, Wall, AccumulationSettings, InternalGains, AllData, InputState, CalculationResults, Shading, CalculationResultData } from '../types';
 import { PEOPLE_ACTIVITY_LEVELS, LIGHTING_TYPES, VENTILATION_EXCHANGER_TYPES, EQUIPMENT_PRESETS, WALL_MATERIALS, ANALYSIS_MONTHS } from '../constants';
 import { ADVANCED_APPLIANCES } from '../data/advancedAppliances';
+import { CTS_PRESETS, isRoofPreset } from '../data/ctsPresets';
+import { UNCONDITIONED_PARTITION_PRESETS } from '../data/unconditionedPresets';
 import { SHGC_DIFFUSE_MULTIPLIERS, SHGC_DIRECT_CORRECTION_CURVES } from '../src/config/shgcConfig';
 
 
@@ -15,6 +17,34 @@ const ASHRAE_TEMPERATURE_FRACTIONS = [
 // wypada ~10:40 UTC. Poprawka sprowadza się do frac[(h+1) % 24], co w pełni pokrywa
 // się z procedurą ASHRAE bez interpolacji.
 const SOLAR_TIME_INDEX_SHIFT = 1;
+
+export interface OpaqueSurfaceSolarGeometry {
+    isRoof: boolean;
+    direction: string;
+    tilt: number;
+    tiltKey: string;
+    longwaveCorrection: number;
+}
+
+/**
+ * Geometria używana do pobrania promieniowania i wyznaczenia temperatury sol-air.
+ * Kąt jest liczony od poziomu. Uproszczona poprawka długofalowa ASHRAE ma
+ * 63 W/m² dla dachu poziomego i zanika dla powierzchni pionowej.
+ */
+export function getOpaqueSurfaceSolarGeometry(wall: Wall): OpaqueSurfaceSolarGeometry {
+    const preset = CTS_PRESETS[wall.type];
+    const isRoof = isRoofPreset(wall.type);
+    const requestedTilt = Number.isFinite(wall.tilt) ? wall.tilt : preset.defaultTilt;
+    const tilt = preset.allowedTilts.includes(requestedTilt) ? requestedTilt : preset.defaultTilt;
+
+    return {
+        isRoof,
+        direction: tilt === 0 ? preset.defaultDirection : wall.direction || preset.defaultDirection,
+        tilt,
+        tiltKey: String(tilt),
+        longwaveCorrection: isRoof ? 63 * Math.max(0, Math.cos(tilt * Math.PI / 180)) : 0,
+    };
+}
 
 export function generateAshraeTemperatureProfile(peakTemp: number, dailyRange: number): number[] {
     return Array.from({ length: 24 }).map((_, h) => {
@@ -115,7 +145,7 @@ function getShadingFactors(window: Window, allData: AllData, hour: number, month
     return { iac_beam: iac, iac_diff: iac, fr: factors.fr, is_indoor };
 }
 
-function applyRTS(radiantGains: number[], rtsFactors: number[]): number[] {
+export function applyRTS(radiantGains: number[], rtsFactors: number[]): number[] {
     const coolingLoad = Array(24).fill(0);
     for (let n = 0; n < 24; n++) {
         let currentLoad = 0;
@@ -128,7 +158,7 @@ function applyRTS(radiantGains: number[], rtsFactors: number[]): number[] {
 }
 
 function getRtsFactors(accumulation: AccumulationSettings, allData: AllData, solar: boolean): number[] {
-    const { thermalMass, floorType, glassPercentage } = accumulation;
+    const { rtsPreset, floorType, glassPercentage } = accumulation;
     const rtsSeriesType = solar ? 'solar' : 'nonsolar';
     
     const fallbackFactors = allData.rts['medium']['panels']['50'][rtsSeriesType];
@@ -139,7 +169,7 @@ function getRtsFactors(accumulation: AccumulationSettings, allData: AllData, sol
         else if (glassPercentage <= 70) selectedGlassP = 50;
         else selectedGlassP = 90;
 
-        const factors = allData.rts[thermalMass]?.[floorType]?.[selectedGlassP]?.[rtsSeriesType];
+        const factors = allData.rts[rtsPreset]?.[floorType]?.[selectedGlassP]?.[rtsSeriesType];
         return factors || fallbackFactors;
     } catch(e) {
         console.error("Could not find RTS factors, using fallback.", e);
@@ -676,14 +706,35 @@ export function calculateGainsForMonth(
         walls.forEach((wall, index) => {
             const area = wall.area;
             const U = wall.u;
+
+            if (wall.boundaryType === 'unconditioned') {
+                const adjacentTemperature = wall.adjacentTemperature ?? 50;
+                const steadyLoad = U * area * (adjacentTemperature - tInternal);
+                const steadyLoadProfile = Array(24).fill(steadyLoad);
+                const unconditionedPreset = UNCONDITIONED_PARTITION_PRESETS[
+                    wall.unconditionedType || 'ceiling_hot_attic'
+                ];
+
+                for (let hour = 0; hour < 24; hour++) {
+                    // Świadome uproszczenie: stałe przewodzenie U × A × ΔT,
+                    // bez Sol-Air, CTS oraz dodatkowego opóźnienia RTS.
+                    wallConvectiveGains[hour] += steadyLoad;
+                }
+
+                individualWallsData.push({
+                    id: wall.id,
+                    title: `${unconditionedPreset.label} ${index + 1} (${adjacentTemperature}°C)`,
+                    sensible: steadyLoadProfile,
+                });
+                return;
+            }
+
             const alpha = WALL_MATERIALS[wall.material || 'brick_red']?.absorptance ?? 0.65;
             const h_o = 17;
             const epsilon = 0.9;
             
-            const isRoof = wall.type === 'stropodach_ocieplony';
-            const delta_R = isRoof ? 63 : 0;
-            const direction = isRoof ? 'S' : wall.direction;
-            const tiltStr = isRoof ? '0' : '90';
+            const solarGeometry = getOpaqueSurfaceSolarGeometry(wall);
+            const { isRoof, direction, tiltKey: tiltStr, longwaveCorrection: delta_R } = solarGeometry;
             
             const nsrdbDirData = allData.nsrdb[month]?.[direction]?.[tiltStr];
             const ctsCoeffs = allData.cts?.cts_coefficients?.[wall.type] || Array(24).fill(0);
@@ -719,7 +770,11 @@ export function calculateGainsForMonth(
             const wallLoadRadiant_RTS = accumulation.include ? applyRTS(wallLoadRadiant, rtsFactorsNonSolar) : wallLoadRadiant;
             const wallLoadTotal = Array(24).fill(0).map((_, h) => q_cond[h] * (isRoof ? 0.40 : 0.54) + wallLoadRadiant_RTS[h]);
             
-            const title = isRoof ? `Stropodach ${index + 1}` : `Ściana ${index + 1} (${wall.direction})`;
+            const preset = CTS_PRESETS[wall.type];
+            const orientation = solarGeometry.tilt === 0
+                ? 'poziomy'
+                : `${solarGeometry.direction}, ${solarGeometry.tilt}°`;
+            const title = `${preset.label} ${index + 1} (${orientation})`;
             
             individualWallsData.push({
                 id: wall.id,

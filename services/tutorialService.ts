@@ -80,7 +80,7 @@ export const createTutorial = (onComplete: () => void): Driver => {
       {
         element: '#tab-walls',
         popover: {
-          title: '5. Ściany i dachy',
+          title: '5. Przegrody nieprzezroczyste',
           description: 'Wprowadź nieprzezroczyste przegrody zewnętrzne: ściany o zadanej orientacji oraz stropy i stropodachy, definiując ich powierzchnię, współczynnik przenikania U i typ/kolor wykończenia od zewnątrz.',
           side: "bottom",
           align: 'start'

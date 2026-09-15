@@ -281,10 +281,12 @@ const WindowEditModal: React.FC = () => {
                 <div>
                     <label className="label-style flex items-center">
                         Typ okna:
-                        <Tooltip text="Wybierz predefiniowany typ okna lub 'Niestandardowe', aby ręcznie wprowadzić wartości." />
+                        <Tooltip text="Wybierz najbliższy preset, a następnie w razie potrzeby skoryguj wartości U i SHGC." />
                     </label>
                     <Select name="type" value={window.type} onChange={handleChange}>
-                        <option value="custom">Niestandardowe</option>
+                        {!isNew && window.type === 'custom' && (
+                            <option value="custom">Niestandardowe (starszy projekt)</option>
+                        )}
                         <option value="modern">Nowoczesne (3-szybowe)</option>
                         <option value="standard">Standardowe (nowe, 2-szybowe)</option>
                         <option value="older_double">Starsze (2-szybowe)</option>
@@ -292,6 +294,11 @@ const WindowEditModal: React.FC = () => {
                     </Select>
                      {description && window.type !== 'custom' && (
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 bg-slate-100 dark:bg-slate-700/50 p-2 rounded-md">{description}</p>
+                    )}
+                    {window.type === 'custom' && (
+                        <p className="text-xs text-amber-700 dark:text-amber-300 mt-2 bg-amber-50 dark:bg-amber-900/20 p-2 rounded-md">
+                            Ten typ zachowano wyłącznie dla zgodności ze starszym projektem. Możesz pozostawić jego wartości albo wybrać jeden z aktualnych presetów.
+                        </p>
                     )}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
