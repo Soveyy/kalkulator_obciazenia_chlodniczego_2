@@ -36,7 +36,7 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) => {
               </div>
 
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
-                Witaj w Kalkulatorze obciążenia chłodniczego!
+                Witaj w programie Kalkulator HVAC RTS!
               </h2>
               
               <p className="text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">

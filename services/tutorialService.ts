@@ -17,7 +17,7 @@ export const createTutorial = (onComplete: () => void): Driver => {
       {
         element: '#app-header',
         popover: {
-          title: 'Witaj w Kalkulatorze!',
+          title: 'Witaj w programie Kalkulator HVAC RTS!',
           description: 'To zaawansowane narzędzie inżynierskie pomoże Ci precyzyjnie obliczyć zyski ciepła i obciążenie chłodnicze budynków zgodnie z uznaną metodologią ASHRAE (RTS - Radiant Time Series).',
           side: "bottom",
           align: 'start'

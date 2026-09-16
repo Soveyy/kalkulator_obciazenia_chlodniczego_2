@@ -12,7 +12,7 @@ const Header: React.FC = () => {
     return (
         <header className="mb-4">
             <h1 className="text-xl font-bold text-slate-800 dark:text-white text-center mb-3 lg:hidden whitespace-nowrap">
-                Kalkulator HVAC <span className="text-xs font-normal opacity-50">v0.6.0</span>
+                Kalkulator HVAC RTS <span className="text-xs font-normal opacity-50">v0.6.0</span>
             </h1>
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -26,7 +26,7 @@ const Header: React.FC = () => {
                     </button>
                     <div className="flex items-baseline gap-3">
                         <h1 className="hidden lg:block text-2xl md:text-3xl font-bold text-slate-800 dark:text-white whitespace-nowrap">
-                            Kalkulator HVAC
+                            Kalkulator HVAC RTS
                         </h1>
                         <span className="hidden lg:block text-xs font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
                             v0.6.0

@@ -1,6 +1,6 @@
 {
-  "short_name": "HeatCalc",
-  "name": "Zaawansowany Kalkulator Zysków Ciepła",
+  "short_name": "Kalkulator HVAC RTS",
+  "name": "Kalkulator HVAC RTS",
   "description": "Kalkulator do symulacji zysków ciepła przez przegrody przezroczyste.",
   "icons": [
     {

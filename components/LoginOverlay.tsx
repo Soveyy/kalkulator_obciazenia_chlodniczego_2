@@ -6,7 +6,7 @@ export const LoginOverlay: React.FC = () => {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4">
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl p-8 max-w-md w-full text-center space-y-6">
-                <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">Kalkulator HVAC</h2>
+                <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">Kalkulator HVAC RTS</h2>
                 <p className="text-slate-600 dark:text-slate-400">
                     Zaloguj się, aby uzyskać dostęp do aplikacji. Twoje projekty będą bezpiecznie przechowywane w chmurze i dostępne na wielu urządzeniach.
                 </p>

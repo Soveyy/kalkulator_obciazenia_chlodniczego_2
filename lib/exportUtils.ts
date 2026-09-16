@@ -212,7 +212,7 @@ export function exportRoomsToExcel(rooms: RoomState[], projectName: string) {
         <th colspan="9" style="background-color: #1e293b; color: #ffffff; font-size: 14pt; font-weight: bold; text-align: center; padding: 15px; border: 1px solid #475569;">PROJEKT: ${projectName || "Bez nazwy (Zestawienie Excel)"}</th>
       </tr>
       <tr>
-        <th colspan="9" style="background-color: #f8fafc; color: #475569; font-size: 10pt; font-weight: normal; text-align: left; padding: 10px; border: 1px solid #cbd5e1;">Wygenerowano: ${formattedDate} | Kalkulator Obciążenia Chłodniczego ASHRAE</th>
+        <th colspan="9" style="background-color: #f8fafc; color: #475569; font-size: 10pt; font-weight: normal; text-align: left; padding: 10px; border: 1px solid #cbd5e1;">Wygenerowano: ${formattedDate} | Kalkulator HVAC RTS</th>
       </tr>
       <tr>
         <th rowspan="2" style="width: 250px; background-color: #475569; color: #ffffff; font-weight: bold; text-align: left; border: 1px solid #475569; padding: 10px 14px;">Pomieszczenie</th>

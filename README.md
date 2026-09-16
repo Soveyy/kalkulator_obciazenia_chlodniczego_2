@@ -1,4 +1,4 @@
-# Kalkulator obciążenia chłodniczego HVAC
+# Kalkulator HVAC RTS
 
 Aplikacja React/Vite do obliczania obciążenia chłodniczego metodą ASHRAE RTS.
 
