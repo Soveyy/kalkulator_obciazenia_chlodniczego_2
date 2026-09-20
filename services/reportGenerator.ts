@@ -1,826 +1,134 @@
-
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import Chart from 'chart.js/auto';
-import { MONTH_NAMES, LIGHTING_TYPES } from '../constants';
+import { ADVANCED_APPLIANCES } from '../data/advancedAppliances';
+import { LIGHTING_TYPES, PEOPLE_ACTIVITY_LEVELS, VENTILATION_EXCHANGER_TYPES, WALL_MATERIALS } from '../constants';
 import { FLOOR_TYPE_LABELS, RTS_PRESETS } from '../data/rtsPresets';
 import { CTS_PRESETS } from '../data/ctsPresets';
 import { UNCONDITIONED_PARTITION_PRESETS } from '../data/unconditionedPresets';
+import type { RoomState, State } from '../types';
+import { assertRoomValid, isRoomResultCurrent, parseNumber } from './validationService';
+import { scheduleLabel } from './resultModel';
+import { PdfLayout, balanceTable, componentsImage, positiveSources, roomProfileImage } from './pdfLayout';
+import { BALANCE_NOTE, DISCLAIMER, ENERGY_NOTE, REPORT_SCOPE, REPORT_SOURCE_LABELS, componentsNote, formatNumber as n, kw, localHour, monthName, reportFileName, roomReportData, timeZone, ventilationLabel } from './reportPresentation';
 
-// Helper to fetch font as base64
-async function fetchFont(url: string): Promise<string> {
-    const response = await fetch(url);
-    const buffer = await response.arrayBuffer();
-    let binary = '';
-    const bytes = new Uint8Array(buffer);
-    const len = bytes.byteLength;
-    for (let i = 0; i < len; i++) {
-        binary += String.fromCharCode(bytes[i]);
-    }
-    return window.btoa(binary);
-}
+export const generatePdfReport = async (state: State, room: RoomState) => {
+    assertRoomValid(room);
+    if (!isRoomResultCurrent(room)) throw new Error('Wynik pomieszczenia jest nieaktualny. Przelicz dane przed utworzeniem raportu.');
+    const { summary, season } = roomReportData(room);
+    const month = room.currentMonth;
+    const hour = localHour(summary.hour, month);
+    const area = parseNumber(room.input.roomArea)!;
+    const pdf = await PdfLayout.create(state.projectName, 'Raport pomieszczenia');
 
-const reorderDataForLocalTime = (data: number[], offset: number): number[] => {
-    if (!data) return Array(24).fill(0);
-    return Array.from({ length: 24 }, (_, i) => data[(i - offset + 24) % 24] || 0);
-};
-
-// Plugin do rysowania etykiet na wykresie kołowym
-const pieLabelsPlugin = {
-    id: 'pieLabels',
-    afterDatasetsDraw(chart: any) {
-        const { ctx, data } = chart;
-        chart.data.datasets.forEach((dataset: any, i: number) => {
-            const meta = chart.getDatasetMeta(i);
-            meta.data.forEach((element: any, index: number) => {
-                const labelText = data.labels[index];
-                const percentMatch = labelText.match(/\(([\d.]+)%\)/);
-                
-                if (percentMatch) {
-                    const percent = parseFloat(percentMatch[1]);
-                    if (percent > 4) {
-                        const { x, y } = element.tooltipPosition();
-                        ctx.fillStyle = '#fff';
-                        ctx.font = 'bold 18px Arial, sans-serif';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-                        ctx.shadowBlur = 4;
-                        ctx.fillText(`${percentMatch[1]}%`, x, y);
-                        ctx.shadowBlur = 0;
-                    }
-                }
-            });
-        });
-    }
-};
-
-// Plugin do białego tła (wymagany dla JPEG)
-const whiteBackgroundPlugin = {
-    id: 'customCanvasBackgroundColor',
-    beforeDraw: (chart: any, args: any, options: any) => {
-        const { ctx } = chart;
-        ctx.save();
-        ctx.globalCompositeOperation = 'destination-over';
-        ctx.fillStyle = options.color || '#ffffff';
-        ctx.fillRect(0, 0, chart.width, chart.height);
-        ctx.restore();
-    }
-};
-
-// Funkcja pomocnicza do tworzenia obrazu wykresu
-async function createTempChart(config: any, width: number, height: number): Promise<string> {
-    const offscreenCanvas = document.createElement('canvas');
-    offscreenCanvas.width = width;
-    offscreenCanvas.height = height;
-    
-    const defaults = Chart.defaults;
-    defaults.font.family = 'Arial, sans-serif';
-
-    const chartConfig = {
-        ...config,
-        options: {
-            ...config.options,
-            animation: false,
-            animations: { colors: false, x: false, y: false },
-            transitions: { active: { animation: { duration: 0 } } },
-            responsive: false,
-            maintainAspectRatio: false,
-            devicePixelRatio: 3, // Increased for better quality
-            plugins: {
-                ...config.options?.plugins,
-                customCanvasBackgroundColor: {
-                    color: '#ffffff', // Force white background
-                }
-            }
-        },
-        plugins: [...(config.plugins || []), whiteBackgroundPlugin]
-    };
-
-    const chart = new Chart(offscreenCanvas, chartConfig);
-    await new Promise(resolve => setTimeout(resolve, 50));
-    
-    // Export as PNG
-    const dataUrl = chart.canvas.toDataURL('image/png', 1.0);
-    chart.destroy();
-    return dataUrl;
-}
-
-export const generatePdfReport = async (state: any, activeRoom: any) => {
-    const { input, activeResults, currentMonth, windows, walls, internalGains, accumulation } = activeRoom;
-    const projectName = state.projectName;
-
-    if (!activeResults) return;
-
-    // Load Fonts
-    const fontRegular = await fetchFont('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf');
-    const fontBold = await fetchFont('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Medium.ttf');
-
-    // Enable PDF compression
-    const doc = new jsPDF({
-        orientation: 'p',
-        unit: 'mm',
-        format: 'a4',
-        compress: true
-    });
-    
-    // Register Fonts
-    doc.addFileToVFS('Roboto-Regular.ttf', fontRegular);
-    doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
-    
-    doc.addFileToVFS('Roboto-Bold.ttf', fontBold);
-    doc.addFont('Roboto-Bold.ttf', 'Roboto', 'bold');
-
-    // Set Default Font
-    doc.setFont('Roboto', 'normal');
-
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 15;
-    let yPos = margin;
-
-    // --- Helpers ---
-    const addHeader = (title: string) => {
-        if (yPos > pageHeight - 40) {
-            doc.addPage();
-            yPos = margin;
-        }
-        doc.setFontSize(14);
-        doc.setFont('Roboto', 'bold');
-        doc.setTextColor(26, 86, 219); // Brand Blue
-        doc.text(title, margin, yPos);
-        yPos += 8;
-        doc.setLineWidth(0.5);
-        doc.setDrawColor(200);
-        doc.line(margin, yPos - 5, pageWidth - margin, yPos - 5);
-        yPos += 5;
-    };
-
-    const addFooter = () => {
-        const pageCount = (doc as any).internal.getNumberOfPages();
-        for (let i = 1; i <= pageCount; i++) {
-            doc.setPage(i);
-            doc.setFontSize(8);
-            doc.setFont('Roboto', 'normal');
-            doc.setTextColor(150);
-            doc.text(`Strona ${i} z ${pageCount}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
-            doc.text(`Raport: ${new Date().toLocaleDateString('pl-PL')} | ${activeRoom.name || 'Pomieszczenie'}`, margin, pageHeight - 10);
-            doc.text(`Projekt: ${projectName || 'Bez nazwy'}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
-        }
-    };
-
-    // --- Data Preparation ---
-    const { finalGains, loadComponents } = activeResults;
-    const month = parseInt(currentMonth, 10);
-    const isSummerTime = (month >= 4 && month <= 10);
-    const offset = isSummerTime ? 2 : 1;
-    const timeZoneNotice = isSummerTime ? 'UTC+2' : 'UTC+1';
-
-    // Find peaks
-    const maxTotalCS = Math.max(...finalGains.clearSky.total);
-    const hourTotalCS_UTC = finalGains.clearSky.total.indexOf(maxTotalCS);
-    const hourTotalCS_Local = (hourTotalCS_UTC + offset) % 24;
-
-    const sensibleAtPeak = finalGains.clearSky.sensible[hourTotalCS_UTC] || 0;
-    const latentAtPeak = finalGains.clearSky.latent[hourTotalCS_UTC] || 0;
-    
-    // Components at peak
-    const solarLoadPeak = loadComponents.solar[hourTotalCS_UTC] || 0;
-    const conductionLoadPeak = loadComponents.conduction[hourTotalCS_UTC] || 0;
-    const internalSensibleLoadPeak = loadComponents.internalSensible[hourTotalCS_UTC] || 0;
-    const ventilationSensibleLoadPeak = loadComponents.ventilationSensible[hourTotalCS_UTC] || 0;
-    const infiltrationSensibleLoadPeak = loadComponents.infiltrationSensible[hourTotalCS_UTC] || 0;
-    
-    const internalLatentAtPeak = activeResults.components.internalGainsLatent[hourTotalCS_UTC] || 0;
-    const ventilationLatentAtPeak = activeResults.ventilationLoad.latent[hourTotalCS_UTC] || 0;
-    const infiltrationLatentAtPeak = activeResults.infiltrationLoad.latent[hourTotalCS_UTC] || 0;
-    
-    // Daily energy estimation
-    const totalKWhCS = finalGains.clearSky.total.reduce((sum: number, val: number) => sum + Math.max(0, val), 0) / 1000;
-
-
-    // --- PAGE 1 ---
-    
-    // Header block with logo
-    try {
-        const logoData = await fetchFont('/logo-1.png');
-        doc.addImage(`data:image/png;base64,${logoData}`, 'PNG', margin, yPos, 40, 12, undefined, 'FAST');
-    } catch(e) {}
-    
-    doc.setFontSize(8);
-    doc.setTextColor(150);
-    doc.setFont('Roboto', 'normal');
-    doc.text(`Data: ${new Date().toLocaleDateString('pl-PL')}`, pageWidth - margin, yPos + 4, { align: 'right' });
-    doc.text(`Wersja aplikacji: v1.0 (ASHRAE RTS)`, pageWidth - margin, yPos + 8, { align: 'right' });
-    
-    yPos += 25;
-
-    // Main Title
-    doc.setFontSize(24);
-    doc.setFont('Roboto', 'bold');
-    doc.setTextColor(30);
-    doc.text('Raport Obciążenia Chłodniczego', pageWidth / 2, yPos, { align: 'center' });
-    
-    doc.setFontSize(12);
-    doc.setTextColor(100);
-    doc.setFont('Roboto', 'normal');
-    doc.text(`Projekt: ${projectName || 'Bez nazwy'}`, pageWidth / 2, yPos + 10, { align: 'center' });
-    doc.text(`Pomieszczenie: ${activeRoom.name || 'Bez nazwy'}`, pageWidth / 2, yPos + 18, { align: 'center' });
-    
-    doc.setFontSize(10);
-    
-    yPos += 30;
-
-    // 1. Parameters Table
-    addHeader('1. Parametry Projektowe');
-    
-    const allParams: [string, string][] = [
-        ['Miesiąc obliczeniowy', MONTH_NAMES[parseInt(currentMonth, 10) - 1]],
-        ['Temperatura wewnętrzna', `${input.tInternal} °C`],
-        ['Wilgotność wewnętrzna', `${input.rhInternal} %`],
-        ['Powierzchnia pomieszczenia', `${input.roomArea} m²`],
-    ];
-
-    const vent = internalGains.ventilation;
-    if (vent.enabled) {
-        allParams.push(['Typ wentylacji', vent.type === 'mechanical' ? 'Mechaniczna z odzyskiem' : 'Grawitacyjna']);
-        if (vent.type === 'mechanical') {
-            allParams.push(['Strumień powietrza (mech.)', `${vent.airflow} m³/h`]);
-        } else {
-            allParams.push(['Wydatek powietrza (graw.)', `${vent.naturalVentilationAirflow} m³/h`]);
-        }
-    }
-    if (vent.includeInfiltration) {
-        allParams.push(['Infiltracja', 'Tak']);
-        allParams.push(['Obwód ścian zewn.', `${vent.exteriorWallPerimeter} m`]);
-        allParams.push(['Wysokość pom.', `${vent.roomHeight} m`]);
-        allParams.push(['Klasa szczelności', vent.tightnessClass === 'tight' ? 'Szczelne' : vent.tightnessClass === 'average' ? 'Średnie' : 'Nieszczelne']);
-    }
-    
-    const acc = accumulation;
-    if (acc && acc.include) {
-        allParams.push(['Typ budynku / pomieszczenia', RTS_PRESETS[acc.rtsPreset]?.label || acc.rtsPreset]);
-        allParams.push(['Typ podłogi', FLOOR_TYPE_LABELS[acc.floorType] || acc.floorType]);
-    } else {
-        allParams.push(['Akumulacja ciepła', 'Pominięta']);
-    }
-
-    const paramsBody: string[][] = [];
-    for (let i = 0; i < allParams.length; i += 2) {
-        const row = [...allParams[i]];
-        if (i + 1 < allParams.length) {
-            row.push(...allParams[i + 1]);
-        } else {
-            row.push('', '');
-        }
-        paramsBody.push(row);
-    }
-
-    autoTable(doc, {
-        startY: yPos,
-        head: [['Parametr', 'Wartość', 'Parametr', 'Wartość']],
-        body: paramsBody,
-        theme: 'grid',
-        headStyles: { fillColor: [241, 245, 249], textColor: 50, fontStyle: 'bold', lineColor: 200, font: 'Roboto' },
-        bodyStyles: { textColor: 50, font: 'Roboto' },
-        styles: { fontSize: 9, cellPadding: 3, font: 'Roboto' },
-        margin: { left: margin, right: margin },
-        didParseCell: (data) => {
-            // Bold the month name (first row, second column)
-            if (data.section === 'body' && data.row.index === 0 && data.column.index === 1) {
-                data.cell.styles.fontStyle = 'bold';
-            }
-        }
-    });
-    yPos = (doc as any).lastAutoTable.finalY + 15;
-
-    // 2. Peak Load Results
-    addHeader('2. Wyniki - Szczytowe Obciążenie Chłodnicze');
-    
-    // Highlight Box
-    doc.setFillColor(254, 242, 242); // Light red/orange bg
-    doc.setDrawColor(252, 165, 165); // Red border
-    doc.roundedRect(margin, yPos, pageWidth - (2 * margin), 42, 3, 3, 'FD');
-    
-    doc.setFontSize(11);
-    doc.setTextColor(153, 27, 27);
-    doc.text('Maksymalne Całkowite Obciążenie Chłodnicze:', pageWidth / 2, yPos + 8, { align: 'center' });
-    
-    doc.setFontSize(30);
-    doc.setFont('Roboto', 'bold');
-    doc.setTextColor(220, 38, 38); // Strong Red
-    doc.text(`${(maxTotalCS / 1000).toFixed(2)} kW`, pageWidth / 2, yPos + 22, { align: 'center' });
-    
-    doc.setFontSize(10);
-    doc.setFont('Roboto', 'normal');
-    doc.setTextColor(120);
-    
-    const specificLoad = (maxTotalCS / input.roomArea).toFixed(1);
-    doc.text(`(wskaźnik powierzchniowy: ${specificLoad} W/m²)`, pageWidth / 2, yPos + 29, { align: 'center' });
-
-    const monthNamesLocative = [
-        'styczniu', 'lutym', 'marcu', 'kwietniu', 'maju', 'czerwcu',
-        'lipcu', 'sierpniu', 'wrześniu', 'październiku', 'listopadzie', 'grudniu'
-    ];
-    const monthLoc = monthNamesLocative[month - 1];
-    const prep = (month === 9) ? 'we' : 'w'; // 'we wrześniu'
-    
-    doc.text(`Występuje o godzinie: ${String(hourTotalCS_Local).padStart(2, '0')}:00 (${timeZoneNotice}) ${prep} ${monthLoc}`, pageWidth / 2, yPos + 37, { align: 'center' });
-    
-    yPos += 52;
-
-    // Energy Estimation
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(margin, yPos, pageWidth - 2*margin, 14, 2, 2, 'FD');
-    
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.setFont('Roboto', 'bold');
-    doc.text('Dobowe zapotrzebowanie na chłód:', margin + 5, yPos + 9);
-    
-    const textWidth = doc.getTextWidth('Dobowe zapotrzebowanie na chłód: ');
-    doc.setFont('Roboto', 'normal');
-    doc.setTextColor(50);
-    doc.text(`${totalKWhCS.toFixed(1)} kWh`, margin + 5 + textWidth, yPos + 9);
-    
-    doc.setFontSize(8);
-    doc.setTextColor(150);
-    doc.text('* Faktyczny pobór energii elektrycznej przez klimatyzator będzie ok. 3-5 razy mniejszy (zależnie od EER/SEER).', margin + 5, yPos + 20);
-
-    yPos += 25;
-
-    doc.setFillColor(240, 249, 255);
-    doc.setDrawColor(186, 230, 253);
-    doc.roundedRect(margin, yPos, pageWidth - (2 * margin), 26, 2, 2, 'FD');
-    
-    doc.setFontSize(9);
-    doc.setFont('Roboto', 'bold');
-    doc.setTextColor(3, 105, 161);
-    doc.text('Uwaga metodyczna:', margin + 5, yPos + 6);
-    
-    doc.setFont('Roboto', 'normal');
-    doc.setTextColor(71, 85, 105);
-    const methodologyText = 'Obciążenie projektowe oszacowano metodą opartą na ASHRAE RTS, z pogodą i modelem Clear Sky dla Warszawy. Przegrody zewnętrzne wykorzystują Sol-Air i CTS, natomiast przegrody do nieklimatyzowanych przestrzeni są świadomie uproszczone do stałego U × A × ΔT. Wynik służy do doboru klimatyzacji w małych obiektach i nie jest pełną symulacją energetyczną budynku.';
-    const splitMethodology = doc.splitTextToSize(methodologyText, pageWidth - (2 * margin) - 10);
-    doc.text(splitMethodology, margin + 5, yPos + 11);
-
-    // --- PAGE 2: Detailed Tables & Design Assumptions ---
-    doc.addPage();
-    yPos = margin;
-
-    // Detailed Tables
-    doc.setFontSize(11);
-    doc.setTextColor(0);
-    doc.text('Szczegółowy bilans obciążenia chłodniczego w godzinie szczytu:', margin, yPos);
-    yPos += 6;
-
-    const sensibleBody: [string, string][] = [
-        ['Słoneczne (okna)', `${(solarLoadPeak / 1000).toFixed(2)} kW`],
-        ['Przewodzenie (okna i ściany)', `${(conductionLoadPeak / 1000).toFixed(2)} kW`],
-        ['Wewnętrzne (ludzie, sprzęt)', `${(internalSensibleLoadPeak / 1000).toFixed(2)} kW`],
-    ];
-
-    if (vent.type === 'natural' && vent.includeInfiltration) {
-        sensibleBody.push(['Wentylacja i infiltracja', `${((ventilationSensibleLoadPeak + infiltrationSensibleLoadPeak) / 1000).toFixed(2)} kW`]);
-    } else {
-        sensibleBody.push(['Wentylacja', `${(ventilationSensibleLoadPeak / 1000).toFixed(2)} kW`]);
-        sensibleBody.push(['Infiltracja', `${(infiltrationSensibleLoadPeak / 1000).toFixed(2)} kW`]);
-    }
-
-    const latentBody: [string, string][] = [
-        ['Wewnętrzne (ludzie)', `${(internalLatentAtPeak / 1000).toFixed(2)} kW`],
-    ];
-
-    if (vent.type === 'natural' && vent.includeInfiltration) {
-        latentBody.push(['Wentylacja i infiltracja', `${((ventilationLatentAtPeak + infiltrationLatentAtPeak) / 1000).toFixed(2)} kW`]);
-    } else {
-        latentBody.push(['Wentylacja', `${(ventilationLatentAtPeak / 1000).toFixed(2)} kW`]);
-        latentBody.push(['Infiltracja', `${(infiltrationLatentAtPeak / 1000).toFixed(2)} kW`]);
-    }
-
-    // Sensible Table
-    autoTable(doc, {
-        startY: yPos,
-        head: [[`Zyski Jawne (Razem: ${(sensibleAtPeak / 1000).toFixed(2)} kW)`, '']],
-        body: sensibleBody,
-        theme: 'plain',
-        headStyles: { fillColor: [255, 237, 213], textColor: [194, 65, 12], fontStyle: 'bold', font: 'Roboto' },
-        bodyStyles: { textColor: 20, fontSize: 9, font: 'Roboto' },
-        columnStyles: { 0: { cellWidth: 'auto' }, 1: { cellWidth: 25, halign: 'right', fontStyle: 'bold' } },
-        margin: { left: margin, right: pageWidth / 2 + 5 },
-        styles: { font: 'Roboto', lineWidth: { bottom: 0.1 }, lineColor: [226, 232, 240] }
-    });
-
-    const finalYSensible = (doc as any).lastAutoTable.finalY;
-
-    // Latent Table
-    autoTable(doc, {
-        startY: yPos,
-        head: [[`Zyski Utajone (Razem: ${(latentAtPeak / 1000).toFixed(2)} kW)`, '']],
-        body: latentBody,
-        theme: 'plain',
-        headStyles: { fillColor: [219, 234, 254], textColor: [30, 64, 175], fontStyle: 'bold', font: 'Roboto' },
-        bodyStyles: { textColor: 20, fontSize: 9, font: 'Roboto' },
-        columnStyles: { 0: { cellWidth: 'auto' }, 1: { cellWidth: 25, halign: 'right', fontStyle: 'bold' } },
-        margin: { left: pageWidth / 2 + 5, right: margin },
-        styles: { font: 'Roboto', lineWidth: { bottom: 0.1 }, lineColor: [226, 232, 240] }
-    });
-
-    yPos = Math.max(finalYSensible, (doc as any).lastAutoTable.finalY) + 15;
-    
-    addHeader('3. Założenia Projektowe');
-
-    // Tabela 1: Okna
-    doc.setFontSize(11);
-    doc.setTextColor(0);
-    doc.setFont('Roboto', 'bold');
-    doc.text('3.1 Przegrody przezroczyste (Okna)', margin, yPos);
-    yPos += 6;
-
-    const SHADING_TYPES: Record<string, string> = {
-        'louvers': 'Żaluzje',
-        'draperies': 'Zasłony',
-        'roller_shades': 'Rolety',
-        'insect_screens': 'Moskitiery'
-    };
-
-    const WINDOW_TYPES: Record<string, string> = {
-        'modern': '3-szybowe',
-        'standard': '2-szybowe nowe',
-        'older_double': '2-szybowe stare',
-        'historic': '1-szybowe',
-        'custom': 'Niestandardowe'
-    };
-
-    const windowsBody = windows.map((w: any) => [
-        w.direction,
-        w.tilt !== undefined ? `${w.tilt}°` : '90°',
-        (w.width * w.height).toFixed(2),
-        WINDOW_TYPES[w.type] || 'Niestandardowe',
-        w.u.toFixed(2),
-        w.shgc.toFixed(2),
-        w.shading.enabled ? SHADING_TYPES[w.shading.type] || 'Tak' : 'Brak'
+    pdf.title('Raport obciążenia chłodniczego');
+    pdf.paragraph('Projekt: ' + (state.projectName || 'Bez nazwy'), 10, true, false, 3);
+    pdf.paragraph('Pomieszczenie: ' + room.name, 13, false, true, 4);
+    pdf.hero('Szczytowe obciążenie chłodnicze pomieszczenia · ' + monthName(month), kw(summary.peak) + ' kW',
+        'Godzina ' + hour + ' (' + timeZone(month) + ')  ·  ' + n(summary.peak / area) + ' W/m²');
+    pdf.paragraph('Wynik określa wymaganą moc chłodniczą w godzinie szczytowego obciążenia chłodniczego w analizowanym miesiącu. Obejmuje część jawną i utajoną.', 9);
+    pdf.metrics([
+        { label: 'Chłodzenie powietrza\nObciążenie chłodnicze jawne', value: kw(summary.sensible) + ' kW' },
+        { label: 'Usuwanie wilgoci\nObciążenie chłodnicze utajone', value: kw(summary.latent) + ' kW' },
     ]);
+    pdf.weatherNotice(state.isShadingViewActive);
+    pdf.table([], [
+        ['Powierzchnia podłogi', n(area) + ' m²', 'Temperatura / wilgotność wewnątrz', n(room.input.tInternal) + ' °C / ' + n(room.input.rhInternal, 0) + '%'],
+    ], { columnStyles: { 0: { cellWidth: 43 }, 1: { cellWidth: 46 }, 2: { cellWidth: 43 }, 3: { cellWidth: 46 } } });
+    if (season) pdf.paragraph('Najwyższy wynik w okresie kwiecień-wrzesień: ' + kw(season.peak) + ' kW (' + monthName(season.month) + ').', 9, false, true);
+    pdf.section('Dobowy profil obciążenia chłodniczego', 55);
+    const profileHeight = Math.min(66, pdf.bottom - pdf.y - 15);
+    pdf.image(roomProfileImage(room, profileHeight), profileHeight);
+    pdf.paragraph('Godziny podano w czasie lokalnym (' + timeZone(month) + ').', 8);
 
-    if (windowsBody.length === 0) {
-        windowsBody.push(['Brak okien', '-', '-', '-', '-', '-', '-']);
-    }
+    pdf.newPage();
+    pdf.section('Składowe obciążenia chłodniczego w godzinie szczytu', 80);
+    pdf.paragraph(monthName(month) + ', godz. ' + hour + ' (' + timeZone(month) + '). Część jawna dotyczy chłodzenia powietrza, a utajona - usuwania wilgoci.', 9);
+    balanceTable(pdf, room);
+    pdf.paragraph(BALANCE_NOTE, 8.5);
+    pdf.section('Udział składowych obciążenia chłodniczego', 90);
+    positiveSources(pdf, room);
+    pdf.paragraph('Udziały dotyczą sumy dodatnich składowych w godzinie szczytu. Składowe ujemne uwzględnia tabela powyżej, dlatego suma na wykresie może być większa niż obciążenie chłodnicze do pokrycia.', 8.5);
+    pdf.ensure(31);
+    pdf.paragraph('Dobowe zapotrzebowanie na chłód: ' + n(summary.coolingEnergyKWh) + ' kWh', 10, false, true);
+    pdf.paragraph(ENERGY_NOTE, 8);
 
-    autoTable(doc, {
-        startY: yPos,
-        head: [['Kierunek', 'Pochylenie', 'Powierzchnia [m²]', 'Typ', 'Wsp. U [W/m²K]', 'Wsp. g', 'Osłona']],
-        body: windowsBody,
-        theme: 'grid',
-        headStyles: { fillColor: [241, 245, 249], textColor: 50, fontStyle: 'bold', lineColor: 200, font: 'Roboto' },
-        bodyStyles: { textColor: 50, font: 'Roboto' },
-        styles: { fontSize: 9, cellPadding: 3, font: 'Roboto' },
-        margin: { left: margin, right: margin }
-    });
-    yPos = (doc as any).lastAutoTable.finalY + 5;
+    pdf.newPage();
+    pdf.section('Dane przyjęte do obliczeń', 25);
+    pdf.paragraph('Poniższe wartości pochodzą z projektu. Powierzchnie ścian są powierzchniami netto, bez otworów. Kierunki: N - północ, E - wschód, S - południe, W - zachód; pochylenie liczone od poziomu.', 8.5);
+    const windowTypes: Record<string, string> = { modern: '3-szybowe', standard: '2-szybowe nowe', older_double: '2-szybowe stare', historic: '1-szybowe', custom: 'Niestandardowe' };
+    const shadingTypes: Record<string, string> = { louvers: 'Żaluzje', draperies: 'Zasłony', roller_shades: 'Rolety', insect_screens: 'Moskitiery' };
+    pdf.section('Okna', 30);
+    if (room.windows.length) {
+        pdf.table(['Kierunek / kąt', 'Okno', 'Pole [m²]', 'U [W/(m²K)]', 'SHGC (g)', 'Osłona / daszek'], room.windows.map(w => {
+            const shade = w.shading.enabled ? (state.isShadingViewActive ? shadingTypes[w.shading.type] + (w.shading.location === 'indoor' ? ' wewn.' : ' zewn.') : 'Osłona pominięta') : 'Bez osłony';
+            const overhang = w.overhang?.enabled ? (w.tilt === 90
+                ? '\nDaszek: ' + n(w.overhang.depth, 2) + ' m; nad oknem: ' + n(w.overhang.distanceAbove, 2) + ' m'
+                : '\nDaszek pominięty przy tym pochyleniu') : '';
+            return [w.direction + ' / ' + n(w.tilt, 0) + '°', windowTypes[w.type], n(w.width * w.height, 2), n(w.u, 3), n(w.shgc, 2), shade + overhang];
+        }), { columnStyles: { 0: { cellWidth: 23 }, 1: { cellWidth: 30 }, 2: { cellWidth: 23, halign: 'right' }, 3: { cellWidth: 26, halign: 'right' }, 4: { cellWidth: 21, halign: 'right' }, 5: { cellWidth: 55 } } });
+        pdf.paragraph('Łączna powierzchnia okien: ' + n(room.windows.reduce((sum, w) => sum + w.width * w.height, 0), 2) + ' m². U opisuje przenikanie ciepła; SHGC (g) określa przepuszczalność energii słonecznej.', 8);
+    } else pdf.paragraph('Nie wprowadzono okien.');
 
-    if (windows.length > 0) {
-        const totalWindowArea = windows.reduce((sum: number, w: any) => sum + (w.width * w.height), 0);
-        const wwr = ((totalWindowArea / input.roomArea) * 100).toFixed(1);
-        doc.setFontSize(9);
-        doc.setFont('Roboto', 'normal');
-        doc.setTextColor(100);
-        doc.text(`Całkowita powierzchnia okien: ${totalWindowArea.toFixed(2)} m² (${wwr}% powierzchni podłogi)`, margin, yPos);
-        yPos += 10;
-    } else {
-        yPos += 5;
-    }
-
-    // Tabela 1.5: Ściany
-    doc.setFontSize(10);
-    doc.setFont('Roboto', 'bold');
-    doc.setTextColor(0);
-    doc.text('3.2 Przegrody nieprzezroczyste', margin, yPos);
-    yPos += 6;
-
-    const wallsBody = walls && walls.length > 0 ? walls.map((w: any) => {
-        if (w.boundaryType === 'unconditioned') {
-            const unconditionedPreset = UNCONDITIONED_PARTITION_PRESETS[
-                w.unconditionedType as keyof typeof UNCONDITIONED_PARTITION_PRESETS
-            ] || UNCONDITIONED_PARTITION_PRESETS.ceiling_hot_attic;
-            return [
-                unconditionedPreset.label,
-                `stała temperatura: ${Number(w.adjacentTemperature ?? 50).toFixed(1)}°C`,
-                w.area.toFixed(2),
-                w.u.toFixed(3),
+    pdf.section('Ściany, dachy i pozostałe przegrody', 30);
+    if (room.walls.length) {
+        pdf.table(['Przegroda / wykończenie', 'Warunki / orientacja', 'Pole [m²]', 'U [W/(m²K)]'], room.walls.map(w => {
+            if (w.boundaryType === 'unconditioned') return [
+                UNCONDITIONED_PARTITION_PRESETS[w.unconditionedType!].label,
+                'Temperatura po drugiej stronie: ' + n(w.adjacentTemperature) + ' °C (stała)',
+                n(w.area, 2), n(w.u, 3),
             ];
-        }
-        const preset = CTS_PRESETS[w.type as keyof typeof CTS_PRESETS];
-        const tilt = Number(w.tilt ?? preset?.defaultTilt ?? 90);
-        const orientation = tilt === 0 ? 'pozioma · 0°' : `${w.direction} · ${tilt}°`;
-        return [
-            preset?.label || w.type,
-            orientation,
-            w.area.toFixed(2),
-            w.u.toFixed(3),
-        ];
-    }) : [];
+            return [CTS_PRESETS[w.type].label + '\n' + WALL_MATERIALS[w.material || 'brick_red'].label,
+                w.tilt === 0 ? 'Pozioma / 0°' : w.direction + ' / ' + n(w.tilt, 0) + '°', n(w.area, 2), n(w.u, 3)];
+        }), { columnStyles: { 0: { cellWidth: 78 }, 1: { cellWidth: 47 }, 2: { cellWidth: 25, halign: 'right' }, 3: { cellWidth: 28, halign: 'right' } } });
+    } else pdf.paragraph('Nie wprowadzono ścian, dachów ani pozostałych przegród.');
 
-    if (wallsBody.length === 0) {
-        wallsBody.push(['Brak przegród', '-', '-', '-']);
+    pdf.section('Zyski wewnętrzne - ludzie, oświetlenie i urządzenia', 30);
+    const internal: string[][] = [];
+    const { people, lighting, equipment, advancedAppliances, ventilation: v } = room.internalGains;
+    internal.push(people.enabled
+        ? ['Ludzie', n(people.count, 0) + ' os. · ' + PEOPLE_ACTIVITY_LEVELS[people.activityLevel].label, scheduleLabel(people.startHour, people.endHour)]
+        : ['Ludzie', 'Nie uwzględniono', '-']);
+    internal.push(lighting.enabled
+        ? ['Oświetlenie', LIGHTING_TYPES[lighting.type].label + ' · ' + n(lighting.powerDensity) + ' W/m²', scheduleLabel(lighting.startHour, lighting.endHour)]
+        : ['Oświetlenie', 'Nie uwzględniono', '-']);
+    equipment.forEach(e => internal.push([e.name || 'Urządzenie bez nazwy', n(e.power, 0) + ' W × ' + n(e.quantity, 0) + ' szt.', scheduleLabel(e.startHour, e.endHour)]));
+    advancedAppliances.forEach(e => internal.push([ADVANCED_APPLIANCES.find(a => a.id === e.catalogId)!.name, n(e.quantity, 0) + ' szt. (parametry katalogowe)', scheduleLabel(e.startHour, e.endHour)]));
+    pdf.table(['Źródło ciepła', 'Przyjęte dane', 'Godziny lokalne'], internal, { columnStyles: { 0: { cellWidth: 60 }, 1: { cellWidth: 70 }, 2: { cellWidth: 48 } } });
+
+    const ventilation = [['Wentylacja', ventilationLabel(room)]];
+    if (v.enabled && v.type === 'mechanical') {
+        ventilation.push(['Wymiennik', VENTILATION_EXCHANGER_TYPES[v.exchangerType].label]);
+        ventilation.push(['Odzysk ciepła / wilgoci', n(v.heatRecoveryEfficiency, 0) + '% / ' + n(v.moistureRecoveryEfficiency, 0) + '%']);
     }
-
-    autoTable(doc, {
-        startY: yPos,
-        head: [['Typ przegrody', 'Orientacja / warunki', 'Powierzchnia [m²]', 'Wsp. U [W/m²K]']],
-        body: wallsBody,
-        theme: 'grid',
-        headStyles: { fillColor: [241, 245, 249], textColor: 50, fontStyle: 'bold', lineColor: 200, font: 'Roboto' },
-        bodyStyles: { textColor: 50, font: 'Roboto' },
-        styles: { fontSize: 9, cellPadding: 3, font: 'Roboto' },
-        margin: { left: margin, right: margin }
-    });
-    yPos = (doc as any).lastAutoTable.finalY + 10;
-
-    // Tabela 2: Zyski wewnętrzne
-    doc.setFont('Roboto', 'bold');
-    doc.setTextColor(0);
-    doc.text('3.3 Zyski wewnętrzne', margin, yPos);
-    yPos += 6;
-
-    const ACTIVITY_LEVELS: Record<string, string> = {
-        'seated_very_light': 'Praca siedząca, bardzo lekka',
-        'standing_light': 'Praca stojąca, lekka',
-        'restaurant_eating': 'Spożywanie posiłku w restauracji',
-        'light_exercise': 'Lekki wysiłek fizyczny',
-        'walking_moderate': 'Praca umiarkowana / chód',
-        'heavy_work': 'Ciężka praca fizyczna',
-        'heavy_sport': 'Intensywny sport / atletyka'
-    };
-
-    const internalBody = [];
-    const p = internalGains.people;
-    if (p.enabled && p.count) {
-        internalBody.push(['Ludzie', `${p.count} os.`, ACTIVITY_LEVELS[p.activityLevel] || '-', `${p.startHour}:00 - ${p.endHour}:00`]);
-    } else {
-        internalBody.push(['Ludzie', 'Brak', '-', '-']);
-    }
-
-    const l = internalGains.lighting;
-    if (l.enabled && l.powerDensity) {
-        const lightingName = LIGHTING_TYPES[l.type]?.label || 'Własne';
-        internalBody.push([`Oświetlenie - ${lightingName}`, `${l.powerDensity} W/m²`, '-', `${l.startHour}:00 - ${l.endHour}:00`]);
-    } else {
-        internalBody.push(['Oświetlenie', 'Brak', '-', '-']);
-    }
-
-    const eq = internalGains.equipment;
-    if (eq && eq.length > 0) {
-        eq.forEach((e: any) => {
-            if (e.power && e.quantity) {
-                internalBody.push([`Urządzenie: ${e.name || 'Brak nazwy'}`, `${e.power} W x ${e.quantity} szt.`, '-', `${e.startHour}:00 - ${e.endHour}:00`]);
-            }
-        });
-    } else {
-        internalBody.push(['Urządzenia', 'Brak', '-', '-']);
-    }
-
-    autoTable(doc, {
-        startY: yPos,
-        head: [['Kategoria', 'Ilość / Moc', 'Aktywność', 'Harmonogram']],
-        body: internalBody,
-        theme: 'grid',
-        headStyles: { fillColor: [241, 245, 249], textColor: 50, fontStyle: 'bold', lineColor: 200, font: 'Roboto' },
-        bodyStyles: { textColor: 50, font: 'Roboto' },
-        styles: { fontSize: 9, cellPadding: 3, font: 'Roboto' },
-        margin: { left: margin, right: margin }
-    });
-    yPos = (doc as any).lastAutoTable.finalY + 10;
-
-    // Tabela 3: Wentylacja i Infiltracja
-    doc.setFont('Roboto', 'bold');
-    doc.setTextColor(0);
-    doc.text('3.4 Wentylacja i Infiltracja', margin, yPos);
-    yPos += 6;
-
-    const VENT_TYPES: Record<string, string> = {
-        'none': 'Brak',
-        'mechanical': 'Mechaniczna',
-        'natural': 'Grawitacyjna'
-    };
-    const EXCHANGER_TYPES: Record<string, string> = {
-        'counterflow_hrv': 'Krzyżowy/Przeciwprądowy (HRV)',
-        'counterflow_erv': 'Krzyżowy/Przeciwprądowy z odzyskiem wilgoci (ERV)',
-        'rotary_condensing': 'Obrotowy (kondensacyjny)',
-        'rotary_sorption': 'Obrotowy (sorpcyjny)'
-    };
-    const TIGHTNESS_CLASSES: Record<string, string> = {
-        'tight': 'Szczelne',
-        'average': 'Średnie',
-        'leaky': 'Nieszczelne'
-    };
-
-    const ventBody = [];
-    const v = internalGains.ventilation;
-    
-    if (v.enabled && v.type !== 'none') {
-        const typeName = VENT_TYPES[v.type] || v.type;
-        const airflow = v.type === 'mechanical' ? `${v.airflow} m³/h` : `${v.naturalVentilationAirflow} m³/h`;
-        const exchanger = v.type === 'mechanical' ? (EXCHANGER_TYPES[v.exchangerType] || '-') : '-';
-        ventBody.push(['Wentylacja', typeName, airflow, exchanger]);
-    } else {
-        ventBody.push(['Wentylacja', 'Brak', '-', '-']);
-    }
-
+    ventilation.push([REPORT_SOURCE_LABELS.infiltration, v.includeInfiltration ? 'Uwzględniony (oszacowanie)' : 'Nie uwzględniono']);
     if (v.includeInfiltration) {
-        ventBody.push(['Infiltracja', 'Uwzględniona', `Kondygnacje: ${v.buildingStories}`, `Szczelność: ${TIGHTNESS_CLASSES[v.tightnessClass] || '-'}`]);
+        ventilation.push(['Obwód ścian zewn. / wysokość pomieszczenia', n(v.exteriorWallPerimeter) + ' m / ' + n(v.roomHeight, 2) + ' m']);
+        ventilation.push(['Liczba kondygnacji / szczelność', v.buildingStories + ' / ' + ({ tight: 'wysoka', average: 'średnia', leaky: 'niska' }[v.tightnessClass])]);
+        ventilation.push(['Osłonięcie przed wiatrem', ({ '1': 'Brak przeszkód - teren otwarty', '2': 'Słabe', '3': 'Umiarkowane', '4': 'Rozproszona zabudowa', '5': 'Silne - gęsta zabudowa lub bliskie przeszkody' }[v.shieldingClass])]);
+        ventilation.push(['Prędkość wiatru', n(v.windSpeed) + ' m/s']);
+    }
+    pdf.section('Wentylacja i infiltracja powietrza', ventilation.length * 9 + 12);
+    pdf.table(['Parametr', 'Wartość'], ventilation, { styles: { cellPadding: 2 }, columnStyles: { 0: { cellWidth: 83 }, 1: { cellWidth: 95 } } });
+
+    pdf.section('Typ konstrukcji budynku i akumulacja ciepła', 38);
+    const a = room.accumulation;
+    if (a.include) {
+        pdf.table(['Parametr', 'Przyjęty wariant'], [
+            ['Typ budynku / pomieszczenia', RTS_PRESETS[a.rtsPreset].label],
+            ['Wykończenie podłogi', FLOOR_TYPE_LABELS[a.floorType]],
+        ], { styles: { cellPadding: 2 }, columnStyles: { 0: { cellWidth: 70 }, 1: { cellWidth: 108 } } });
+        pdf.paragraph('Model uwzględnia akumulację ciepła w masie budynku (bezwładność cieplną) i oddawanie zgromadzonego ciepła do powietrza z opóźnieniem.', 8.5);
     } else {
-        ventBody.push(['Infiltracja', 'Brak', '-', '-']);
+        pdf.table(['Parametr', 'Przyjęty wariant'], [
+            ['Akumulacja ciepła wewnątrz pomieszczenia', 'Pominięta'],
+        ], { styles: { cellPadding: 2 }, columnStyles: { 0: { cellWidth: 105 }, 1: { cellWidth: 73 } } });
+        pdf.paragraph('Zyski ciepła przeliczono na obciążenie chłodnicze bez dodatkowego opóźnienia wynikającego z bezwładności cieplnej wnętrza.', 8.5);
     }
 
-    autoTable(doc, {
-        startY: yPos,
-        head: [['Kategoria', 'Typ / Status', 'Strumień / Parametr 1', 'Odzysk / Parametr 2']],
-        body: ventBody,
-        theme: 'grid',
-        headStyles: { fillColor: [241, 245, 249], textColor: 50, fontStyle: 'bold', lineColor: 200, font: 'Roboto' },
-        bodyStyles: { textColor: 50, font: 'Roboto' },
-        styles: { fontSize: 9, cellPadding: 3, font: 'Roboto' },
-        margin: { left: margin, right: margin }
-    });
-    yPos = (doc as any).lastAutoTable.finalY + 15;
-
-    // --- Pie Chart ---
-    if (yPos > pageHeight - 180) {
-        doc.addPage();
-        yPos = margin;
-    }
-    
-    addHeader(`4. Struktura Zysków Ciepła (godz. ${String(hourTotalCS_Local).padStart(2, '0')}:00 - godzina szczytu)`);
-    
-    // Prepare Pie Data
-    const pieChartValues = [
-        { label: 'Słoneczne', val: solarLoadPeak, color: '#f59e0b' },
-        { label: 'Przewodzenie', val: conductionLoadPeak, color: '#f97316' },
-        { label: 'Wewnętrzne (J+U)', val: internalSensibleLoadPeak + internalLatentAtPeak, color: '#ef4444' },
-        { label: 'Wentylacja (J+U)', val: ventilationSensibleLoadPeak + ventilationLatentAtPeak, color: '#a855f7' },
-        { label: 'Infiltracja (J+U)', val: infiltrationSensibleLoadPeak + infiltrationLatentAtPeak, color: '#10b981' }
-    ].filter(item => item.val > 0);
-
-    const totalVal = pieChartValues.reduce((acc, curr) => acc + curr.val, 0);
-
-    const pieChartData = {
-        labels: pieChartValues.map(d => `${d.label} (${(d.val/totalVal*100).toFixed(1)}%)`),
-        datasets: [{
-            data: pieChartValues.map(d => d.val),
-            backgroundColor: pieChartValues.map(d => d.color),
-            borderColor: '#ffffff',
-            borderWidth: 2,
-        }]
-    };
-    
-    // Generate Pie Chart Image with Labels
-    const pieChartImg = await createTempChart({
-        type: 'pie',
-        data: pieChartData,
-        options: {
-            layout: { padding: 20 },
-            plugins: {
-                legend: { 
-                    display: true, 
-                    position: 'bottom',
-                    labels: { font: { size: 18, family: 'Arial' }, padding: 20 }
-                },
-                title: { 
-                    display: true, 
-                    text: 'Składowe obciążenia w szczycie', 
-                    font: { size: 22, family: 'Arial' },
-                    padding: { bottom: 10 }
-                }
-            }
-        },
-        plugins: [pieLabelsPlugin]
-    }, 1000, 1000);
-
-    const pieSize = 160; 
-    const xOffsetPie = (pageWidth - pieSize) / 2;
-    doc.addImage(pieChartImg, 'PNG', xOffsetPie, yPos, pieSize, pieSize);
-    yPos += pieSize + 15;
-
-
-    // --- PAGE 3: Daily Charts ---
-    doc.addPage();
-    yPos = margin;
-    addHeader('5. Przebieg Dobowy Obciążenia Chłodniczego');
-
-    const hours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
-
-    // 1. Line Chart
-    const lineChartImg = await createTempChart({
-        type: 'line',
-        data: {
-            labels: hours,
-            datasets: [
-                { 
-                    label: 'Obciążenie Chłodnicze [kW]', 
-                    data: reorderDataForLocalTime(finalGains.clearSky.total, offset).map(v => v / 1000), 
-                    borderColor: '#ef4444', 
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)', 
-                    fill: true, 
-                    borderWidth: 3,
-                    pointRadius: 0,
-                    tension: 0.3
-                },
-                { 
-                    label: 'Temp. Zewnętrzna [°C]', 
-                    data: reorderDataForLocalTime(activeRoom.tExtProfile, offset), 
-                    borderColor: '#94a3b8', 
-                    borderWidth: 2,
-                    borderDash: [5, 5], 
-                    pointRadius: 0,
-                    tension: 0.3,
-                    yAxisID: 'yTemp' 
-                }
-            ]
-        },
-        options: {
-            layout: { padding: { left: 10, right: 10, top: 10, bottom: 10 } },
-            scales: {
-                y: { 
-                    beginAtZero: true,
-                    title: { display: true, text: 'Moc [kW]', font: { size: 18, family: 'Arial' } },
-                    ticks: { font: { size: 16, family: 'Arial' } }
-                },
-                yTemp: { 
-                    position: 'right', 
-                    grid: { display: false }, 
-                    title: { display: true, text: 'Temp [°C]', font: { size: 18, family: 'Arial' } },
-                    ticks: { font: { size: 16, family: 'Arial' } }
-                },
-                x: {
-                    ticks: { font: { size: 14, family: 'Arial' }, maxRotation: 45 }
-                }
-            },
-            plugins: { 
-                legend: { labels: { font: { size: 16, family: 'Arial' } } },
-                title: { display: true, text: 'Całkowite obciążenie chłodnicze w czasie', font: { size: 20, family: 'Arial' } }
-            }
-        },
-    }, 1200, 500);
-
-    doc.addImage(lineChartImg, 'PNG', margin, yPos, pageWidth - 2*margin, 70);
-    yPos += 80;
-
-    // 2. Bar Chart (Stacked Components)
-    const barChartImg = await createTempChart({
-        type: 'bar',
-        data: {
-            labels: hours,
-            datasets: [
-                { label: 'Słoneczne', data: reorderDataForLocalTime(loadComponents.solar, offset).map(v => v / 1000), backgroundColor: '#f59e0b', stack: 'a' },
-                { label: 'Przewodzenie', data: reorderDataForLocalTime(loadComponents.conduction, offset).map(v => v / 1000), backgroundColor: '#f97316', stack: 'a' },
-                { label: 'Wewn. Jawne', data: reorderDataForLocalTime(loadComponents.internalSensible, offset).map(v => v / 1000), backgroundColor: '#ef4444', stack: 'a' },
-                { label: 'Wentylacja', data: reorderDataForLocalTime(loadComponents.ventilationSensible, offset).map(v => v / 1000), backgroundColor: '#a855f7', stack: 'a' },
-                { label: 'Infiltracja', data: reorderDataForLocalTime(loadComponents.infiltrationSensible, offset).map(v => v / 1000), backgroundColor: '#10b981', stack: 'a' },
-                { label: 'Utajone', data: reorderDataForLocalTime(finalGains.clearSky.latent, offset).map(v => v / 1000), backgroundColor: '#3b82f6', stack: 'a' }
-            ]
-        },
-        options: {
-            layout: { padding: { left: 10, right: 10, top: 10, bottom: 10 } },
-            scales: {
-                y: { 
-                    stacked: true,
-                    beginAtZero: true,
-                    title: { display: true, text: 'Moc [kW]', font: { size: 18, family: 'Arial' } },
-                    ticks: { font: { size: 16, family: 'Arial' } }
-                },
-                x: {
-                    stacked: true,
-                    ticks: { font: { size: 14, family: 'Arial' }, maxRotation: 45 }
-                }
-            },
-            plugins: { 
-                legend: { labels: { font: { size: 14, family: 'Arial' } } },
-                title: { display: true, text: 'Składowe obciążenia chłodniczego w czasie', font: { size: 20, family: 'Arial' } }
-            }
-        },
-    }, 1200, 500);
-
-    doc.addImage(barChartImg, 'PNG', margin, yPos, pageWidth - 2*margin, 70);
-    yPos += 75;
-
-    // Add negative values footnote
-    doc.setFontSize(8);
-    doc.setTextColor(150);
-    doc.text('* Wartości ujemne = wentylacja/infiltracja odbiera ciepło z pomieszczenia (chłodzi).', margin, yPos);
-    yPos += 5;
-
-    // Disclaimer
-    doc.setFontSize(7);
-    doc.setTextColor(150);
-    const disclaimer = "KLAUZULA ODPOWIEDZIALNOŚCI:\nNiniejszy raport jest wynikiem symulacji komputerowej opartej na wprowadzonych danych oraz statystycznych modelach klimatycznych. Rzeczywiste zapotrzebowanie na chłód może różnić się w zależności od dokładności danych wejściowych, jakości wykonania budynku, sposobu użytkowania oraz lokalnych warunków mikroklimatycznych. Autor aplikacji nie ponosi odpowiedzialności za ewentualne błędy w doborze urządzeń na podstawie tego raportu. Zaleca się weryfikację wyników przez uprawnionego projektanta HVAC.\n\nAutor programu: Łukasz Sowiński";
-    
-    const splitDisclaimer = doc.splitTextToSize(disclaimer, pageWidth - 2*margin);
-    
-    // Moved up to avoid overlapping with footer
-    doc.text(splitDisclaimer, margin, pageHeight - 35);
-
-    addFooter();
-    const fileName = `Raport_Zyskow_Ciepla_${projectName?.replace(/\s+/g, '_') || 'Projekt'}_${activeRoom.name?.replace(/\s+/g, '_') || 'Pomieszczenie'}.pdf`;
-    doc.save(fileName);
+    pdf.section('Dobowy bilans składowych obciążenia chłodniczego', 82);
+    pdf.image(componentsImage(room, 62), 62);
+    pdf.paragraph(componentsNote(month), 8.5);
+    pdf.section('Informacje końcowe', 36);
+    pdf.paragraph(REPORT_SCOPE, 8.5);
+    pdf.paragraph(DISCLAIMER, 8);
+    pdf.paragraph('Autor programu: Łukasz Sowiński', 8);
+    pdf.finish(reportFileName('Raport_Pomieszczenia', state.projectName, room.name));
 };

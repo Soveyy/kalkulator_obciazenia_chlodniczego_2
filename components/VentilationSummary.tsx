@@ -3,7 +3,7 @@ import { useCalculator } from '../contexts/CalculatorContext';
 import Card from './ui/Card';
 
 const VentilationSummary: React.FC = () => {
-    const { state } = useCalculator();
+    const { state, roomFeedback } = useCalculator();
     
     if (!state.internalGains.ventilation.enabled) {
         return (
@@ -18,7 +18,7 @@ const VentilationSummary: React.FC = () => {
         return (
              <Card>
                 <h3 className="text-lg font-semibold mb-2 text-slate-800 dark:text-white">Podsumowanie Wentylacji</h3>
-                <p className="text-slate-500">Uruchom obliczenia w zakładce "Podsumowanie", aby zobaczyć wyniki.</p>
+                <p role="status" className="text-slate-500 dark:text-slate-400">{roomFeedback.message}</p>
             </Card>
         );
     }

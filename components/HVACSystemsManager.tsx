@@ -223,7 +223,7 @@ export const HVACSystemsManager: React.FC = () => {
                 let roundedSumAtPeak = 0;
                 for (const r of roomsInSystem) {
                     if (r.yearlyMatrix && r.yearlyMatrix[selectedMonthIndex]) {
-                        roundedSumAtPeak += Number(((r.yearlyMatrix[selectedMonthIndex][peakHour] || 0) / 1000).toFixed(2));
+                        roundedSumAtPeak += r.yearlyMatrix[selectedMonthIndex][peakHour] / 1000;
                     }
                 }
                 maxSystemPeak = roundedSumAtPeak * 1000;
@@ -506,7 +506,7 @@ export const HVACSystemsManager: React.FC = () => {
                                         </div>
                                         <div className="flex-1">
                                             <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Przewymiarowanie</div>
-                                            <div className="text-xl font-bold rounded-lg border flex items-center justify-center h-11" style={{ color: sys.outdoorModel && sys.sumOfIndices > 0 ? getConnectionRatioColor(parseFloat(sys.matchRatioStr)) : undefined, borderColor: 'var(--tw-colors-slate-200, #e2e8f0)', backgroundColor: 'var(--tw-colors-slate-50, #f8fafc)' }}>
+                                            <div className="text-xl font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 flex items-center justify-center h-11" style={{ color: sys.outdoorModel && sys.sumOfIndices > 0 ? getConnectionRatioColor(parseFloat(sys.matchRatioStr)) : undefined }}>
                                                 {sys.matchRatioStr}
                                             </div>
                                         </div>
@@ -641,7 +641,8 @@ export const HVACSystemsManager: React.FC = () => {
                         {unassignedRooms.length > 0 && !(sys.type === 'split' && sys.indoorUnits.length >= 1) && (
                             <div className="p-3 bg-slate-50/50 dark:bg-slate-800/20 border-t border-slate-100 dark:border-slate-800 flex justify-end">
                                 <select 
-                                    className="text-sm bg-white border border-slate-300 rounded-md p-1.5 focus:border-indigo-500"
+                                    aria-label={`Dodaj pomieszczenie do układu ${sys.name}`}
+                                    className="max-w-full text-sm bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-600 rounded-md p-1.5 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-colors"
                                     onChange={(e) => {
                                         if(e.target.value) {
                                             const newUnits = [...sys.indoorUnits, { roomId: e.target.value, index: 0 }];

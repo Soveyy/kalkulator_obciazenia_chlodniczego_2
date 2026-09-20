@@ -1,3 +1,4 @@
+import { validateWall, inputNumber, parseNumber } from '../../services/validationService';
 import React, { useEffect, useState } from 'react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
@@ -105,23 +106,11 @@ const WallEditModal: React.FC = () => {
     const handleSave = () => {
         if (!wall || !preset) return;
 
-        const newErrors: string[] = [];
         const numericTilt = Number(wall.tilt);
-
-        if (!wall.area || wall.area === '' || Number(wall.area) <= 0) newErrors.push('area');
-        if (requiresDirection && !wall.direction) newErrors.push('direction');
-        if (!preset.allowedTilts.includes(numericTilt)) newErrors.push('tilt');
-        if (wall.u === '' || Number(wall.u) <= 0 || Number(wall.u) > 10) newErrors.push('u');
-
-        if (newErrors.length > 0) {
-            setErrors(newErrors);
-            let message = 'Proszę poprawić błędy w formularzu.';
-            if (newErrors.includes('area')) message = 'Powierzchnia musi być większa od 0.';
-            else if (newErrors.includes('u')) message = 'Współczynnik U musi być w zakresie 0–10 W/(m²·K).';
-            else if (newErrors.includes('direction')) message = 'Wybierz kierunek świata dla tej powierzchni.';
-            else if (newErrors.includes('tilt')) message = 'Wybierz dostępny kąt nachylenia.';
-
-            dispatch({ type: 'ADD_TOAST', payload: { message, type: 'danger' } });
+        const issues = validateWall({ ...wall, boundaryType: 'external' });
+        if (issues.length) {
+            setErrors(issues.map(e => e.path));
+            dispatch({ type: 'ADD_TOAST', payload: { message: issues[0].message, type: 'danger' } });
             return;
         }
 
@@ -131,8 +120,8 @@ const WallEditModal: React.FC = () => {
             type: wall.type,
             direction: numericTilt === 0 ? 'S' : wall.direction,
             tilt: numericTilt,
-            u: Number(wall.u),
-            area: Number(wall.area),
+            u: parseNumber(wall.u)!,
+            area: parseNumber(wall.area)!,
             material: wall.material || preset.defaultMaterial,
         };
 
@@ -241,7 +230,8 @@ const WallEditModal: React.FC = () => {
                                 ))}
                             </Select>
                             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                {isRoof ? 'Kierunek, w który opada połać. Możesz użyć kompasu po prawej stronie.' : 'Możesz również wskazać kierunek na kompasie.'}
+                                {isRoof && 'Kierunek, w który opada połać.'}
+                                <span className="hidden 2xl:inline"> Możesz również wskazać kierunek na kompasie.</span>
                             </p>
                         </div>
                     )}

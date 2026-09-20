@@ -14,7 +14,7 @@ const RtsChart: React.FC = () => {
     const chartRef = useRef<HTMLCanvasElement>(null);
     const chartInstanceRef = useRef<Chart | null>(null);
     const chartContainerRef = useRef<HTMLDivElement>(null);
-    const { state, theme } = useCalculator();
+    const { state, theme, roomFeedback } = useCalculator();
     const [isFullscreen, setIsFullscreen] = useState(false);
 
     const handleFullscreenChange = useCallback(() => {
@@ -75,7 +75,11 @@ const RtsChart: React.FC = () => {
     };
 
     useEffect(() => {
-        if (!chartRef.current || !state.activeResults) return;
+        if (!chartRef.current || !state.activeResults) {
+            chartInstanceRef.current?.destroy();
+            chartInstanceRef.current = null;
+            return;
+        }
 
         const ctx = chartRef.current.getContext('2d');
         if (!ctx) return;
@@ -134,7 +138,7 @@ const RtsChart: React.FC = () => {
         const datasets = [
             {
                 type: 'line',
-                label: 'Zyski Chwilowe',
+                label: 'Zyski chwilowe (bilans netto)',
                 data: instData,
                 borderColor: 'rgba(231, 76, 60, 0.8)',
                 backgroundColor: 'transparent',
@@ -147,7 +151,7 @@ const RtsChart: React.FC = () => {
             },
             {
                 type: 'line',
-                label: 'Obciążenie Chłodnicze',
+                label: 'Bilans netto po RTS',
                 data: loadData,
                 borderColor: 'rgba(52, 152, 219, 1)',
                 backgroundColor: 'transparent',
@@ -250,10 +254,10 @@ const RtsChart: React.FC = () => {
         };
     }, []);
     
-    if (!state.results) {
+    if (!state.activeResults) {
         return (
             <Card className="flex items-center justify-center h-[500px]">
-                <p className="text-slate-500 text-center px-4">Przejdź do zakładki "Podsumowanie" i uruchom obliczenia, aby zobaczyć analizę akumulacji.</p>
+                <p role="status" className="text-slate-500 dark:text-slate-400 text-center px-4">{roomFeedback.message}</p>
             </Card>
         );
     }

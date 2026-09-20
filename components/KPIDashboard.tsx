@@ -1,15 +1,19 @@
+import { coolingProfile } from '../services/resultModel';
+import { isRoomResultCurrent } from '../services/validationService';
 import React, { useState, useEffect, useRef } from 'react';
 import { useCalculator } from '../contexts/CalculatorContext';
 import Card from './ui/Card';
-import { Activity, Sunrise, Sun, Sunset, CloudSun } from 'lucide-react';
+import { Activity, Sunrise, Sun, Sunset, CloudSun, Loader2, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-function useDeltaPointers(value: number, threshold = 0.01) {
+function useDeltaPointers(value: number, threshold = 5) {
     const [deltas, setDeltas] = useState<{ id: number, diff: number }[]>([]);
     const [highlightState, setHighlightState] = useState<'up' | 'down' | null>(null);
     const prevRef = useRef<number>(value);
     const idCounter = useRef(0);
     const highlightTimerRef = useRef<any>(null);
+
+    useEffect(() => () => clearTimeout(highlightTimerRef.current), []);
     
     useEffect(() => {
         const oldVal = prevRef.current;
@@ -17,16 +21,13 @@ function useDeltaPointers(value: number, threshold = 0.01) {
             const diff = value - oldVal;
             const newId = idCounter.current++;
             
-            setDeltas(prev => [...prev, { id: newId, diff }]);
+            setDeltas([{ id: newId, diff }]);
             setHighlightState(diff > 0 ? 'up' : 'down');
             
             if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
             highlightTimerRef.current = setTimeout(() => {
                 setHighlightState(null);
-            }, 1250);
-            
-            setTimeout(() => {
-                setDeltas(prev => prev.filter(d => d.id !== newId));
+                setDeltas([]);
             }, 1250);
             
         }
@@ -63,7 +64,7 @@ const DailyProfile: React.FC<DailyProfileProps> = ({ profileData }) => {
     }, [profileData, offset]);
 
     const peakValue = Math.max(...localProfileData, 0);
-    const peakHour = peakValue > 0 ? localProfileData.indexOf(peakValue) : 12;
+    const peakHour = peakValue > 0 ? (profileData.indexOf(peakValue) + offset) % 24 : 12;
 
     let peakPeriod: 'rano' | 'poludnie' | 'popoludnie' = 'poludnie';
     if (peakHour <= 10) peakPeriod = 'rano';
@@ -154,8 +155,11 @@ const DailyProfile: React.FC<DailyProfileProps> = ({ profileData }) => {
 };
 
 const KPIDashboard: React.FC = () => {
-    const { state } = useCalculator();
+    const { state, roomFeedback, navigateToIssue } = useCalculator();
     const { activeResults, input, activeRoomId, rooms } = state;
+    const activeRoom = rooms.find(r => r.id === activeRoomId);
+    const displayResults = activeResults ?? (state.isShadingViewActive ? activeRoom?.results?.withShading : activeRoom?.results?.withoutShading);
+    const resultUnavailable = !activeResults;
 
     // We must call hooks at the top level. We computes values for BOTH aggregate and single room,
     // then use the correct one based on activeRoomId.
@@ -165,12 +169,12 @@ const KPIDashboard: React.FC = () => {
     let isAggregateEmpty = true;
 
     if (activeRoomId === 'aggregate') {
-        const roomsWithResults = rooms.filter(r => r.activeResults?.finalGains?.clearSky?.total);
+        const roomsWithResults = rooms.every(isRoomResultCurrent) && rooms.every(r => r.currentMonth === rooms[0].currentMonth) ? rooms : [];
         if (roomsWithResults.length > 0) {
             isAggregateEmpty = false;
             let totalArea = 0;
             roomsWithResults.forEach(room => {
-                const profile = room.activeResults!.finalGains.clearSky.total;
+                const profile = coolingProfile(room.activeResults!.finalGains.clearSky);
                 for (let i = 0; i < 24; i++) {
                     hourlyTotalAggregate[i] += profile[i];
                 }
@@ -179,8 +183,8 @@ const KPIDashboard: React.FC = () => {
             currentMaxLoad = Math.max(...hourlyTotalAggregate);
             currentLoadDensity = totalArea > 0 ? currentMaxLoad / totalArea : 0;
         }
-    } else if (activeResults) {
-        currentMaxLoad = Math.max(...activeResults.finalGains.clearSky.total);
+    } else if (displayResults) {
+        currentMaxLoad = Math.max(...coolingProfile(displayResults.finalGains.clearSky));
         const roomArea = parseFloat(input.roomArea) || 1;
         currentLoadDensity = currentMaxLoad / roomArea;
     }
@@ -209,7 +213,7 @@ const KPIDashboard: React.FC = () => {
                             </span>
                             
                             <div className="relative flex items-center">
-                                <AnimatePresence>
+                                <AnimatePresence mode="wait">
                                     {deltas.map(d => (
                                         <motion.div
                                             key={d.id}
@@ -239,17 +243,17 @@ const KPIDashboard: React.FC = () => {
         );
     }
 
-    if (!activeResults) return null;
-
-    const activeRoom = rooms.find(r => r.id === activeRoomId);
+    if (!displayResults) return null;
+    const busy = roomFeedback.status === 'loading' || roomFeedback.status === 'updating';
+    const firstIssue = roomFeedback.issues.find(issue => issue.severity === 'error');
 
     return (
-        <Card className="!p-4 bg-white dark:bg-slate-900 border border-sky-150/70 dark:border-sky-800/50 shadow-md sm:shadow-lg hover:shadow-xl transition-all duration-350">
+        <Card className="relative !p-4 bg-white dark:bg-slate-900 border border-sky-150/70 dark:border-sky-800/50 shadow-md sm:shadow-lg hover:shadow-xl transition-all duration-350">
             <div className="flex items-center gap-2 mb-3 text-sky-700 dark:text-sky-400">
                 <Activity size={18} />
                 <h3 className="font-bold text-sm tracking-wide uppercase">{activeRoom?.name || 'Wyniki pokoju'}</h3>
             </div>
-            <div className="space-y-3">
+            <div className={`space-y-3 ${resultUnavailable ? 'invisible' : ''}`} aria-hidden={resultUnavailable}>
                 <div className="bg-slate-50/50 dark:bg-slate-950/40 p-3 rounded-lg border border-sky-100/70 dark:border-sky-800/30 relative overflow-visible">
                     <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold tracking-wider block mb-1 font-mono">Szczytowe Obciążenie</span>
                     <div className="text-xl font-black relative flex items-center gap-2">
@@ -262,7 +266,7 @@ const KPIDashboard: React.FC = () => {
                         </span>
                         
                         <div className="relative flex items-center">
-                            <AnimatePresence>
+                            <AnimatePresence mode="wait">
                                 {deltas.map(d => (
                                     <motion.div
                                         key={d.id}
@@ -286,8 +290,13 @@ const KPIDashboard: React.FC = () => {
                 </div>
 
                 {/* Integrated daily profile */}
-                <DailyProfile profileData={activeResults.finalGains.clearSky.total} />
+                <DailyProfile profileData={coolingProfile(displayResults.finalGains.clearSky)} />
             </div>
+            {resultUnavailable && <div role="status" className="absolute inset-x-4 top-14 bottom-4 flex flex-col items-center justify-center gap-3 text-center text-sm text-slate-600 dark:text-slate-300">
+                {busy ? <Loader2 size={24} className="motion-safe:animate-spin text-blue-500" aria-hidden="true" /> : <AlertTriangle size={24} className="text-amber-500" aria-hidden="true" />}
+                <p>{busy ? roomFeedback.message : 'Wynik wymaga aktualizacji.'}</p>
+                {firstIssue && <button type="button" onClick={() => navigateToIssue(firstIssue.path)} className="rounded text-blue-600 dark:text-blue-300 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">Przejdź do brakujących danych</button>}
+            </div>}
         </Card>
     );
 };

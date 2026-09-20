@@ -1,4 +1,6 @@
 rules_version = '2';
+// Plik źródłowy reguł. Zmiana lokalna nie publikuje ich w Firebase.
+// Instrukcja publikacji i testów: docs/FIREBASE_RULES_INSTRUKCJA.md.
 service cloud.firestore {
   match /databases/{database}/documents {
     match /{document=**} {
@@ -33,7 +35,11 @@ service cloud.firestore {
     }
 
     match /users/{userId}/projects/{projectId} {
-      allow read: if isOwner(userId) && existing().userId == userId;
+      // Zapis w transakcji najpierw sprawdza także NIEISTNIEJĄCY dokument.
+      // UID w ścieżce ogranicza odczyt do właściciela również w tym przypadku.
+      allow get: if isOwner(userId);
+      // Aplikacja pobiera listę z filtrem where('userId', '==', uid).
+      allow list: if isOwner(userId) && existing().userId == userId;
       allow create: if isOwner(userId)
                     && isValidProject(incoming(), userId);
       allow update: if isOwner(userId)

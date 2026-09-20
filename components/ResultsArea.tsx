@@ -3,6 +3,7 @@ import React from 'react';
 import { useCalculator } from '../contexts/CalculatorContext';
 import HeatGainChart from './HeatGainChart';
 import PeakSummary from './PeakSummary';
+import ResultsPlaceholder from './ResultsPlaceholder';
 
 interface ResultsAreaProps {
     bottomRightContent?: React.ReactNode;
@@ -12,7 +13,7 @@ const ResultsArea: React.FC<ResultsAreaProps> = ({ bottomRightContent }) => {
     const { state } = useCalculator();
 
     if (!state.results || !state.activeResults) {
-        return null;
+        return <ResultsPlaceholder />;
     }
 
     return (

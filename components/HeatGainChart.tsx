@@ -1,3 +1,4 @@
+import { coolingProfile } from '../services/resultModel';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Chart from 'chart.js/auto';
@@ -100,7 +101,7 @@ const HeatGainChart: React.FC = () => {
 
         if (chartType === 'line') {
             datasets = [
-                { type: 'line', label: 'Obciążenie chłodnicze projektowe', data: reorderDataForLocalTime(finalGains.clearSky.total, offset), borderColor: getChartColor('totalSensible'), backgroundColor: 'rgba(231, 76, 60, 0.2)', fill: true, tension: 0.3, yAxisID: 'yLoad' }
+                { type: 'line', label: 'Wymagane chłodzenie', data: reorderDataForLocalTime(coolingProfile(finalGains.clearSky), offset), borderColor: getChartColor('totalSensible'), backgroundColor: 'rgba(231, 76, 60, 0.2)', fill: true, tension: 0.3, yAxisID: 'yLoad' }
             ];
         } else { // bar chart
              datasets = [
@@ -112,6 +113,8 @@ const HeatGainChart: React.FC = () => {
                 { type: 'bar', label: 'Utajone (wewn. + went. + inf.)', data: reorderDataForLocalTime(finalGains.clearSky.latent, offset), backgroundColor: getChartColor('totalLatent', true), borderColor: CHART_COLORS.totalLatent, borderWidth: 1, stack: 'a', yAxisID: 'yLoad' }
             ];
         }
+
+        datasets.push({ type: 'line', label: 'Bilans netto', data: reorderDataForLocalTime(finalGains.clearSky.total, offset), borderColor: '#64748b', borderDash: [4, 4], fill: false, yAxisID: 'yLoad', pointRadius: 0 });
 
         if (hasTempData) {
             datasets.push({
@@ -193,7 +196,7 @@ const HeatGainChart: React.FC = () => {
                                             sum += tooltipItem.parsed.y;
                                         }
                                     });
-                                    return 'Suma: ' + (sum / 1000).toFixed(2) + ' kW';
+                                    return 'Suma składników bilansu: ' + (sum / 1000).toFixed(2) + ' kW';
                                 }
                                 return '';
                             },

@@ -1,3 +1,4 @@
+import { MAX_ROOMS } from '../../services/validationService';
 import React, { useState, useRef, useEffect } from 'react';
 import { useCalculator } from '../../contexts/CalculatorContext';
 import { PlusIcon, XIcon, DocumentDuplicateIcon, PencilIcon, CheckIcon } from '../Icons';
@@ -17,7 +18,7 @@ const RoomTabs: React.FC = () => {
     }, [editingRoomId]);
 
     const handleAddRoom = () => {
-        if (state.rooms.length < 10) {
+        if (state.rooms.length < MAX_ROOMS) {
             dispatch({ type: 'ADD_ROOM' });
         } else {
             dispatch({ type: 'ADD_TOAST', payload: { message: 'Maksymalna liczba pomieszczeń to 10.', type: 'danger' } });
@@ -37,7 +38,7 @@ const RoomTabs: React.FC = () => {
 
     const handleDuplicateRoom = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (state.rooms.length < 10) {
+        if (state.rooms.length < MAX_ROOMS) {
             dispatch({ type: 'DUPLICATE_ROOM', payload: id });
         } else {
             dispatch({ type: 'ADD_TOAST', payload: { message: 'Maksymalna liczba pomieszczeń to 10.', type: 'danger' } });
@@ -83,32 +84,35 @@ const RoomTabs: React.FC = () => {
                             <input
                                 ref={inputRef}
                                 type="text"
+                                aria-label={`Nowa nazwa pomieszczenia ${room.name}`}
                                 value={editName}
                                 onChange={e => setEditName(e.target.value)}
                                 onBlur={saveEdit}
                                 onKeyDown={handleKeyDown}
                                 className="px-2 py-0.5 text-sm border rounded border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white w-24 sm:w-32"
                             />
-                            <button onClick={saveEdit} className="p-1 text-green-600 hover:bg-green-100 rounded dark:hover:bg-green-900/30">
+                            <button type="button" aria-label="Zapisz nazwę pomieszczenia" onClick={saveEdit} className="p-1 text-green-600 hover:bg-green-100 rounded dark:hover:bg-green-900/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                                 <CheckIcon className="w-4 h-4" />
                             </button>
                         </div>
                     ) : (
                         <>
-                            <span className="text-sm truncate max-w-[80px] sm:max-w-[120px] md:max-w-[150px]">{room.name}</span>
-                            <div className={`flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ${state.activeRoomId === room.id ? 'opacity-100' : ''}`}>
+                            <button type="button" aria-pressed={state.activeRoomId === room.id} title={room.name} className="text-left text-sm truncate max-w-[80px] sm:max-w-[120px] md:max-w-[150px] rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800">{room.name}</button>
+                            <div className={`flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity ${state.activeRoomId === room.id ? 'opacity-100' : ''}`}>
                                 <button 
                                     onClick={(e) => startEditing(room.id, room.name, e)}
                                     className="p-1 text-slate-400 hover:text-blue-500 rounded hover:bg-slate-200 dark:hover:bg-slate-600"
                                     title="Zmień nazwę"
+                                    aria-label={`Zmień nazwę: ${room.name}`}
                                 >
                                     <PencilIcon className="w-3.5 h-3.5" />
                                 </button>
-                                {state.rooms.length < 10 && (
+                                {state.rooms.length < MAX_ROOMS && (
                                     <button 
                                         onClick={(e) => handleDuplicateRoom(room.id, e)}
                                         className="p-1 text-slate-400 hover:text-green-500 rounded hover:bg-slate-200 dark:hover:bg-slate-600"
                                         title="Duplikuj"
+                                        aria-label={`Duplikuj: ${room.name}`}
                                     >
                                         <DocumentDuplicateIcon className="w-3.5 h-3.5" />
                                     </button>
@@ -118,6 +122,7 @@ const RoomTabs: React.FC = () => {
                                         onClick={(e) => handleDeleteRoom(room.id, e)}
                                         className="p-1 text-slate-400 hover:text-red-500 rounded hover:bg-slate-200 dark:hover:bg-slate-600"
                                         title="Usuń"
+                                        aria-label={`Usuń: ${room.name}`}
                                     >
                                         <XIcon className="w-3.5 h-3.5" />
                                     </button>
@@ -128,9 +133,10 @@ const RoomTabs: React.FC = () => {
                 </div>
             ))}
 
-            {state.rooms.length < 10 && (
+            {state.rooms.length < MAX_ROOMS && (
                 <Tooltip text="Dodaj nowe pomieszczenie (max 10)" position="top">
                     <button
+                        aria-label="Dodaj pomieszczenie"
                         onClick={handleAddRoom}
                         className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 transition-all hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-slate-700 hover:-translate-y-[2px] hover:shadow-md active:scale-95"
                     >
@@ -141,12 +147,14 @@ const RoomTabs: React.FC = () => {
 
             <div className="ml-auto flex-shrink-0">
                 <button
+                    id="aggregate-analysis-tab"
+                    aria-pressed={state.activeRoomId === 'aggregate'}
                     onClick={() => handleSwitchRoom('aggregate')}
                     className={`
-                        px-4 py-2 rounded-lg cursor-pointer transition-all border-2 text-sm font-bold active:scale-95 hover:shadow-md hover:-translate-y-[2px]
+                        px-4 py-2 rounded-lg cursor-pointer transition-colors border-2 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950
                         ${state.activeRoomId === 'aggregate'
-                            ? 'bg-indigo-100 dark:bg-indigo-900/50 border-indigo-700 dark:border-indigo-400 text-indigo-800 dark:text-indigo-200 shadow-md transform -translate-y-0.5'
-                            : 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-600 dark:border-indigo-500 text-indigo-700 dark:text-indigo-300 animate-breathe hover:bg-indigo-100 dark:hover:bg-indigo-900/40'}
+                            ? 'bg-indigo-600 dark:bg-indigo-600 border-indigo-600 dark:border-indigo-400 text-white dark:text-white shadow-sm'
+                            : 'bg-indigo-50 dark:bg-slate-800 border-indigo-600 dark:border-indigo-400 text-indigo-700 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-slate-700'}
                     `}
                 >
                     Dobór i analiza zbiorcza

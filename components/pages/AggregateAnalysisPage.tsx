@@ -1,7 +1,9 @@
+import { aggregateResults } from '../../services/aggregateResults';
+import { isRoomResultCurrent, validateRoom } from '../../services/validationService';
 import React, { useMemo, useEffect, useRef, useState } from 'react';
 import { useCalculator } from '../../contexts/CalculatorContext';
 import Card from '../ui/Card';
-import { Info } from 'lucide-react';
+import { LayoutDashboard, SlidersHorizontal } from 'lucide-react';
 import Tooltip from '../ui/Tooltip';
 import Chart from 'chart.js/auto';
 import { MONTH_NAMES, ANALYSIS_MONTHS } from '../../constants';
@@ -10,12 +12,15 @@ import HVACSystemsManager from '../HVACSystemsManager';
 import SankeyChart from '../SankeyChart';
 import SolarHeatMap from '../SolarHeatMap';
 import { exportRoomsToExcel } from '../../lib/exportUtils';
+import ProjectPresentation from '../ProjectPresentation';
 
 const AggregateAnalysisPage: React.FC = () => {
     const { state, theme, dispatch, handleCalculate, isCalculating } = useCalculator();
     const chartRef = useRef<HTMLCanvasElement>(null);
     const chartInstanceRef = useRef<Chart | null>(null);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+    const [view, setView] = useState<'analysis' | 'presentation'>('analysis');
+    const presentationToggleRef = useRef<HTMLButtonElement>(null);
 
     const currentMonth = state.rooms[0]?.currentMonth || '7';
     const resultMessage = state.rooms[0]?.resultMessage || '';
@@ -36,152 +41,21 @@ const AggregateAnalysisPage: React.FC = () => {
             await generateAggregatePdfReport(state, aggregateData, currentMonth);
         } catch (error) {
             console.error('Błąd podczas generowania raportu:', error);
-            alert('Wystąpił błąd podczas generowania raportu PDF.');
+            dispatch({ type: 'ADD_TOAST', payload: { message: error instanceof Error ? error.message : 'Błąd generowania raportu PDF.', type: 'danger' } });
         } finally {
             setIsGeneratingPdf(false);
         }
     };
 
-    const aggregateData = useMemo(() => {
-        const roomsWithResults = state.rooms.filter(r => r.activeResults?.finalGains?.clearSky?.total);
-        if (roomsWithResults.length === 0) return null;
+    const aggregateData = useMemo(() => aggregateResults(state), [state.rooms]);
 
-        const hourlyTotal = Array(24).fill(0);
-        let sumOfPeaks = 0;
-        
-        const aggregateFinalGains = {
-            clearSky: {
-                total: Array(24).fill(0),
-                windows: Array(24).fill(0),
-                walls: Array(24).fill(0),
-                people: Array(24).fill(0),
-                lighting: Array(24).fill(0),
-                equipment: Array(24).fill(0),
-                ventilationSensible: Array(24).fill(0),
-                infiltrationSensible: Array(24).fill(0),
-                peopleLatent: Array(24).fill(0),
-                ventilationLatent: Array(24).fill(0),
-                infiltrationLatent: Array(24).fill(0),
-            }
-        };
-
-        const aggregateYearlyMatrix: number[][] = Array(12).fill(0).map(() => Array(24).fill(0));
-        const aggregateSolarMatrix: number[][] = Array(12).fill(0).map(() => Array(24).fill(0));
-        const aggregateSolarInstantMatrix: number[][] = Array(12).fill(0).map(() => Array(24).fill(0));
-        
-        let weightedTSum = 0;
-        let weightedRhSum = 0;
-        let totalArea = 0;
-
-        const roomProfiles = roomsWithResults.map(room => {
-            const clearSky = room.activeResults!.finalGains.clearSky;
-            const profile = clearSky.total;
-            const roundedProfile = profile.map(v => Number((v / 1000).toFixed(2)) * 1000);
-            const peak = Math.max(...roundedProfile);
-            
-            let worstPeak = rPeak => rPeak; // placeholder
-            let worstPeakVal = peak;
-            let worstMonthStr = '7';
-            if (room.monthlyPeaks && room.monthlyPeaks.length > 0) {
-                const maxObj = room.monthlyPeaks.reduce((prev: any, curr: any) => (prev.peak > curr.peak) ? prev : curr);
-                worstPeakVal = maxObj.peak;
-                worstMonthStr = maxObj.month;
-            }
-            sumOfPeaks += worstPeakVal;
-            
-            const area = parseFloat(room.input.roomArea) || 0;
-            const tInt = parseFloat(room.input.tInternal) || 24;
-            const rhInt = parseFloat(room.input.rhInternal) || 50;
-            
-            if (area > 0) {
-                totalArea += area;
-                weightedTSum += (tInt * area);
-                weightedRhSum += (rhInt * area);
-            }
-            
-            for (let i = 0; i < 24; i++) {
-                const roundedHourW = roundedProfile[i];
-                hourlyTotal[i] += roundedHourW;
-                aggregateFinalGains.clearSky.total[i] += roundedHourW;
-                aggregateFinalGains.clearSky.windows[i] += clearSky.windows?.[i] || 0;
-                aggregateFinalGains.clearSky.walls[i] += clearSky.walls?.[i] || 0;
-                aggregateFinalGains.clearSky.people[i] += clearSky.people?.[i] || 0;
-                aggregateFinalGains.clearSky.lighting[i] += clearSky.lighting?.[i] || 0;
-                aggregateFinalGains.clearSky.equipment[i] += clearSky.equipment?.[i] || 0;
-                aggregateFinalGains.clearSky.ventilationSensible[i] += clearSky.ventilationSensible?.[i] || 0;
-                aggregateFinalGains.clearSky.infiltrationSensible[i] += clearSky.infiltrationSensible?.[i] || 0;
-                aggregateFinalGains.clearSky.peopleLatent[i] += clearSky.peopleLatent?.[i] || 0;
-                aggregateFinalGains.clearSky.ventilationLatent[i] += clearSky.ventilationLatent?.[i] || 0;
-                aggregateFinalGains.clearSky.infiltrationLatent[i] += clearSky.infiltrationLatent?.[i] || 0;
-            }
-
-            // sum matrices
-            if (room.yearlyMatrix) {
-                for (let m = 0; m < 12; m++) {
-                    if (room.yearlyMatrix[m]) {
-                        for (let h = 0; h < 24; h++) {
-                            aggregateYearlyMatrix[m][h] += room.yearlyMatrix[m][h] || 0;
-                        }
-                    }
-                }
-            }
-            if (room.solarMatrix) {
-                for (let m = 0; m < 12; m++) {
-                    if (room.solarMatrix[m]) {
-                        for (let h = 0; h < 24; h++) {
-                            aggregateSolarMatrix[m][h] += room.solarMatrix[m][h] || 0;
-                        }
-                    }
-                }
-            }
-            if (room.solarInstantMatrix) {
-                for (let m = 0; m < 12; m++) {
-                    if (room.solarInstantMatrix[m]) {
-                        for (let h = 0; h < 24; h++) {
-                            aggregateSolarInstantMatrix[m][h] += room.solarInstantMatrix[m][h] || 0;
-                        }
-                    }
-                }
-            }
-            
-            return {
-                id: room.id,
-                name: room.name,
-                area: room.input.roomArea,
-                profile: roundedProfile,
-                peak,
-                worstPeak: worstPeakVal,
-                worstMonthStr
-            };
-        });
-
-        const aggregatePeak = roomsWithResults.length > 0 ? Math.max(...hourlyTotal) : 0;
-        const peakHour = roomsWithResults.length > 0 ? hourlyTotal.indexOf(aggregatePeak) : 0;
-
-        const diversityFactor = sumOfPeaks > 0 ? aggregatePeak / sumOfPeaks : 1;
-        
-        const weightedT = totalArea > 0 ? weightedTSum / totalArea : 24;
-        const weightedRh = totalArea > 0 ? weightedRhSum / totalArea : 50;
-
-        return {
-            roomsWithResults,
-            hourlyTotal,
-            aggregatePeak,
-            peakHour,
-            sumOfPeaks,
-            diversityFactor,
-            weightedT,
-            weightedRh,
-            roomProfiles,
-            aggregateFinalGains,
-            aggregateYearlyMatrix,
-            aggregateSolarMatrix,
-            aggregateSolarInstantMatrix
-        };
-    }, [state.rooms]);
 
     useEffect(() => {
-        if (!chartRef.current || !aggregateData) return;
+        if (!chartRef.current || !aggregateData || view !== 'analysis' || isCalculating) {
+            chartInstanceRef.current?.destroy();
+            chartInstanceRef.current = null;
+            return;
+        }
 
         const ctx = chartRef.current.getContext('2d');
         if (!ctx) return;
@@ -353,7 +227,7 @@ const AggregateAnalysisPage: React.FC = () => {
             chartInstanceRef.current = new Chart(ctx, chartConfig);
         }
 
-    }, [aggregateData, theme, state.rooms]);
+    }, [aggregateData, theme, state.rooms, view, isCalculating]);
 
     useEffect(() => {
         return () => {
@@ -364,8 +238,22 @@ const AggregateAnalysisPage: React.FC = () => {
         };
     }, []);
 
-    if (state.isCalculating) {
+    const viewSwitcher = <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div role="group" aria-label="Widok analizy zbiorczej" className="inline-flex rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-1 gap-1">
+            <button type="button" aria-pressed={view === 'analysis'} onClick={() => setView('analysis')} className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${view === 'analysis' ? 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><SlidersHorizontal size={16} aria-hidden="true" />Analiza i dobór</button>
+            <button ref={presentationToggleRef} type="button" aria-pressed={view === 'presentation'} onClick={() => setView('presentation')} className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${view === 'presentation' ? 'bg-blue-600 text-white shadow-sm' : 'text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950'}`}><LayoutDashboard size={16} aria-hidden="true" />Prezentacja projektu</button>
+        </div>
+        <p className="text-xs text-slate-500 dark:text-slate-400">{view === 'presentation' ? 'Cały projekt na jednym ekranie' : 'Przegląd projektu i konfiguracja układów'}</p>
+    </div>;
+
+    if (view === 'presentation') return <div>{viewSwitcher}<ProjectPresentation aggregate={aggregateData} onClose={() => {
+        setView('analysis');
+        requestAnimationFrame(() => presentationToggleRef.current?.focus({ preventScroll: true }));
+    }} /></div>;
+
+    if (isCalculating) {
         return (
+            <div>{viewSwitcher}
             <div className="flex flex-col items-center justify-center h-64 space-y-4">
                 <svg className="animate-spin h-10 w-10 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -373,14 +261,21 @@ const AggregateAnalysisPage: React.FC = () => {
                 </svg>
                 <p className="text-slate-600 dark:text-slate-300 font-medium animate-pulse">Obliczanie zysków dla całego budynku...</p>
             </div>
+            </div>
         );
     }
 
     if (!aggregateData) {
         return (
-            <div className="flex items-center justify-center h-64">
-                <p className="text-slate-500 dark:text-slate-400">Trwa inicjalizacja analizy zbiorczej...</p>
-            </div>
+            <div>{viewSwitcher}<Card className="text-center !p-10">
+                <h3 className="text-lg font-bold mb-2">Przygotuj wyniki wszystkich pomieszczeń</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">Uzupełnij dane i przelicz projekt, aby przejść do analizy zbiorczej.</p>
+                <div className="flex flex-wrap justify-center gap-3">{state.rooms.filter(room => !isRoomResultCurrent(room)).map(room => <button key={room.id} className="text-sm text-blue-600 dark:text-blue-300 underline underline-offset-4" onClick={() => {
+                    dispatch({ type: 'SWITCH_ROOM', payload: room.id });
+                    dispatch({ type: 'SET_ACTIVE_TAB', payload: 'input' });
+                }}>{room.name}</button>)}</div>
+                <button disabled={!state.allData || state.rooms.some(room => validateRoom(room).some(issue => issue.severity === 'error'))} className="mt-5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed" onClick={handleCalculate}>Przelicz cały projekt</button>
+            </Card></div>
         );
     }
 
@@ -391,6 +286,7 @@ const AggregateAnalysisPage: React.FC = () => {
 
     return (
         <div className="space-y-4 animate-fade-in">
+            {viewSwitcher}
             {/* Month Selector and Info */}
             <Card className="p-3 border-l-4 border-l-blue-500 bg-blue-50/30 dark:bg-blue-900/10">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

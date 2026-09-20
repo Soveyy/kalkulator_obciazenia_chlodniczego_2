@@ -1,3 +1,4 @@
+import { SYNC_LABELS } from '../../services/projectSyncService';
 import React, { useState } from 'react';
 import { useCalculator } from '../../contexts/CalculatorContext';
 import Modal from '../ui/Modal';
@@ -33,13 +34,13 @@ const ProjectListModal: React.FC = () => {
 
     const handleBulkSync = () => {
         savedProjects.forEach(project => {
-            if (project.isLocal && !project.isCloud) {
-                dispatch({ type: 'SYNC_PROJECT', payload: project.name });
+            if (project.isLocal && project.syncStatus !== 'synced' && project.syncStatus !== 'conflict') {
+                dispatch({ type: 'SYNC_PROJECT', payload: project.id });
             }
         });
     }
 
-    const localOnlyProjectsCount = savedProjects.filter(p => p.isLocal && !p.isCloud).length;
+    const localOnlyProjectsCount = savedProjects.filter(p => p.isLocal && p.syncStatus !== 'synced' && p.syncStatus !== 'conflict').length;
 
     return (
         <Modal isOpen={isOpen} onClose={handleClose} title="Moje Projekty">
@@ -47,7 +48,7 @@ const ProjectListModal: React.FC = () => {
                 {localOnlyProjectsCount > 0 && (
                     <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg flex items-center justify-between border border-blue-100 dark:border-blue-800">
                         <span className="text-sm text-blue-700 dark:text-blue-300">
-                            Masz {localOnlyProjectsCount} projekt(ów) zapisanych tylko lokalnie.
+                            Masz {localOnlyProjectsCount} projekt(ów) z lokalną wersją do synchronizacji.
                         </span>
                         <Button size="sm" onClick={handleBulkSync} variant="secondary" className="flex items-center gap-2">
                             <CloudUpload size={14} /> Synchronizuj do chmury
@@ -59,7 +60,7 @@ const ProjectListModal: React.FC = () => {
                 ) : (
                     <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
                         {savedProjects.map((project) => (
-                            <div key={project.name} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600">
+                            <div key={project.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600">
                                 <div>
                                     <div className="flex items-center gap-2">
                                         <h4 className="font-semibold text-slate-800 dark:text-white">{project.name}</h4>
@@ -69,15 +70,19 @@ const ProjectListModal: React.FC = () => {
                                         </div>
                                     </div>
                                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                                        {new Date(project.date).toLocaleString()}
+                                        {new Date(project.date).toLocaleString()} · {SYNC_LABELS[project.syncStatus ?? "local"]}{project.data.draft ? " · Szkic — wymaga uzupełnienia" : ""}
                                     </p>
                                 </div>
-                                <div className="flex gap-2 items-center">
-                                    {confirmDelete === project.name ? (
+                                <div className="flex gap-2 items-center flex-wrap">
+                                    {project.syncStatus === "conflict" && <div className="flex gap-1 flex-wrap text-xs">
+                                        <span className="w-full">Wybierz wersję do zachowania:</span>
+                                        {(["both", "local", "cloud"] as const).map(choice => <Button key={choice} size="sm" onClick={() => dispatch({ type: "RESOLVE_PROJECT_CONFLICT", payload: { id: project.id, choice } })}>{choice === "both" ? "Zachowaj obie" : choice === "local" ? "Lokalną" : "Chmurową"}</Button>)}
+                                    </div>}
+                                    {confirmDelete === project.id ? (
                                         <div className="flex gap-2 items-center bg-red-50 dark:bg-red-900/20 p-1.5 rounded-lg border border-red-200 dark:border-red-800">
                                             <span className="text-xs font-medium text-red-600 dark:text-red-400 px-1">Usunąć?</span>
                                             <button 
-                                                onClick={() => handleDelete(project.name)}
+                                                onClick={() => handleDelete(project.id)}
                                                 className="px-2 py-1 text-xs font-bold text-white bg-red-500 hover:bg-red-600 rounded transition-colors"
                                             >
                                                 Tak
@@ -91,20 +96,20 @@ const ProjectListModal: React.FC = () => {
                                         </div>
                                     ) : (
                                         <>
-                                            {project.isLocal && !project.isCloud && (
+                                            {project.isLocal && project.syncStatus !== 'synced' && project.syncStatus !== 'conflict' && (
                                                 <button 
-                                                    onClick={() => handleSync(project.name)}
+                                                    onClick={() => handleSync(project.id)}
                                                     className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-full transition-colors"
                                                     title="Synchronizuj z chmurą"
                                                 >
                                                     <CloudUpload className="w-4 h-4" />
                                                 </button>
                                             )}
-                                            <Button size="sm" onClick={() => handleLoad(project.name)}>
+                                            <Button size="sm" onClick={() => handleLoad(project.id)}>
                                                 Wczytaj
                                             </Button>
                                             <button 
-                                                onClick={() => setConfirmDelete(project.name)}
+                                                onClick={() => setConfirmDelete(project.id)}
                                                 className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full transition-colors"
                                                 title="Usuń projekt"
                                             >

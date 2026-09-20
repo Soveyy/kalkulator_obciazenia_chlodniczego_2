@@ -30,7 +30,7 @@ function parseIrradianceData(rawData: any): any {
                 return JSON.parse(node);
             } catch(e) {
                 console.error(`Error parsing at ${path}: ${e.message}`);
-                return [];
+                throw new Error('Nieprawidłowe dane solarne: ' + path);
             }
         } else if (node !== null && typeof node === 'object' && !Array.isArray(node)) {
             const result: any = {};

@@ -1,3 +1,4 @@
+import { coolingProfile } from '../services/resultModel';
 import React, { useState } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend, Sector } from 'recharts';
 import { useCalculator } from '../contexts/CalculatorContext';
@@ -93,8 +94,8 @@ const BreakdownCharts: React.FC = () => {
 
     const { finalGains, instantaneousGains } = state.activeResults;
 
-    const maxLoad = Math.max(...finalGains.clearSky.total);
-    const hourMaxLoad = finalGains.clearSky.total.indexOf(maxLoad);
+    const maxLoad = Math.max(...coolingProfile(finalGains.clearSky));
+    const hourMaxLoad = coolingProfile(finalGains.clearSky).indexOf(maxLoad);
 
     if (hourMaxLoad === -1 || finalGains.clearSky.total.length === 0) {
         return null; // Or some fallback UI
@@ -113,16 +114,17 @@ const BreakdownCharts: React.FC = () => {
     const infiltrationLatent = finalGains.clearSky.infiltrationLatent?.[hourMaxLoad] || 0;
 
     const totalSensible = windowsLoad + wallsLoad + peopleSensible + lightingLoad + equipmentLoad + ventilationSensible + infiltrationSensible;
-    const totalLatent = peopleLatent + ventilationLatent + infiltrationLatent;
+    const equipmentLatent = finalGains.clearSky.equipmentLatent?.[hourMaxLoad] ?? 0;
+    const totalLatent = peopleLatent + equipmentLatent + ventilationLatent + infiltrationLatent;
 
     const sourceData = [
         { name: 'Okna', value: Math.round(windowsLoad) },
         { name: 'Przegrody', value: Math.round(wallsLoad) },
         { name: 'Ludzie', value: Math.round(peopleSensible + peopleLatent) },
         { name: 'Oświetlenie', value: Math.round(lightingLoad) },
-        { name: 'Sprzęt', value: Math.round(equipmentLoad) },
-        { name: 'Wentylacja', value: Math.round(ventilationSensible + ventilationLatent) },
-        { name: 'Infiltracja', value: Math.round(infiltrationSensible + infiltrationLatent) }
+        { name: 'Sprzęt', value: Math.round(Math.max(0, equipmentLoad) + Math.max(0, equipmentLatent)) },
+        { name: 'Wentylacja', value: Math.round(Math.max(0, ventilationSensible) + Math.max(0, ventilationLatent)) },
+        { name: 'Infiltracja', value: Math.round(Math.max(0, infiltrationSensible) + Math.max(0, infiltrationLatent)) }
     ].filter(item => item.value > 0).sort((a, b) => b.value - a.value);
 
     const typeData = [
@@ -166,7 +168,7 @@ const BreakdownCharts: React.FC = () => {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card className="flex flex-col items-center p-6 border-t-4 border-blue-500 hover:shadow-md transition-shadow overflow-visible">
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Źródła Zysków</h3>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Dodatnie składniki według źródeł</h3>
                 <div className="w-full h-[420px]">
                     <ResponsiveContainer key="pie-source-stable" width="100%" height="100%">
                         <PieChart key={sourceChartKey} margin={{ top: 30, bottom: 30 }}>
@@ -208,7 +210,7 @@ const BreakdownCharts: React.FC = () => {
                 </div>
             </Card>
             <Card className="flex flex-col items-center p-6 border-t-4 border-orange-500 hover:shadow-md transition-shadow overflow-visible">
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Rodzaj Ciepła</h3>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Wymagane chłodzenie: jawne i utajone</h3>
                 <div className="w-full h-[420px]">
                     <ResponsiveContainer key="pie-type-stable" width="100%" height="100%">
                         <PieChart key={typeChartKey} margin={{ top: 30, bottom: 30 }}>

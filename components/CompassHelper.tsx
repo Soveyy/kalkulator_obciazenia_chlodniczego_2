@@ -19,20 +19,21 @@ const CompassHelper: React.FC = () => {
     };
 
     return (
-        <div className="fixed top-1/2 right-8 -translate-y-1/2 z-[60] bg-white dark:bg-slate-800 shadow-2xl p-4 rounded-full hidden xl:block animate-fade-in">
+        <div className="fixed top-1/2 right-8 -translate-y-1/2 z-[60] bg-white dark:bg-slate-800 shadow-2xl p-4 rounded-full hidden 2xl:block compass-enter">
              <CompassIcon 
-                className="w-[450px] h-[450px]" 
+                className="w-[min(450px,calc((100vw-48rem)/2-5rem),calc(100dvh-6rem))] h-auto aspect-square"
                 selectedDirection={selectedDirection}
                 hoveredDirection={hoveredDirection}
                 onDirectionClick={handleDirectionClick}
                 onDirectionHover={handleDirectionHover}
             />
              <style>{`
-                @keyframes fade-in {
+                @keyframes compass-enter {
                     from { opacity: 0; transform: translateY(-50%) scale(0.9); }
                     to { opacity: 1; transform: translateY(-50%) scale(1); }
                 }
-                .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
+                .compass-enter { animation: compass-enter 0.3s ease-out forwards; }
+                @media (prefers-reduced-motion: reduce) { .compass-enter { animation: none; } }
              `}</style>
         </div>
     );

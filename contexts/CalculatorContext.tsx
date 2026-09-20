@@ -1,3 +1,7 @@
+import { decompressProjectLink } from '../services/shareDataService';
+import { MAX_ROOMS, validateRoom, roomInputKey, assertRoomValid } from '../services/validationService';
+import { useProjectStorage } from '../services/useProjectStorage';
+import { getRoomFeedback, getIssueTab, type RoomFeedback } from '../services/roomFeedback';
 
 import React, { createContext, useReducer, useContext, useEffect, useCallback, useState, ReactNode } from 'react';
 import { Window, AccumulationSettings, CalculationResults, AllData, Shading, InternalGains, EquipmentGains, InputState, AppTab, VentilationGains, SavedProject, State, Action, RoomState } from '../types';
@@ -7,8 +11,8 @@ import { generatePdfReport } from '../services/reportGenerator';
 import { MONTH_NAMES, ANALYSIS_MONTHS } from '../constants';
 import LZString from 'lz-string';
 import { db, auth, isFirebaseConfigured } from '../firebase';
-import { collection, doc, setDoc, getDocs, deleteDoc, getDoc, query, onSnapshot, serverTimestamp, where } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
+
+
 import { createInitialRoomState } from '../data/defaults';
 import {
     createProjectSnapshot,
@@ -53,21 +57,29 @@ function updateActiveRoom(state: State, updater: (room: RoomState) => RoomState)
     };
 }
 
-function calculatorReducer(state: State, action: Action): State {
+function reduceCalculator(state: State, action: Action): State {
     const activeRoom = state.rooms.find(r => r.id === state.activeRoomId) || state.rooms[0];
 
     switch (action.type) {
         case 'ADD_ROOM': {
-            const newId = `room-${Date.now()}`;
+            if (state.rooms.length >= MAX_ROOMS) throw new Error('Projekt może zawierać maksymalnie 10 pomieszczeń.');
+            const newId = crypto.randomUUID();
             const newRoom = createInitialRoomState(newId, `Pomieszczenie ${state.rooms.length + 1}`);
             return {
                 ...state,
                 rooms: [...state.rooms, newRoom],
-                activeRoomId: newId
+                activeRoomId: newId,
+                activeTab: 'input',
+                inputFocusRequest: { roomId: newId, field: 'roomArea' },
             };
         }
         case 'SWITCH_ROOM':
-            return { ...state, activeRoomId: action.payload };
+            if (action.payload !== 'aggregate' && !state.rooms.some(room => room.id === action.payload)) throw new Error('Nie istnieje wybrane pomieszczenie.');
+            return { ...state, activeRoomId: action.payload, inputFocusRequest: undefined };
+        case 'FOCUS_ROOM_INPUT':
+            return { ...state, activeTab: 'input', inputFocusRequest: { roomId: activeRoom.id, field: action.payload } };
+        case 'CLEAR_INPUT_FOCUS':
+            return { ...state, inputFocusRequest: undefined };
         case 'UPDATE_ROOM_NAME':
             return {
                 ...state,
@@ -94,9 +106,10 @@ function calculatorReducer(state: State, action: Action): State {
             };
         }
         case 'DUPLICATE_ROOM': {
+            if (state.rooms.length >= MAX_ROOMS) throw new Error('Projekt może zawierać maksymalnie 10 pomieszczeń.');
             const roomToDuplicate = state.rooms.find(r => r.id === action.payload);
             if (!roomToDuplicate) return state;
-            const newId = `room-${Date.now()}`;
+            const newId = crypto.randomUUID();
             const duplicatedRoom: RoomState = {
                 ...roomToDuplicate,
                 id: newId,
@@ -105,7 +118,8 @@ function calculatorReducer(state: State, action: Action): State {
             return {
                 ...state,
                 rooms: [...state.rooms, duplicatedRoom],
-                activeRoomId: newId
+                activeRoomId: newId,
+                inputFocusRequest: undefined,
             };
         }
         case 'SET_ALL_DATA':
@@ -156,7 +170,7 @@ function calculatorReducer(state: State, action: Action): State {
          case 'ADD_WALL':
             return updateActiveRoom(state, room => ({
                 ...room,
-                walls: [...room.walls, { ...action.payload, id: Date.now() }]
+                walls: [...room.walls, { ...action.payload, id: Math.max(0, ...room.walls.map(w => w.id)) + 1 }]
             }));
         case 'UPDATE_WALL':
             return updateActiveRoom(state, room => ({
@@ -174,7 +188,7 @@ function calculatorReducer(state: State, action: Action): State {
                 if (!wallToDuplicate) return room;
                 return {
                     ...room,
-                    walls: [...room.walls, { ...wallToDuplicate, id: Date.now() }]
+                    walls: [...room.walls, { ...wallToDuplicate, id: Math.max(0, ...room.walls.map(w => w.id)) + 1 }]
                 };
             });
         }
@@ -270,6 +284,8 @@ function calculatorReducer(state: State, action: Action): State {
         case 'SET_RESULTS':
             return updateActiveRoom(state, room => ({
                 ...room,
+                calculationError: undefined,
+                calculatedInputKey: roomInputKey(room),
                 results: action.payload.results,
                 currentMonth: action.payload.month,
                 tExtProfile: action.payload.tExtProfile,
@@ -327,6 +343,8 @@ function calculatorReducer(state: State, action: Action): State {
             return updateActiveRoom(state, room => ({
                 ...room,
                 currentMonth: newMonth,
+                calculationError: undefined,
+                calculatedInputKey: roomInputKey(room),
                 tExtProfile: tExtProfile,
                 results: newResults,
                 activeResults: state.isShadingViewActive ? newResults.withShading : newResults.withoutShading,
@@ -348,6 +366,8 @@ function calculatorReducer(state: State, action: Action): State {
                 return {
                     ...room,
                     currentMonth: newMonth,
+                    calculationError: undefined,
+                    calculatedInputKey: roomInputKey(room),
                     tExtProfile,
                     results: newResults,
                     activeResults: state.isShadingViewActive ? newResults.withShading : newResults.withoutShading,
@@ -426,7 +446,7 @@ function calculatorReducer(state: State, action: Action): State {
                     ...room,
                     windows: room.windows || [],
                     walls: room.walls || [],
-                    internalGains: {
+                    internalGains: room.internalGains?.advancedAppliances && room.internalGains?.equipment ? room.internalGains : {
                         ...initialRoomState.internalGains,
                         ...room.internalGains,
                         equipment: room.internalGains?.equipment || [],
@@ -484,6 +504,20 @@ function calculatorReducer(state: State, action: Action): State {
 }
 
 
+export function calculatorReducer(state: State, action: Action): State {
+    try {
+        const next = reduceCalculator(state, action);
+        if (['SET_STATE', 'ADD_SYSTEM', 'UPDATE_SYSTEM', 'REORDER_SYSTEMS', 'ADD_ROOM', 'DUPLICATE_ROOM', 'ADD_ADVANCED_APPLIANCE', 'UPDATE_ADVANCED_APPLIANCE', 'ADD_EQUIPMENT_ITEM', 'SET_INTERNAL_GAINS', 'ADD_WINDOW', 'UPDATE_WINDOW', 'DUPLICATE_WINDOW', 'ADD_WALL', 'UPDATE_WALL', 'DUPLICATE_WALL'].includes(action.type)) createProjectSnapshot(next);
+        return { ...next, rooms: next.rooms.map(room => {
+            const previous = state.rooms.find(r => r.id === room.id);
+            if (previous && roomInputKey(previous) !== roomInputKey(room)) return { ...room, activeResults: null, calculatedInputKey: undefined, calculationError: undefined, resultMessage: 'Nieaktualny wynik — zmieniono dane.' };
+            return room;
+        }) };
+    } catch (error) {
+        return { ...state, toasts: [...state.toasts, { id: toastId++, type: 'danger', message: error instanceof Error ? error.message : 'Nieprawidłowe dane.' }] };
+    }
+}
+
 const CalculatorContext = createContext<{
     state: State;
     dispatch: React.Dispatch<Action>;
@@ -492,8 +526,11 @@ const CalculatorContext = createContext<{
     handleCalculate: () => void;
     handleGenerateReport: () => void;
     isCalculating: boolean;
+    roomFeedback: RoomFeedback;
+    navigateToIssue: (path: string) => void;
     toasts: any[];
     validation: {
+        issues: import("../services/validationService").ValidationIssue[];
         baseValid: boolean;
         infiltrationValid: boolean;
         internal: boolean;
@@ -510,13 +547,16 @@ const CalculatorContext = createContext<{
     handleCalculate: () => {},
     handleGenerateReport: () => {},
     isCalculating: false,
+    roomFeedback: getRoomFeedback(initialRoomState, validateRoom(initialRoomState), initialState.projectName, false),
+    navigateToIssue: () => {},
     toasts: [],
-    validation: { baseValid: false, infiltrationValid: false, internal: false, windows: false, ventilation: false, walls: false, isFormValid: false }
+    validation: { issues: [], baseValid: false, infiltrationValid: false, internal: false, windows: false, ventilation: false, walls: false, isFormValid: false }
 });
 
 export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const [state, dispatch] = useReducer(calculatorReducer, initialState);
     const [isCalculating, setIsCalculating] = useState(false);
+    const storage = useProjectStorage(state, dispatch);
 
     useEffect(() => {
         const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
@@ -536,95 +576,6 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
         document.documentElement.classList.toggle('dark', initialTheme === 'dark');
     }, []);
     
-    // Load saved projects list on mount
-    useEffect(() => {
-        const loadLocalProjects = (): SavedProject[] => {
-            const savedProjectsStr = localStorage.getItem('hvac_saved_projects');
-            if (savedProjectsStr) {
-                try {
-                    const parsed = JSON.parse(savedProjectsStr);
-                    if (!Array.isArray(parsed)) throw new Error('Lista projektów nie jest tablicą.');
-
-                    return parsed.flatMap((project: unknown) => {
-                        try {
-                            return [sanitizeSavedProject(project, 'local')];
-                        } catch (error) {
-                            console.warn('Pominięto uszkodzony projekt lokalny.', error);
-                            return [];
-                        }
-                    });
-                } catch (e) {
-                    console.error("Failed to parse local projects", e);
-                }
-            }
-            return [];
-        };
-
-        const localProjects = loadLocalProjects();
-        
-        let currentLocalProjects = localProjects;
-        let unsubscribeSnapshot: (() => void) | undefined;
-
-        if (!auth || !db) {
-            dispatch({ type: 'SET_SAVED_PROJECTS', payload: currentLocalProjects });
-            return;
-        }
-
-        const firebaseAuth = auth;
-        const firestoreDb = db;
-
-        const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
-            // Clean up existing snapshot listener if auth state changes
-            if (unsubscribeSnapshot) {
-                unsubscribeSnapshot();
-                unsubscribeSnapshot = undefined;
-            }
-
-            if (user) {
-                const projectsRef = collection(firestoreDb, 'users', user.uid, 'projects');
-                const q = query(projectsRef, where('userId', '==', user.uid));
-                unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
-                    const cloudProjects: SavedProject[] = [];
-                    snapshot.forEach(projectDocument => {
-                        try {
-                            cloudProjects.push(sanitizeSavedProject(projectDocument.data(), 'cloud'));
-                        } catch (error) {
-                            console.warn(`Pominięto uszkodzony projekt z chmury: ${projectDocument.id}.`, error);
-                        }
-                    });
-                    
-                    // Merge local and cloud projects
-                    const mergedProjects = [...cloudProjects];
-                    currentLocalProjects.forEach(localProj => {
-                        const existing = mergedProjects.find(p => p.name === localProj.name);
-                        if (existing) {
-                            existing.isLocal = true;
-                        } else {
-                            mergedProjects.push(localProj);
-                        }
-                    });
-
-                    // Sort by name or date, let's keep original order or by date desc
-                    mergedProjects.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-                    dispatch({ type: 'SET_SAVED_PROJECTS', payload: mergedProjects });
-                }, (error) => {
-                    console.error("Failed to fetch projects from Firestore", error);
-                    dispatch({ type: 'SET_SAVED_PROJECTS', payload: currentLocalProjects });
-                });
-            } else {
-                dispatch({ type: 'SET_SAVED_PROJECTS', payload: currentLocalProjects });
-            }
-        });
-        
-        return () => {
-            unsubscribe();
-            if (unsubscribeSnapshot) {
-                unsubscribeSnapshot();
-            }
-        };
-    }, []);
-
     // Check for URL params on mount
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -639,18 +590,18 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                 if (data.length > MAX_SHARE_PAYLOAD_LENGTH) {
                     throw new Error('Dane udostępnionego projektu są zbyt duże.');
                 }
-                const decompressed = LZString.decompressFromEncodedURIComponent(data);
+                const decompressed = decompressProjectLink(data);
                 if (!decompressed) throw new Error('Nie udało się rozpakować danych projektu.');
 
                 const projectData = parseProjectDataJson(decompressed);
-                dispatch({ type: 'SET_STATE', payload: projectData });
+                dispatch({ type: 'SET_STATE', payload: { ...projectData, savedProjectId: undefined } });
                 dispatch({ type: 'ADD_TOAST', payload: { message: 'Projekt wczytany z linku i sprawdzony.', type: 'success' } });
 
                 // Clean URL after a successful import.
                 window.history.replaceState({}, document.title, window.location.pathname);
             } catch (e) {
                 console.error("Failed to load project from URL", e);
-                dispatch({ type: 'ADD_TOAST', payload: { message: 'Nie udało się wczytać projektu z linku.', type: 'danger' } });
+                dispatch({ type: 'ADD_TOAST', payload: { message: e instanceof Error ? e.message : 'Nie udało się wczytać projektu z linku.', type: 'danger' } });
             }
         }
     }, []);
@@ -694,26 +645,19 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
     const activeRoom = state.rooms.find(r => r.id === state.activeRoomId) || state.rooms[0];
 
     const validation = React.useMemo(() => {
-        const baseValid = 
-            state.projectName.trim() !== '' && 
-            activeRoom.input.roomArea !== '' && 
-            activeRoom.input.tInternal !== '' && 
-            activeRoom.input.rhInternal !== '';
-
-        const infiltrationValid = 
-            !activeRoom.internalGains.ventilation.includeInfiltration || 
-            (activeRoom.internalGains.ventilation.exteriorWallPerimeter !== '' && 
-             activeRoom.internalGains.ventilation.roomHeight !== '' && 
-             activeRoom.internalGains.ventilation.windSpeed !== '');
-             
+        const issues = validateRoom(activeRoom);
+        const errors = issues.filter(e => e.severity === 'error');
+        const baseValid = state.projectName.trim() !== '' && !errors.some(e => e.path.startsWith('input.'));
+        const infiltrationValid = !errors.some(e => e.path.startsWith('internalGains.ventilation.'));
         const internal = activeRoom.internalGains.people.enabled || activeRoom.internalGains.lighting.enabled || (activeRoom.internalGains.equipment?.length || 0) > 0;
         const windows = (activeRoom.windows?.length || 0) > 0;
         const ventilation = activeRoom.internalGains.ventilation.type !== 'none';
         const walls = (activeRoom.walls?.length || 0) > 0;
 
-        const isFormValid = baseValid && infiltrationValid;
+        const isFormValid = baseValid && errors.length === 0 && !activeRoom.calculationError;
 
         return { 
+            issues,
             baseValid, 
             infiltrationValid,
             internal, 
@@ -722,7 +666,23 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             walls,
             isFormValid 
         };
-    }, [state.projectName, activeRoom.input, activeRoom.internalGains, activeRoom.windows, activeRoom.walls]);
+    }, [state.projectName, activeRoom.input, activeRoom.internalGains, activeRoom.windows, activeRoom.walls, activeRoom.accumulation, activeRoom.calculationError]);
+
+    const roomFeedback = getRoomFeedback(activeRoom, validation.issues, state.projectName, Boolean(state.allData));
+
+    const navigateToIssue = (path: string) => {
+        if (path === 'projectName') {
+            if (window.innerWidth < 1024 && !state.isSidebarOpen) dispatch({ type: 'TOGGLE_SIDEBAR' });
+            document.getElementById('project-name')?.focus();
+            return;
+        }
+        const field = path.slice('input.'.length);
+        if (path.startsWith('input.') && (field === 'roomArea' || field === 'tInternal' || field === 'rhInternal')) {
+            dispatch({ type: 'FOCUS_ROOM_INPUT', payload: field });
+        } else {
+            dispatch({ type: 'SET_ACTIVE_TAB', payload: getIssueTab(path) });
+        }
+    };
     
     const performCalculation = useCallback((month: string, customMessage?: string) => {
         if (!state.allData) return;
@@ -812,6 +772,8 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                 return {
                     ...room,
                     currentMonth: buildingWorstMonth,
+                    calculationError: undefined,
+                    calculatedInputKey: roomInputKey(room),
                     tExtProfile,
                     results: newResults,
                     activeResults: state.isShadingViewActive ? newResults.withShading : newResults.withoutShading,
@@ -827,7 +789,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             dispatch({ type: 'ADD_TOAST', payload: { message: 'Obliczenia dla wszystkich pomieszczeń zakończone!', type: 'success' } });
         } catch(error) {
             console.error("Calculation failed:", error);
-            dispatch({ type: 'ADD_TOAST', payload: { message: 'Wystąpił błąd podczas obliczeń.', type: 'danger' } });
+            dispatch({ type: 'ADD_TOAST', payload: { message: error instanceof Error ? error.message : 'Wystąpił błąd podczas obliczeń.', type: 'danger' } });
         } finally {
             setIsCalculating(false);
         }
@@ -836,40 +798,32 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
     // Effect to recalculate automatically on changes and update the message
     useEffect(() => {
         if (state.allData && state.activeRoomId !== 'aggregate') {
+            if (validateRoom(activeRoom).some(issue => issue.severity === 'error')) return;
             const handler = setTimeout(() => {
-                // Find the worst month based on current settings
-                const { worstMonth, monthlyPeaks } = calculateWorstMonth(
-                    activeRoom.windows, 
-                    activeRoom.walls,
-                    state.allData!, 
-                    activeRoom.input, 
-                    activeRoom.accumulation, 
-                    activeRoom.internalGains,
-                    !state.isShadingViewActive
-                );
-                const now = new Date();
-                const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                
-                // Only show critical month message
-                const message = `Przeliczono automatycznie o ${timeString}.`;
-                
-                // Recalculate for current viewing month (don't force switch)
-                performCalculation(activeRoom.currentMonth || worstMonth, message);
+                try {
+                    assertRoomValid(activeRoom);
+                    performCalculation(activeRoom.currentMonth || '7', 'Wyniki aktualne.');
+                } catch (error) {
+                    dispatch({ type: 'SET_STATE', payload: { rooms: state.rooms.map(r => r.id !== activeRoom.id ? r : { ...r, activeResults: null, calculationError: error instanceof Error ? error.message : 'Nie udało się obliczyć wyniku.' }) } });
+                }
             }, 300);
             return () => clearTimeout(handler);
         }
     }, [activeRoom.windows, activeRoom.walls, activeRoom.input, activeRoom.accumulation, activeRoom.internalGains, performCalculation, state.allData, state.isShadingViewActive, state.activeRoomId]);
 
-    // Auto calculate ALL rooms when entering Aggregate Analysis
+    // Auto calculate ALL rooms when entering Aggregate Analysis.
+    // SET_SHADING_VIEW refreshes selected-month results and yearly matrices itself;
+    // keep a manually selected month when comparing shading variants in the dashboard.
     useEffect(() => {
         if (state.activeRoomId === 'aggregate' && state.allData) {
+            if (state.rooms.some(room => validateRoom(room).some(issue => issue.severity === 'error'))) return;
             handleCalculate();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [state.activeRoomId, state.allData, state.isShadingViewActive]);
+    }, [state.activeRoomId, state.allData]);
 
     const handleGenerateReport = async () => {
-        if (!activeRoom.activeResults) {
+        if (!validation.isFormValid || !activeRoom.activeResults || activeRoom.calculatedInputKey !== roomInputKey(activeRoom)) {
             dispatch({ type: 'ADD_TOAST', payload: { message: 'Najpierw wykonaj obliczenia!', type: 'info' } });
             return;
         }
@@ -887,6 +841,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
     };
 
     const enhancedDispatch = useCallback((action: Action) => {
+        try {
         if (action.type === 'SAVE_PROJECT') {
             // Legacy save
             const projectData = createProjectSnapshot({
@@ -913,137 +868,20 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
                 dispatch({ type: 'ADD_TOAST', payload: { message: 'Nie znaleziono szybkiego zapisu.', type: 'info' } });
             }
         } else if (action.type === 'SAVE_PROJECT_AS') {
-            const name = action.payload;
-            const projectData = createProjectSnapshot({
-                projectName: name,
-                rooms: state.rooms,
-                activeRoomId: state.activeRoomId,
-                systems: state.systems,
-            });
-            
-            const newProject: SavedProject = {
-                name,
-                date: new Date().toISOString(),
-                data: projectData,
-                isLocal: true,
-            };
-
-            const updatedLocalProjects = [...state.savedProjects.filter(p => p.isLocal && p.name !== name), newProject];
-            localStorage.setItem('hvac_saved_projects', JSON.stringify(updatedLocalProjects.map(p => ({name: p.name, date: p.date, data: p.data}))));
-            const cloudVersion = state.savedProjects.find(p => p.name === name && p.isCloud);
-            const updatedSavedProjects = [
-                ...state.savedProjects.filter(p => p.name !== name),
-                cloudVersion ? { ...cloudVersion, ...newProject, isCloud: true, isLocal: true } : newProject,
-            ];
-            dispatch({ type: 'SET_SAVED_PROJECTS', payload: updatedSavedProjects });
-
-            const currentUser = auth?.currentUser;
-            if (currentUser && db) {
-                // Check if user has reached max limit
-                if (state.savedProjects.filter(p => p.isCloud).length >= 100 && !state.savedProjects.find(p => p.name === name && p.isCloud)) {
-                    dispatch({ type: 'ADD_TOAST', payload: { message: 'Osiągnięto limit 100 projektów w chmurze.', type: 'danger' } });
-                    // Still saved locally!
-                    dispatch({ type: 'SET_INPUT', payload: { ...activeRoom.input, projectName: name } });
-                    dispatch({ type: 'ADD_TOAST', payload: { message: `Projekt "${name}" zapisany lokalnie!`, type: 'success' } });
-                    return;
-                }
-
-                // Firestore payload
-                const firestorePayload = {
-                    name,
-                    date: new Date().toISOString(),
-                    data: JSON.stringify(projectData),
-                    userId: currentUser.uid,
-                    createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp()
-                };
-
-                const projectId = name.replace(/[^a-zA-Z0-9_-]/g, '_');
-                setDoc(doc(db, 'users', currentUser.uid, 'projects', projectId), firestorePayload, { merge: true })
-                    .then(() => {
-                        dispatch({ type: 'SET_INPUT', payload: { ...activeRoom.input, projectName: name } });
-                        dispatch({ type: 'ADD_TOAST', payload: { message: `Projekt "${name}" zapisany!`, type: 'success' } });
-                    })
-                    .catch(e => {
-                        console.error('Failed to save', e);
-                        dispatch({ type: 'ADD_TOAST', payload: { message: 'Błąd zapisu projektu w chmurze.', type: 'danger' } });
-                    });
-            } else if (isFirebaseConfigured) {
-                dispatch({ type: 'ADD_TOAST', payload: { message: `Zaloguj się, aby zapisać projekt w chmurze!`, type: 'danger' } });
-            } else {
-                dispatch({ type: 'SET_INPUT', payload: { ...activeRoom.input, projectName: name } });
-                dispatch({ type: 'ADD_TOAST', payload: { message: `Projekt "${name}" zapisany lokalnie.`, type: 'success' } });
-            }
-
+            storage.save(action.payload);
         } else if (action.type === 'LOAD_PROJECT_FROM_LIST') {
-            const project = state.savedProjects.find(p => p.name === action.payload);
+            const project = storage.find(action.payload);
             if (project) {
-                try {
-                    const projectData = sanitizeProjectData(project.data);
-                    dispatch({ type: 'SET_STATE', payload: projectData });
-                    dispatch({ type: 'ADD_TOAST', payload: { message: `Projekt "${project.name}" wczytany i sprawdzony.`, type: 'success' } });
-                } catch (error) {
-                    console.error('Failed to load saved project', error);
-                    dispatch({ type: 'ADD_TOAST', payload: { message: `Projekt "${project.name}" jest uszkodzony lub ma nieprawidłowy format.`, type: 'danger' } });
-                }
+                const projectData = sanitizeProjectData(project.data);
+                dispatch({ type: 'SET_STATE', payload: { ...projectData, savedProjectId: project.id } });
+                dispatch({ type: 'ADD_TOAST', payload: { message: projectData.draft ? 'Wczytano szkic — wymaga uzupełnienia.' : 'Projekt wczytany i sprawdzony.', type: 'success' } });
             }
         } else if (action.type === 'DELETE_PROJECT') {
-            const projectToDelete = state.savedProjects.find(p => p.name === action.payload);
-            const isLocal = projectToDelete?.isLocal;
-            const isCloud = projectToDelete?.isCloud;
-
-            if (isLocal) {
-                const updatedLocalProjects = state.savedProjects.filter(p => p.isLocal && p.name !== action.payload);
-                localStorage.setItem('hvac_saved_projects', JSON.stringify(updatedLocalProjects.map(p => ({name: p.name, date: p.date, data: p.data}))));
-            }
-            
-            const currentUser = auth?.currentUser;
-            if (isCloud && currentUser && db) {
-                const projectId = action.payload.replace(/[^a-zA-Z0-9_-]/g, '_');
-                deleteDoc(doc(db, 'users', currentUser.uid, 'projects', projectId))
-                    .then(() => {
-                        dispatch({ type: 'ADD_TOAST', payload: { message: 'Projekt usunięty z chmury.', type: 'info' } });
-                    })
-                    .catch(e => {
-                        console.error('Failed to delete', e);
-                        dispatch({ type: 'ADD_TOAST', payload: { message: 'Błąd usuwania projektu z chmury.', type: 'danger' } });
-                    });
-            } else if (isLocal && !isCloud) {
-                dispatch({ type: 'ADD_TOAST', payload: { message: 'Projekt usunięty.', type: 'info' } });
-                // Need to update the state immediately for local-only deletion
-                const newState = state.savedProjects.filter(p => !(p.name === action.payload && p.isLocal));
-                dispatch({ type: 'SET_SAVED_PROJECTS', payload: newState });
-            }
-
+            void storage.remove(action.payload).catch(error => dispatch({ type: 'ADD_TOAST', payload: { message: error.message, type: 'danger' } }));
         } else if (action.type === 'SYNC_PROJECT') {
-            const projectToSync = state.savedProjects.find(p => p.name === action.payload);
-            const currentUser = auth?.currentUser;
-            if (projectToSync && projectToSync.isLocal && !projectToSync.isCloud && currentUser && db) {
-                
-                if (state.savedProjects.filter(p => p.isCloud).length >= 100) {
-                    dispatch({ type: 'ADD_TOAST', payload: { message: 'Osiągnięto limit 100 projektów w chmurze.', type: 'danger' } });
-                    return;
-                }
-
-                const firestoreDoc = {
-                    name: projectToSync.name,
-                    date: projectToSync.date,
-                    data: JSON.stringify(projectToSync.data),
-                    userId: currentUser.uid,
-                    createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp()
-                };
-
-                const projectId = projectToSync.name.replace(/[^a-zA-Z0-9_-]/g, '_');
-                setDoc(doc(db, 'users', currentUser.uid, 'projects', projectId), firestoreDoc, { merge: true })
-                    .then(() => {
-                        dispatch({ type: 'ADD_TOAST', payload: { message: `Projekt "${projectToSync.name}" zsynchronizowany z chmurą!`, type: 'success' } });
-                    })
-                    .catch(e => {
-                        console.error('Failed to sync', e);
-                        dispatch({ type: 'ADD_TOAST', payload: { message: 'Błąd synchronizacji projektu.', type: 'danger' } });
-                    });
-            }
+            void storage.sync(action.payload);
+        } else if (action.type === 'RESOLVE_PROJECT_CONFLICT') {
+            storage.resolve(action.payload.id, action.payload.choice);
         } else if (action.type === 'GENERATE_SHARE_LINK') {
             // Strip out massive calculated arrays to keep the URL short
             const projectData = createProjectSnapshot({
@@ -1054,6 +892,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
             });
             const json = JSON.stringify(projectData);
             const compressed = LZString.compressToEncodedURIComponent(json);
+            if (compressed.length > MAX_SHARE_PAYLOAD_LENGTH) throw new Error('Projekt jest zbyt duży do udostępnienia linkiem.');
             
             // Use hash instead of query param to avoid server-side URL length limits
             const url = `${window.location.origin}${window.location.pathname}#data=${compressed}`;
@@ -1066,6 +905,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
 
         } else if (action.type === 'RESET_PROJECT') {
             dispatch({ type: 'SET_STATE', payload: {
+                savedProjectId: undefined,
                 projectName: initialState.projectName,
                 rooms: [createInitialRoomState()],
                 activeRoomId: initialState.activeRoomId,
@@ -1077,7 +917,10 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
         } else {
             dispatch(action);
         }
-    }, [state, activeRoom]);
+        } catch (error) {
+            dispatch({ type: "ADD_TOAST", payload: { message: error instanceof Error ? error.message : "Operacja nie powiodła się. Dane zachowane.", type: "danger" } });
+        }
+    }, [state, activeRoom, storage]);
 
     const legacyState = {
         ...state,
@@ -1088,6 +931,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
         internalGains: activeRoom.internalGains,
         results: activeRoom.results,
         activeResults: activeRoom.activeResults,
+        calculationError: activeRoom.calculationError,
         currentMonth: activeRoom.currentMonth,
         resultMessage: activeRoom.resultMessage,
         tExtProfile: activeRoom.tExtProfile,
@@ -1097,7 +941,7 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
         solarInstantMatrix: activeRoom.solarInstantMatrix,
     };
 
-    const value = { state: legacyState as any, dispatch: enhancedDispatch, theme: state.theme, toggleTheme, handleCalculate, isCalculating, toasts: state.toasts, handleGenerateReport, validation };
+    const value = { state: legacyState as any, dispatch: enhancedDispatch, theme: state.theme, toggleTheme, handleCalculate, isCalculating, toasts: state.toasts, handleGenerateReport, validation, roomFeedback, navigateToIssue };
 
     return (
         <CalculatorContext.Provider value={value}>
