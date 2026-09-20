@@ -6,7 +6,7 @@ import { coolingDemand, coolingProfile, isHourActive, scheduleLabel, summarizeRe
 import { assertRoomValid, parseNumber, roomInputKey, validateRoom } from '../services/validationService';
 import { createProjectSnapshot, sanitizeProjectData } from '../services/projectDataService';
 import { aggregateResults } from '../services/aggregateResults';
-import { acknowledgeSave, mergeProjects } from '../services/projectSyncService';
+import { acknowledgeSave, mergeProjects, parseCloudProjects } from '../services/projectSyncService';
 import { getRecommendedUnitCapacity, generateHVACExportPayload } from '../lib/exportUtils';
 import { calculatorReducer } from '../contexts/CalculatorContext';
 import { ADVANCED_APPLIANCES } from '../data/advancedAppliances';
@@ -217,5 +217,19 @@ describe('ochrona wersji zapisanych projektów', () => {
     it('nazwy Dom A oraz Dom.A nie łączą projektów o odrębnych ID', () => {
         const a = saved('a', null); const b = { ...saved('b', 'b'), id: 'different', name: 'Dom.A' };
         expect(mergeProjects([a], [b])).toHaveLength(2);
+    });
+    it('niezgodny stary dokument nie ukrywa pozostałych projektów chmurowych', () => {
+        const valid = {
+            name: 'Poprawny projekt', date: '2026-09-20T12:00:00.000Z',
+            data: JSON.stringify(createProjectSnapshot(project())), userId: 'user-1',
+            createdAt: { seconds: 1 }, updatedAt: { seconds: 2 },
+        };
+        const result = parseCloudProjects([
+            { id: 'valid', data: () => valid },
+            { id: 'legacy-broken', data: () => ({ ...valid, name: 'Stary projekt', data: '{' }) },
+        ]);
+
+        expect(result.projects.map(item => item.name)).toEqual(['Poprawny projekt']);
+        expect(result.rejected).toMatchObject([{ id: 'legacy-broken', name: 'Stary projekt' }]);
     });
 });
