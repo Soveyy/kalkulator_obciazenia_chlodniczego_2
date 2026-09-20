@@ -4,7 +4,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import type { Action, SavedProject, State } from '../types';
 import { createProjectSnapshot, sanitizeSavedProject } from './projectDataService';
-import { acknowledgeSave, cloudProject, deleteCloudProject, mergeProjects, newProjectId, ProjectConflictError, projectStorageKey, writeCloudProject } from './projectSyncService';
+import { acknowledgeSave, deleteCloudProject, mergeProjects, newProjectId, parseCloudProjects, ProjectConflictError, projectStorageKey, writeCloudProject } from './projectSyncService';
 
 export function useProjectStorage(state: State, dispatch: Dispatch<Action>) {
     const currentState = useRef(state);
@@ -87,9 +87,16 @@ export function useProjectStorage(state: State, dispatch: Dispatch<Action>) {
             unsubscribeCloud = onSnapshot(query(collection(db, 'users', uid, 'projects'), where('userId', '==', uid)), snapshot => {
                 if (owner.current !== uid || snapshot.metadata.hasPendingWrites) return;
                 try {
-                    const cloud = snapshot.docs.map(d => cloudProject(d.id, d.data()));
+                    const { projects: cloud, rejected } = parseCloudProjects(snapshot.docs);
                     const merged = mergeProjects(projects.current.filter(p => p.isLocal), cloud);
                     try { publish(merged); } catch { publish(merged, false); toast('Brak miejsca na aktualizację kopii lokalnej.', 'danger'); }
+                    if (rejected.length) {
+                        console.warn('Pominięte niezgodne projekty chmurowe:', rejected);
+                        const message = rejected.length === 1
+                            ? `Nie udało się odczytać projektu „${rejected[0].name}”: ${rejected[0].reason} Pozostałe projekty wczytano.`
+                            : `Nie udało się odczytać ${rejected.length} projektów chmurowych (${rejected.slice(0, 3).map(item => item.name).join(', ')}${rejected.length > 3 ? ', …' : ''}). Pozostałe projekty wczytano.`;
+                        toast(message, 'danger');
+                    }
                     if (!snapshot.metadata.fromCache) merged.filter(p => p.syncStatus === 'pending').forEach(p => void syncRef.current(p.id));
                 } catch {
                     toast('Nie udało się odczytać części danych chmurowych. Zachowano bieżącą listę.', 'danger');

@@ -15,6 +15,37 @@ export function cloudProject(id: string, value: any): SavedProject {
     return { ...project, id, revision, baseRevision: revision, ownerId: value.userId, syncStatus: 'synced' };
 }
 
+type CloudDocument = { id: string; data: () => unknown };
+export type RejectedCloudProject = { id: string; name: string; reason: string };
+
+/** One incompatible legacy document must not hide every readable cloud project. */
+export function parseCloudProjects(documents: readonly CloudDocument[]): {
+    projects: SavedProject[];
+    rejected: RejectedCloudProject[];
+} {
+    const projects: SavedProject[] = [];
+    const rejected: RejectedCloudProject[] = [];
+
+    for (const document of documents) {
+        let value: unknown;
+        try {
+            value = document.data();
+            projects.push(cloudProject(document.id, value));
+        } catch (error) {
+            const rawName = value && typeof value === 'object' && 'name' in value
+                ? (value as { name?: unknown }).name
+                : undefined;
+            rejected.push({
+                id: document.id,
+                name: typeof rawName === 'string' && rawName.trim() ? rawName.trim() : document.id,
+                reason: error instanceof Error ? error.message : 'Nieznany błąd odczytu.',
+            });
+        }
+    }
+
+    return { projects, rejected };
+}
+
 /** A cloud snapshot can acknowledge a revision, but never silently replace unsent local work. */
 export function mergeProjects(local: SavedProject[], cloud: SavedProject[]): SavedProject[] {
     const result = new Map(cloud.map(p => [p.id, p]));
