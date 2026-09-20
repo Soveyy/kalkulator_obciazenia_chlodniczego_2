@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useCalculator } from '../../contexts/CalculatorContext';
 import Card from '../ui/Card';
 import Input from '../ui/Input';
@@ -10,7 +10,22 @@ import RtsPresetDetails from '../RtsPresetDetails';
 import CustomRtsPresetSelect from '../ui/CustomRtsPresetSelect';
 
 const InputParamsPage: React.FC = () => {
-    const { state, dispatch, helpMode } = useCalculator();
+    const { state, dispatch } = useCalculator();
+    const areaRef = useRef<HTMLInputElement>(null);
+    const temperatureRef = useRef<HTMLInputElement>(null);
+    const humidityRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        const request = state.inputFocusRequest;
+        if (!request || request.roomId !== state.activeRoomId) return;
+        const input = { roomArea: areaRef, tInternal: temperatureRef, rhInternal: humidityRef }[request.field].current;
+        if (input) {
+            input.focus({ preventScroll: true });
+            input.select();
+            input.scrollIntoView({ block: 'nearest' });
+            dispatch({ type: 'CLEAR_INPUT_FOCUS' });
+        }
+    }, [state.inputFocusRequest, state.activeRoomId, dispatch]);
 
     const isAggregate = state.activeRoomId === 'aggregate';
 
@@ -91,7 +106,7 @@ const InputParamsPage: React.FC = () => {
         const { name, value } = e.target;
         dispatch({
             type: 'SET_INPUT',
-            payload: { ...currentRoom.input, [name]: value === '' ? '' : parseFloat(value) || value },
+            payload: { ...currentRoom.input, [name]: value },
         });
     };
 
@@ -116,7 +131,7 @@ const InputParamsPage: React.FC = () => {
                             </svg>
                         </div>
                         <div className="min-w-0">
-                            <h3 className="text-base sm:text-lg font-bold text-slate-800 dark:text-white leading-tight whitespace-normal xl:whitespace-nowrap overflow-hidden text-ellipsis" title="Parametry pomieszczenia">Parametry pomieszczenia</h3>
+                            <h3 className="text-base sm:text-lg font-bold text-slate-800 dark:text-white leading-tight whitespace-normal">Parametry pomieszczenia</h3>
                             <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-0.5">Środowisko i wymiary</p>
                         </div>
                     </div>
@@ -135,12 +150,14 @@ const InputParamsPage: React.FC = () => {
                         <div className="flex flex-col gap-4 w-full">
                                 <div className="w-full">
                                     <div className="flex items-center mb-1.5">
-                                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wider">Temperatura wew. (°C)</label>
+                                        <label htmlFor="room-temperature" className="block text-xs font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wider">Temperatura wew. (°C)</label>
                                         <Tooltip text="Zalecana temperatura do chłodzenia to zazwyczaj 24-26°C." position="top" />
                                     </div>
                                     <Input
                                         type="number"
                                         name="tInternal"
+                                        id="room-temperature"
+                                        ref={temperatureRef}
                                         value={currentRoom.input.tInternal}
                                         onChange={handleInputChange}
                                         min="16" max="32" step="0.5"
@@ -150,12 +167,14 @@ const InputParamsPage: React.FC = () => {
                             
                                 <div className="w-full">
                                     <div className="flex items-center mb-1.5">
-                                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wider">Wilgotność wew. (%)</label>
+                                        <label htmlFor="room-humidity" className="block text-xs font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wider">Wilgotność wew. (%)</label>
                                         <Tooltip text="Dla komfortu zwykle przyjmuje się 50%." position="top" />
                                     </div>
                                     <Input
                                         type="number"
                                         name="rhInternal"
+                                        id="room-humidity"
+                                        ref={humidityRef}
                                         value={currentRoom.input.rhInternal}
                                         onChange={handleInputChange}
                                         min="30" max="70" step="5"
@@ -165,12 +184,14 @@ const InputParamsPage: React.FC = () => {
                             
                                 <div className="w-full">
                                     <div className="flex items-center mb-1.5">
-                                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wider">Powierzchnia (m²)</label>
+                                        <label htmlFor="room-area" className="block text-xs font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wider">Powierzchnia (m²)</label>
                                         <Tooltip text="Powierzchnia pomieszczenia w metrach kwadratowych. Służy do automatycznego przeliczania niektórych zysków." position="top" />
                                     </div>
                                     <Input
                                         type="number"
                                         name="roomArea"
+                                        id="room-area"
+                                        ref={areaRef}
                                         value={currentRoom.input.roomArea}
                                         onChange={handleInputChange}
                                         min="1" step="0.5"
@@ -210,10 +231,11 @@ const InputParamsPage: React.FC = () => {
                             <div className="flex flex-col gap-4 animate-fade-in w-full">
                                     <div className="w-full">
                                         <div className="flex items-center mb-1.5">
-                                            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wider">Typ budynku / pomieszczenia</label>
+                                            <label htmlFor="room-rts-preset" className="block text-xs font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wider">Typ budynku / pomieszczenia</label>
                                             <Tooltip text="Wybór określa reprezentatywną geometrię i konstrukcję przegród, a przez to wpływa na akumulację ciepła oraz godzinowy rozkład obciążenia." position="top" />
                                         </div>
                                         <CustomRtsPresetSelect
+                                            id="room-rts-preset"
                                             value={currentRoom.accumulation.rtsPreset}
                                             onChange={(val) => handleAccumulationChange({ target: { name: 'rtsPreset', value: val } } as any)}
                                         />
@@ -221,10 +243,11 @@ const InputParamsPage: React.FC = () => {
                                 
                                     <div className="w-full">
                                         <div className="flex items-center mb-1.5">
-                                            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wider">Typ podłogi</label>
-                                            <Tooltip text="Typ podłogi decyduje w jakim stopniu absorbuje promieniowanie słoneczne. Wykładziny tłumią akumulację." position="top" />
+                                            <label htmlFor="room-floor-type" className="block text-xs font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wider">Typ podłogi</label>
+                                            <Tooltip text="Wybierz dominujące wykończenie podłogi. Wpływa ono na pochłanianie i późniejsze oddawanie ciepła przez podłogę. Wykładzina lub dywan ograniczają udział masy podłogi w akumulacji. Wybór służy do doboru współczynników RTF." position="top" />
                                         </div>
                                         <Select
+                                            id="room-floor-type"
                                             name="floorType"
                                             value={currentRoom.accumulation.floorType}
                                             onChange={handleAccumulationChange as any}
@@ -238,10 +261,11 @@ const InputParamsPage: React.FC = () => {
                                 
                                     <div className="w-full">
                                         <div className="flex items-center mb-1.5">
-                                            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wider">% przeszklenia fasady</label>
-                                            <Tooltip text="Procentowa powierzchnia ścian zewnętrznych zajęta przez szyby w tym pomieszczeniu (względem całości)." position="top" />
+                                            <label htmlFor="room-glass-percentage" className="block text-xs font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wider">% przeszklenia fasady</label>
+                                            <Tooltip text="Udział powierzchni szyb w całkowitej powierzchni ścian zewnętrznych tego pomieszczenia. Parametr służy do doboru współczynników RTF. Okna należy dodatkowo wprowadzić w zakładce „Okna”." position="top" />
                                         </div>
                                         <Select
+                                            id="room-glass-percentage"
                                             name="glassPercentage"
                                             value={currentRoom.accumulation.glassPercentage}
                                             onChange={handleAccumulationChange as any}
@@ -271,7 +295,7 @@ const InputParamsPage: React.FC = () => {
                 <RtsPresetDetails accumulation={currentRoom.accumulation} />
             )}
 
-            {helpMode && (
+            {state.tutorialMode && (
                 <Card className="p-4 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 animate-fade-in shadow-md">
                     <div className="flex items-start gap-4">
                         <span className="text-2xl mt-1">💡</span>

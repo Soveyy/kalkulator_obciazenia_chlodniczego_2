@@ -1,3 +1,4 @@
+import { coolingProfile } from '../services/resultModel';
 import React from 'react';
 import { Sankey, Tooltip, ResponsiveContainer, Layer, Rectangle } from 'recharts';
 import { useCalculator } from '../contexts/CalculatorContext';
@@ -13,7 +14,7 @@ const NODE_COLORS: Record<string, string> = {
     'Infiltracja': CHART_COLORS.infiltration,
     'Ciepło Jawne': CHART_COLORS.totalSensible,
     'Ciepło Utajone': CHART_COLORS.totalLatent,
-    'Całkowite Obciążenie': '#2c3e50'
+    'Dodatnie składniki': '#2c3e50'
 };
 
 const renderSankeyNode = (props: any) => {
@@ -25,7 +26,7 @@ const renderSankeyNode = (props: any) => {
     // Right nodes (final total) have no source links
     const isRight = !payload.sourceLinks || payload.sourceLinks.length === 0 || x > 450;
     
-    const isSourceNode = isLeft && !['Ciepło Jawne', 'Ciepło Utajone', 'Całkowite Obciążenie'].includes(payload.name);
+    const isSourceNode = isLeft && !['Ciepło Jawne', 'Ciepło Utajone', 'Dodatnie składniki'].includes(payload.name);
     
     return (
         <Layer key={`CustomNode${index}`}>
@@ -110,8 +111,8 @@ const SankeyChart: React.FC<SankeyChartProps> = ({ customResults }) => {
 
     // We want to show the peak load breakdown.
     // Let's find the hour of the maximum total load.
-    const maxLoad = Math.max(...finalGains.clearSky.total);
-    const hourMaxLoad = finalGains.clearSky.total.indexOf(maxLoad);
+    const maxLoad = Math.max(...coolingProfile(finalGains.clearSky));
+    const hourMaxLoad = coolingProfile(finalGains.clearSky).indexOf(maxLoad);
 
     if (hourMaxLoad === -1 || finalGains.clearSky.total.length === 0) {
         return null; // Or some fallback UI
@@ -130,23 +131,25 @@ const SankeyChart: React.FC<SankeyChartProps> = ({ customResults }) => {
     const ventilationLatent = finalGains.clearSky.ventilationLatent?.[hourMaxLoad] || 0;
     const infiltrationLatent = finalGains.clearSky.infiltrationLatent?.[hourMaxLoad] || 0;
 
-    const totalSensible = windowsLoad + wallsLoad + peopleSensible + lightingLoad + equipmentLoad + ventilationSensible + infiltrationSensible;
-    const totalLatent = peopleLatent + ventilationLatent + infiltrationLatent;
+    const equipmentLatent = finalGains.clearSky.equipmentLatent?.[hourMaxLoad] ?? 0;
+    const totalSensible = [windowsLoad, wallsLoad, peopleSensible, lightingLoad, equipmentLoad, ventilationSensible, infiltrationSensible].reduce((sum, n) => sum + Math.max(0, n), 0);
+    const totalLatent = [peopleLatent, equipmentLatent, ventilationLatent, infiltrationLatent].reduce((sum, n) => sum + Math.max(0, n), 0);
     const totalLoad = totalSensible + totalLatent;
 
     const rawLinks = [
-        { sourceName: 'Okna', targetName: 'Ciepło Jawne', value: Math.round(windowsLoad) },
-        { sourceName: 'Przegrody', targetName: 'Ciepło Jawne', value: Math.round(wallsLoad) },
-        { sourceName: 'Ludzie', targetName: 'Ciepło Jawne', value: Math.round(peopleSensible) },
-        { sourceName: 'Ludzie', targetName: 'Ciepło Utajone', value: Math.round(peopleLatent) },
-        { sourceName: 'Oświetlenie', targetName: 'Ciepło Jawne', value: Math.round(lightingLoad) },
-        { sourceName: 'Sprzęt', targetName: 'Ciepło Jawne', value: Math.round(equipmentLoad) },
-        { sourceName: 'Wentylacja', targetName: 'Ciepło Jawne', value: Math.round(ventilationSensible) },
-        { sourceName: 'Wentylacja', targetName: 'Ciepło Utajone', value: Math.round(ventilationLatent) },
-        { sourceName: 'Infiltracja', targetName: 'Ciepło Jawne', value: Math.round(infiltrationSensible) },
-        { sourceName: 'Infiltracja', targetName: 'Ciepło Utajone', value: Math.round(infiltrationLatent) },
-        { sourceName: 'Ciepło Jawne', targetName: 'Całkowite Obciążenie', value: Math.round(totalSensible) },
-        { sourceName: 'Ciepło Utajone', targetName: 'Całkowite Obciążenie', value: Math.round(totalLatent) }
+        { sourceName: 'Okna', targetName: 'Ciepło Jawne', value: windowsLoad },
+        { sourceName: 'Przegrody', targetName: 'Ciepło Jawne', value: wallsLoad },
+        { sourceName: 'Ludzie', targetName: 'Ciepło Jawne', value: peopleSensible },
+        { sourceName: 'Ludzie', targetName: 'Ciepło Utajone', value: peopleLatent },
+        { sourceName: 'Oświetlenie', targetName: 'Ciepło Jawne', value: lightingLoad },
+        { sourceName: 'Sprzęt', targetName: 'Ciepło Jawne', value: equipmentLoad },
+        { sourceName: 'Sprzęt', targetName: 'Ciepło Utajone', value: equipmentLatent },
+        { sourceName: 'Wentylacja', targetName: 'Ciepło Jawne', value: ventilationSensible },
+        { sourceName: 'Wentylacja', targetName: 'Ciepło Utajone', value: ventilationLatent },
+        { sourceName: 'Infiltracja', targetName: 'Ciepło Jawne', value: infiltrationSensible },
+        { sourceName: 'Infiltracja', targetName: 'Ciepło Utajone', value: infiltrationLatent },
+        { sourceName: 'Ciepło Jawne', targetName: 'Dodatnie składniki', value: totalSensible },
+        { sourceName: 'Ciepło Utajone', targetName: 'Dodatnie składniki', value: totalLatent }
     ].filter(link => link.value > 0);
 
     if (rawLinks.length === 0) {
@@ -177,6 +180,7 @@ const SankeyChart: React.FC<SankeyChartProps> = ({ customResults }) => {
 
     return (
         <div className="w-full overflow-x-auto pb-4">
+            <p className="text-xs text-slate-500 mb-2">Dodatnie składniki w godzinie szczytu chłodzenia. Ujemne składniki są widoczne w bilansie netto; suma tego diagramu nie jest mocą do doboru.</p>
             <div className="min-w-[800px] h-[500px]">
                 <ResponsiveContainer key="sankey-rc-stable" width="100%" height="100%">
                     <Sankey

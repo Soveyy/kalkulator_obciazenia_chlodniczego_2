@@ -1,3 +1,4 @@
+import { isHourActive, scheduleIsFullDay, scheduleLabel } from '../../services/resultModel';
 
 import React, { useState, useEffect, useRef } from 'react';
 
@@ -101,8 +102,8 @@ const TimeRangeSlider: React.FC<TimeRangeSliderProps> = ({ startHour, endHour, o
                 <div className="text-xs font-semibold mb-2 text-slate-600 dark:text-slate-400 flex justify-between items-center">
                     <span>{label}</span>
                     <span className="font-mono text-slate-800 dark:text-slate-200 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded text-[10px]">
-                        {startHour === 0 && endHour === 24 
-                            ? "24h (Całą dobę)" 
+                        {scheduleIsFullDay(startHour, endHour)
+                            ? scheduleLabel(startHour, endHour)
                             : `${String(startHour).padStart(2,'0')}:00 - ${String(endHour).padStart(2,'0')}:00`}
                     </span>
                 </div>
@@ -116,12 +117,10 @@ const TimeRangeSlider: React.FC<TimeRangeSliderProps> = ({ startHour, endHour, o
                 {/* Track Background (Grid) */}
                 <div className="absolute inset-0 bg-slate-100 dark:bg-slate-800 rounded-md border border-slate-300 dark:border-slate-600 overflow-hidden flex">
                     {Array.from({ length: 24 }, (_, i) => {
-                         const isActive = isWrapping 
-                            ? (i >= startHour || i < endHour)
-                            : (i >= startHour && i < endHour);
+                         const isActive = isHourActive(i, startHour, endHour);
                          
                          // Special case for full 24h
-                         const isFullDay = startHour === 0 && endHour === 24;
+                         const isFullDay = scheduleIsFullDay(startHour, endHour);
                          const effectiveActive = isFullDay ? true : isActive;
 
                          return (

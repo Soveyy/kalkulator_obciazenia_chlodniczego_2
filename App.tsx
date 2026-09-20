@@ -33,7 +33,7 @@ import WelcomeModal from './components/WelcomeModal';
 import { createTutorial } from './services/tutorialService';
 
 const AppContent: React.FC = () => {
-    const { state, dispatch, validation } = useCalculator();
+    const { state, dispatch } = useCalculator();
 
     const handleWelcomeClose = (startTour: boolean, dontAskAgain: boolean) => {
         dispatch({ type: 'SET_HAS_SEEN_WELCOME', payload: dontAskAgain });
@@ -52,7 +52,7 @@ const AppContent: React.FC = () => {
 
       switch (state.activeTab) {
         case 'input':
-          return <InputParamsPage key="input" />;
+          return <InputParamsPage key={state.activeRoomId} />;
         case 'internal':
           return <InternalGainsPage key="internal" />;
         case 'windows':
@@ -78,7 +78,7 @@ const AppContent: React.FC = () => {
         />
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0 bg-slate-100 dark:bg-slate-950">
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-6 pb-24 lg:pb-24">
+          <main className="flex-1 min-w-0 overflow-x-clip p-4 md:p-6 lg:p-6 pb-24 lg:pb-24">
             <div id="app-header">
                 <Header />
             </div>
@@ -90,7 +90,7 @@ const AppContent: React.FC = () => {
                 </div>
             )}
             
-            <div className="relative overflow-hidden min-h-[400px]">
+            <div className="relative min-h-[400px]">
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={state.activeRoomId === 'aggregate' ? 'aggregate' : state.activeTab}

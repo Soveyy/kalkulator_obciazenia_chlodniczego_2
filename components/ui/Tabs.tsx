@@ -38,11 +38,12 @@ const Tabs: React.FC = () => {
 
   return (
     <div className="mb-1 pt-1">
-      <nav className="flex space-x-2 overflow-x-auto scrollbar-hide pb-2 pt-1" aria-label="Tabs">
+      <nav className="flex space-x-2 overflow-x-auto scrollbar-hide pb-2 pt-1" aria-label="Sekcje pomieszczenia">
         {tabs.map(tab => (
           <button
             key={tab.id}
             id={`tab-${tab.id}`}
+            aria-current={state.activeTab === tab.id ? 'page' : undefined}
             onClick={() => dispatch({ type: 'SET_ACTIVE_TAB', payload: tab.id })}
             className={`whitespace-nowrap py-2 px-3 lg:py-3 lg:px-5 rounded-xl font-medium text-xs lg:text-sm transition-all duration-200 flex items-center gap-1.5 lg:gap-2 border
               ${state.activeTab === tab.id
@@ -52,7 +53,7 @@ const Tabs: React.FC = () => {
                 : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-800 hover:shadow-lg hover:-translate-y-1'
               }`}
           >
-            <span className={`w-1.5 h-1.5 lg:w-2 lg:h-2 rounded-full transition-colors ${tab.status ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-slate-300 dark:bg-slate-600'}`} />
+            <span aria-hidden="true" className={`w-1.5 h-1.5 lg:w-2 lg:h-2 rounded-full transition-colors ${tab.status ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-slate-300 dark:bg-slate-600'}`} />
             {tab.label}
           </button>
         ))}

@@ -17,7 +17,7 @@ const InternalGainsChart: React.FC = () => {
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInstanceRef = useRef<Chart | null>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const { state, theme } = useCalculator();
+  const { state, theme, roomFeedback } = useCalculator();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [viewMode, setViewMode] = useState<"sources" | "sensible_latent">(
     "sources",
@@ -130,7 +130,7 @@ const InternalGainsChart: React.FC = () => {
         {
           label: "Urządzenia",
           data: reorderDataForLocalTime(
-            resultData.equipment || Array(24).fill(0),
+            (resultData.equipment || Array(24).fill(0)).map((v, h) => v + (resultData.equipmentLatent?.[h] ?? 0)),
             offset,
           ),
           backgroundColor: CHART_COLORS.equipment,
@@ -242,12 +242,11 @@ const InternalGainsChart: React.FC = () => {
     };
   }, []);
 
-  if (!state.results) {
+  if (!state.activeResults) {
     return (
       <Card className="flex items-center justify-center h-full min-h-[400px]">
-        <p className="text-slate-500 text-center px-4">
-          Przejdź do zakładki "Podsumowanie" i uruchom obliczenia, aby zobaczyć
-          wykres obciążenia chłodniczego.
+        <p role="status" className="text-slate-500 dark:text-slate-400 text-center px-4">
+          {roomFeedback.message}
         </p>
       </Card>
     );

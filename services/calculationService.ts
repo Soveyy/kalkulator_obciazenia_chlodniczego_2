@@ -1,3 +1,5 @@
+import { assertRoomValid, assertCalculationData, parseNumber, requireSeries, normalizeCalculationInput } from './validationService';
+import { coolingProfile, coolingDemand, isHourActive } from './resultModel';
 
 import { Window, Wall, AccumulationSettings, InternalGains, AllData, InputState, CalculationResults, Shading, CalculationResultData } from '../types';
 import { PEOPLE_ACTIVITY_LEVELS, LIGHTING_TYPES, VENTILATION_EXCHANGER_TYPES, EQUIPMENT_PRESETS, WALL_MATERIALS, ANALYSIS_MONTHS } from '../constants';
@@ -141,7 +143,7 @@ function getShadingFactors(window: Window, allData: AllData, hour: number, month
     }
 
     if (!factors) return { ...fallback, is_indoor };
-    const iac = factors.iac || 1.0;
+    const iac = factors.iac;
     return { iac_beam: iac, iac_diff: iac, fr: factors.fr, is_indoor };
 }
 
@@ -158,33 +160,11 @@ export function applyRTS(radiantGains: number[], rtsFactors: number[]): number[]
 }
 
 function getRtsFactors(accumulation: AccumulationSettings, allData: AllData, solar: boolean): number[] {
+    if (!accumulation.include) return [1, ...Array(23).fill(0)];
     const { rtsPreset, floorType, glassPercentage } = accumulation;
-    const rtsSeriesType = solar ? 'solar' : 'nonsolar';
-    
-    const fallbackFactors = allData.rts['medium']['panels']['50'][rtsSeriesType];
-    
-    try {
-        let selectedGlassP: 10 | 50 | 90 = 50;
-        if (glassPercentage <= 30) selectedGlassP = 10;
-        else if (glassPercentage <= 70) selectedGlassP = 50;
-        else selectedGlassP = 90;
-
-        const factors = allData.rts[rtsPreset]?.[floorType]?.[selectedGlassP]?.[rtsSeriesType];
-        return factors || fallbackFactors;
-    } catch(e) {
-        console.error("Could not find RTS factors, using fallback.", e);
-        return fallbackFactors;
-    }
-}
-
-function isHourActive(hour: number, startHour: number, endHour: number): boolean {
-    if (startHour < endHour) {
-        return hour >= startHour && hour < endHour;
-    } else if (startHour > endHour) {
-        return hour >= startHour || hour < endHour;
-    } else {
-        return true;
-    }
+    const factors = allData.rts?.[rtsPreset]?.[floorType]?.[glassPercentage]?.[solar ? 'solar' : 'nonsolar'];
+    requireSeries(factors, 'Wybrany preset RTS');
+    return factors;
 }
 
 export function generateTemperatureProfile(month: string, allData: AllData): number[] {
@@ -193,15 +173,7 @@ export function generateTemperatureProfile(month: string, allData: AllData): num
         return generateAshraeTemperatureProfile(monthData.peakTemp, monthData.dailyRange);
     }
     
-    // Fallback if data is missing
-    const tProfile: number[] = [];
-    const tExternalMax = 32;
-    const tMin = tExternalMax - 10;
-    for (let i = 0; i < 24; i++) {
-        const temp = (tExternalMax + tMin) / 2 + ((tExternalMax - tMin) / 2) * Math.cos((2 * Math.PI * (i - 14)) / 24);
-        tProfile.push(temp);
-    }
-    return tProfile;
+    throw new Error('Brak danych pogodowych dla miesiąca ' + month);
 }
 
 export function calculateWorstMonth(
@@ -239,7 +211,7 @@ export function calculateWorstMonth(
             isWithoutShading
         );
         
-        const totalLoads = results.finalGains.clearSky.total;
+        const totalLoads = coolingProfile(results.finalGains.clearSky);
         const solarLoads = results.loadComponents.solar;
         const solarInstant = results.components.solarGainsClearSky;
         
@@ -275,9 +247,14 @@ export function calculateGainsForMonth(
     internalGains: InternalGains,
     isWithoutShading: boolean
 ): CalculationResults {
-    const tInternal = parseFloat(input.tInternal) || 24;
-    const roomArea = parseFloat(input.roomArea) || 20;
-    const rhInternal = (parseFloat(input.rhInternal) || 50) / 100;
+    const roomInput = { windows, walls, input, accumulation, internalGains };
+    assertRoomValid(roomInput);
+    assertCalculationData(roomInput, allData, month, isWithoutShading);
+    ({ windows, walls, input, accumulation, internalGains } = normalizeCalculationInput(roomInput));
+    requireSeries(tExtProfile, 'Profil temperatury');
+    const tInternal = parseNumber(input.tInternal)!;
+    const roomArea = parseNumber(input.roomArea)!;
+    const rhInternal = parseNumber(input.rhInternal)! / 100;
     
     const monthInt = parseInt(month, 10);
     const isSummerTime = (monthInt >= 4 && monthInt <= 10);
@@ -355,7 +332,7 @@ export function calculateGainsForMonth(
             if (buildingStories === '3+') storyIndex = 2;
 
             const C_w = C_w_table[shieldingClass]?.[storyIndex] || 0.000174;
-            const U = Number(windSpeed) || 3.4;
+            const U = parseNumber(windSpeed)!;
 
             for (let h = 0; h < 24; h++) {
                 const tExt = tExtProfile[h];
@@ -437,6 +414,8 @@ export function calculateGainsForMonth(
     const internalGainsSensibleRadiant = Array(24).fill(0);
     const internalGainsSensibleConvective = Array(24).fill(0);
     const internalGainsLatent = Array(24).fill(0);
+    const peopleLatent = Array(24).fill(0);
+    const equipmentLatent = Array(24).fill(0);
 
     const peopleSensibleRadiant = Array(24).fill(0);
     const peopleSensibleConvective = Array(24).fill(0);
@@ -470,6 +449,7 @@ export function calculateGainsForMonth(
                     peopleSensibleRadiant[hour] += rad;
                     peopleSensibleConvective[hour] += conv;
                     internalGainsLatent[hour] += peopleCount * latentGain;
+                    peopleLatent[hour] += peopleCount * latentGain;
                 }
             }
         }
@@ -563,6 +543,7 @@ export function calculateGainsForMonth(
                     internalGainsSensibleRadiant[hour] += rad;
                     internalGainsSensibleConvective[hour] += conv;
                     internalGainsLatent[hour] += lat;
+                    equipmentLatent[hour] += lat;
                     
                     equipmentSensibleRadiant[hour] += rad;
                     equipmentSensibleConvective[hour] += conv;
@@ -708,7 +689,7 @@ export function calculateGainsForMonth(
             const U = wall.u;
 
             if (wall.boundaryType === 'unconditioned') {
-                const adjacentTemperature = wall.adjacentTemperature ?? 50;
+                const adjacentTemperature = wall.adjacentTemperature!;
                 const steadyLoad = U * area * (adjacentTemperature - tInternal);
                 const steadyLoadProfile = Array(24).fill(steadyLoad);
                 const unconditionedPreset = UNCONDITIONED_PARTITION_PRESETS[
@@ -737,7 +718,7 @@ export function calculateGainsForMonth(
             const { isRoof, direction, tiltKey: tiltStr, longwaveCorrection: delta_R } = solarGeometry;
             
             const nsrdbDirData = allData.nsrdb[month]?.[direction]?.[tiltStr];
-            const ctsCoeffs = allData.cts?.cts_coefficients?.[wall.type] || Array(24).fill(0);
+            const ctsCoeffs = allData.cts.cts_coefficients[wall.type];
             
             const t_e = Array(24).fill(0);
             for (let h = 0; h < 24; h++) {
@@ -826,6 +807,7 @@ export function calculateGainsForMonth(
             sensible: sensibleLoad,
             latent: totalLatentLoad,
             total: sensibleLoad.map((s, h) => s + totalLatentLoad[h]),
+            coolingTotal: sensibleLoad.map((s, h) => coolingDemand(s, totalLatentLoad[h])),
             windows: windowsLoad,
             walls: wallsLoad,
             individualWalls: individualWallsData,
@@ -834,7 +816,8 @@ export function calculateGainsForMonth(
             equipment: equipmentLoad,
             ventilationSensible: ventilationLoadSensible,
             infiltrationSensible: infiltrationLoadSensible,
-            peopleLatent: internalGainsLatent,
+            peopleLatent,
+            equipmentLatent,
             ventilationLatent: ventilationLoadLatent,
             infiltrationLatent: infiltrationLoadLatent
         }

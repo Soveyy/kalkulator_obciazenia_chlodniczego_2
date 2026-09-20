@@ -15,7 +15,7 @@ const VentilationGainsChart: React.FC = () => {
     const chartRef = useRef<HTMLCanvasElement>(null);
     const chartInstanceRef = useRef<Chart | null>(null);
     const chartContainerRef = useRef<HTMLDivElement>(null);
-    const { state, theme } = useCalculator();
+    const { state, theme, roomFeedback } = useCalculator();
     const [isFullscreen, setIsFullscreen] = useState(false);
 
     const handleFullscreenChange = useCallback(() => {
@@ -147,10 +147,10 @@ const VentilationGainsChart: React.FC = () => {
         };
     }, []);
     
-    if (!state.results) {
+    if (!state.activeResults) {
         return (
-            <Card className="flex items-center justify-center h-full min-h-[400px]">
-                <p className="text-slate-500 text-center px-4">Przejdź do zakładki "Podsumowanie" i uruchom obliczenia, aby zobaczyć wykres obciążenia chłodniczego.</p>
+            <Card className="flex items-center justify-center min-h-[432px] lg:min-h-[440px]">
+                <p role="status" className="text-slate-500 dark:text-slate-400 text-center px-4">{roomFeedback.message}</p>
             </Card>
         );
     }

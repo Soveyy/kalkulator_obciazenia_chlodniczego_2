@@ -1,3 +1,4 @@
+import { validateWall, inputNumber, parseNumber } from '../../services/validationService';
 import React, { useEffect, useState } from 'react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
@@ -76,27 +77,15 @@ const UnconditionedWallEditModal: React.FC = () => {
 
     const handleSave = () => {
         if (!partition) return;
-        const nextErrors: string[] = [];
-        const area = Number(partition.area);
-        const u = Number(partition.u);
-        const adjacentTemperature = Number(partition.adjacentTemperature);
-
-        if (!Number.isFinite(area) || area <= 0) nextErrors.push('area');
-        if (!Number.isFinite(u) || u <= 0 || u > 10) nextErrors.push('u');
-        if (!Number.isFinite(adjacentTemperature) || adjacentTemperature < -50 || adjacentTemperature > 100) {
-            nextErrors.push('adjacentTemperature');
-        }
-
-        if (nextErrors.length > 0) {
-            setErrors(nextErrors);
-            const message = nextErrors.includes('area')
-                ? 'Powierzchnia musi być większa od 0.'
-                : nextErrors.includes('u')
-                    ? 'Współczynnik U musi być w zakresie 0–10 W/(m²·K).'
-                    : 'Temperatura przestrzeni musi być w zakresie od −50 do 100°C.';
-            dispatch({ type: 'ADD_TOAST', payload: { message, type: 'danger' } });
+        const issues = validateWall({ ...partition, boundaryType: 'unconditioned' } as Wall);
+        if (issues.length) {
+            setErrors(issues.map(e => e.path));
+            dispatch({ type: 'ADD_TOAST', payload: { message: issues[0].message, type: 'danger' } });
             return;
         }
+        const area = parseNumber(partition.area)!;
+        const u = parseNumber(partition.u)!;
+        const adjacentTemperature = parseNumber(partition.adjacentTemperature)!;
 
         const wallToSave: Wall = {
             id: isNew ? Date.now() : partition.id,
@@ -151,7 +140,7 @@ const UnconditionedWallEditModal: React.FC = () => {
                         <label className={`block text-sm font-medium mb-1 ${errors.includes('area') ? 'text-red-500' : 'text-slate-700 dark:text-slate-300'}`}>
                             {preset.areaLabel} (m²)
                         </label>
-                        <Input type="number" value={partition.area} min="0.1" step="0.1" onChange={event => setPartition({ ...partition, area: event.target.value === '' ? '' : Number(event.target.value) })} />
+                        <Input type="number" name="area" value={partition.area} min="0.1" step="0.1" onChange={event => setPartition({ ...partition, area: inputNumber(event.target.value) })} />
                     </div>
 
                     <div>
@@ -159,7 +148,7 @@ const UnconditionedWallEditModal: React.FC = () => {
                             Współczynnik U (W/m²·K)
                             <Tooltip text="Wpisz współczynnik przenikania ciepła dla całej przegrody." />
                         </label>
-                        <Input type="number" value={partition.u} min="0.05" max="10" step="0.001" onChange={event => setPartition({ ...partition, u: event.target.value === '' ? '' : Number(event.target.value) })} />
+                        <Input type="number" name="u" value={partition.u} min="0" max="20" step="0.001" onChange={event => setPartition({ ...partition, u: inputNumber(event.target.value) })} />
                     </div>
 
                     <div className="sm:col-span-2">
@@ -167,7 +156,7 @@ const UnconditionedWallEditModal: React.FC = () => {
                             Stała temperatura nieklimatyzowanej przestrzeni (°C)
                             <Tooltip text="Temperatura jest przyjmowana jako stała przez wszystkie 24 godziny. Dla gorącego poddasza wartością startową jest 50°C; możesz ją zmienić." />
                         </label>
-                        <Input type="number" value={partition.adjacentTemperature} min="-50" max="100" step="0.5" onChange={event => setPartition({ ...partition, adjacentTemperature: event.target.value === '' ? '' : Number(event.target.value) })} />
+                        <Input type="number" name="adjacentTemperature" value={partition.adjacentTemperature} min="-50" max="100" step="0.5" onChange={event => setPartition({ ...partition, adjacentTemperature: inputNumber(event.target.value) })} />
                         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                             Gdy podana temperatura jest niższa od temperatury pomieszczenia, przegroda zmniejsza obciążenie chłodnicze.
                         </p>

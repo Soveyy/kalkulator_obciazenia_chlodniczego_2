@@ -1,3 +1,4 @@
+import { inputNumber } from '../services/validationService';
 import React from 'react';
 import { useCalculator } from '../contexts/CalculatorContext';
 import Card from './ui/Card';
@@ -31,23 +32,9 @@ const VentilationPanel: React.FC = () => {
                 newVentilationGains.moistureRecoveryEfficiency = Math.round(preset.eta_l * 100);
             }
         } else if (['airflow', 'naturalVentilationAirflow', 'exteriorWallPerimeter', 'roomHeight', 'heatRecoveryEfficiency', 'moistureRecoveryEfficiency'].includes(name)) {
-            if (value === '') {
-                (newVentilationGains as any)[name] = '';
-            } else {
-                const num = parseFloat(value);
-                if (!isNaN(num)) {
-                    (newVentilationGains as any)[name] = Math.max(0, num);
-                }
-            }
+            (newVentilationGains as any)[name] = inputNumber(value);
         } else if (name === 'windSpeed') {
-            if (value === '') {
-                newVentilationGains.windSpeed = '';
-            } else {
-                const num = parseFloat(value);
-                if (!isNaN(num)) {
-                    newVentilationGains.windSpeed = Math.max(0, Math.min(20, num));
-                }
-            }
+            newVentilationGains.windSpeed = inputNumber(value);
         } else {
             (newVentilationGains as any)[name] = value;
         }
@@ -141,13 +128,35 @@ const VentilationPanel: React.FC = () => {
                                 <Input type="text" value={effectiveLeakageArea} disabled className="bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed" />
                             </div>
 
-                            <div>
-                                <label className="label-style font-medium">Całkowita liczba kondygnacji budynku:</label>
-                                <Select name="buildingStories" value={ventilation.buildingStories} onChange={handleChange}>
-                                    <option value="1">1</option>
-                                    <option value="2">2</option>
-                                    <option value="3+">3 lub więcej</option>
-                                </Select>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                                <div>
+                                    <label htmlFor="building-stories" className="label-style font-medium">Całkowita liczba kondygnacji budynku:</label>
+                                    <Select id="building-stories" name="buildingStories" value={ventilation.buildingStories} onChange={handleChange}>
+                                        <option value="1">1</option>
+                                        <option value="2">2</option>
+                                        <option value="3+">3 lub więcej</option>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <label htmlFor="wind-speed" className="label-style flex items-center font-medium">
+                                        Prędkość wiatru U (m/s):
+                                        <Tooltip text="Domyślna średnia prędkość powietrza dla Warszawy w miesiącach letnich wynosi 3,4 m/s." position="top" />
+                                    </label>
+                                    <Input
+                                        id="wind-speed"
+                                        type="number"
+                                        name="windSpeed"
+                                        value={ventilation.windSpeed}
+                                        onChange={handleChange}
+                                        min="0"
+                                        max="20"
+                                        step="any"
+                                        className={
+                                            ventilation.windSpeed === '' ? 'animate-pulse-border border-blue-400' :
+                                            (ventilation.windSpeed < 0 || ventilation.windSpeed > 20) ? 'animate-pulse-error' : ''
+                                        }
+                                    />
+                                </div>
                             </div>
                             
                             <div>
@@ -159,25 +168,6 @@ const VentilationPanel: React.FC = () => {
                                     <option value="4">Klasa 4 - Osłona miejska rozproszona (przeszkody dalej niż wysokość budynku)</option>
                                     <option value="5">Klasa 5 - Osłona silna (gęsta zabudowa, bliskie sąsiedztwo budynków/drzew)</option>
                                 </Select>
-                            </div>
-                            <div>
-                                <label className="label-style flex items-center font-medium">
-                                    Prędkość wiatru U (m/s):
-                                    <Tooltip text="Domyślna średnia prędkość powietrza dla Warszawy w miesiącach letnich wynosi 3,4 m/s." position="top" />
-                                </label>
-                                <Input 
-                                    type="number" 
-                                    name="windSpeed" 
-                                    value={ventilation.windSpeed} 
-                                    onChange={handleChange} 
-                                    min="0" 
-                                    max="20"
-                                    step="any" 
-                                    className={
-                                        ventilation.windSpeed === '' ? 'animate-pulse-border border-blue-400' : 
-                                        (ventilation.windSpeed < 0 || ventilation.windSpeed > 20) ? 'animate-pulse-error' : ''
-                                    }
-                                />
                             </div>
                         </div>
                     )}

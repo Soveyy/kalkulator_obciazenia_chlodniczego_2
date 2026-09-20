@@ -16,7 +16,7 @@ const WindowGainsChart: React.FC = () => {
     const chartRef = useRef<HTMLCanvasElement>(null);
     const chartInstanceRef = useRef<Chart | null>(null);
     const chartContainerRef = useRef<HTMLDivElement>(null);
-    const { state, theme } = useCalculator();
+    const { state, theme, roomFeedback } = useCalculator();
     const [showIncidentRadiation, setShowIncidentRadiation] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [chartType, setChartType] = useState<'line' | 'bar'>('line');
@@ -233,10 +233,10 @@ const WindowGainsChart: React.FC = () => {
         };
     }, []);
     
-    if (!state.results) {
+    if (!state.activeResults) {
         return (
             <Card className="flex items-center justify-center h-full min-h-[500px]">
-                <p className="text-slate-500 text-center px-4">Przejdź do zakładki "Podsumowanie" i uruchom obliczenia, aby zobaczyć wykres obciążenia od okien.</p>
+                <p role="status" className="text-slate-500 dark:text-slate-400 text-center px-4">{roomFeedback.message}</p>
             </Card>
         );
     }

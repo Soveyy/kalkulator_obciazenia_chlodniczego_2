@@ -1,3 +1,4 @@
+import { MAX_ROOMS, parseNumber, validateRoom } from './validationService';
 import {
     AccumulationSettings,
     AdvancedApplianceState,
@@ -16,11 +17,11 @@ import { createInitialRoomState } from '../data/defaults';
 import { CTS_PRESET_IDS, CTS_PRESETS } from '../data/ctsPresets';
 import { UNCONDITIONED_PARTITION_IDS, UNCONDITIONED_PARTITION_PRESETS } from '../data/unconditionedPresets';
 
-export type ProjectData = Pick<State, 'projectName' | 'rooms' | 'activeRoomId' | 'systems'>;
+export type ProjectData = Pick<State, 'projectName' | 'rooms' | 'activeRoomId' | 'systems'> & { draft?: boolean; syncRevision?: string };
 
 export const MAX_SHARE_PAYLOAD_LENGTH = 250_000;
-const MAX_PROJECT_JSON_LENGTH = 20_000_000;
-const MAX_ROOMS = 100;
+export const MAX_PROJECT_JSON_LENGTH = 900_000;
+
 const MAX_WINDOWS_PER_ROOM = 200;
 const MAX_WALLS_PER_ROOM = 200;
 const MAX_INTERNAL_ITEMS_PER_ROOM = 200;
@@ -78,39 +79,38 @@ function text(value: unknown, fallback: string, maxLength = 120): string {
 }
 
 function booleanValue(value: unknown, fallback: boolean): boolean {
-    return typeof value === 'boolean' ? value : fallback;
+    if (value === undefined) return fallback;
+    if (typeof value !== 'boolean') throw new Error('Nieprawidłowe ustawienie włącz/wyłącz w projekcie.');
+    return value;
 }
 
-function numberValue(value: unknown, fallback: number, min: number, max: number): number {
-    const parsed = typeof value === 'number' ? value : Number(value);
-    return Number.isFinite(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
+function preservedNumber(value: unknown, fallback: number | ''): number | '' {
+    if (value === undefined) return fallback;
+    if (typeof value !== 'number' && typeof value !== 'string') throw new Error('Nieprawidłowy typ liczby w projekcie.');
+    return (value === '' ? '' : parseNumber(value) ?? value) as number | '';
 }
-
-function numberOrBlank(
-    value: unknown,
-    fallback: number | '',
-    min: number,
-    max: number
-): number | '' {
-    if (value === '') return '';
-    const parsed = typeof value === 'number' ? value : Number(value);
-    return Number.isFinite(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
-}
-
-function numericText(value: unknown, fallback: string, min: number, max: number, allowBlank = false): string {
-    if (allowBlank && value === '') return '';
-    const parsed = typeof value === 'string' || typeof value === 'number' ? Number(value) : Number.NaN;
-    return Number.isFinite(parsed) && parsed >= min && parsed <= max ? String(value) : fallback;
-}
-
+function numberValue(value: unknown, fallback: number | '', _min: number, _max: number): number { return preservedNumber(value, fallback) as number; }
+function numberOrBlank(value: unknown, fallback: number | '', _min: number, _max: number): number | '' { return preservedNumber(value, fallback); }
+function numericText(value: unknown, fallback: string, _min: number, _max: number, _allowBlank = false): string { return String(preservedNumber(value, fallback as any)); }
 function enumValue<T extends string | number>(value: unknown, allowed: readonly T[], fallback: T): T {
-    return typeof value === 'string' && allowed.includes(value as T) ? value as T : fallback;
+    if (value === undefined) return fallback;
+    const candidate = typeof fallback === 'number' ? parseNumber(value) : value;
+    if (!allowed.includes(candidate as T)) throw new Error('Nieznana wartość presetu lub ustawienia: ' + String(value));
+    return candidate as T;
 }
-
+function numericId(value: unknown, fallback: number): number {
+    if (value === undefined) return fallback;
+    const n = parseNumber(value);
+    if (n === null || !Number.isSafeInteger(n) || n < 0) throw new Error('Nieprawidłowy identyfikator elementu.');
+    return n;
+}
+function uniqueIds(items: { id: string | number }[], label: string) {
+    if (new Set(items.map(i => i.id)).size !== items.length) throw new Error('Zduplikowane identyfikatory: ' + label);
+}
 function limitedArray(value: unknown, limit: number, fieldName: string): unknown[] {
     if (value === undefined) return [];
     if (!Array.isArray(value) || value.length > limit) {
-        throw new Error(`Nieprawidłowe pole projektu: ${fieldName}.`);
+        throw new Error(`Nieprawidłowe pole projektu: ${fieldName}. Maksymalna liczba elementów: ${limit}.`);
     }
     return value;
 }
@@ -133,7 +133,7 @@ function sanitizeWindows(value: unknown): Window[] {
 
     return source.map((item, index) => {
         if (!isRecord(item)) throw new Error('Nieprawidłowy zapis okna.');
-        const id = Math.trunc(numberValue(item.id, index + 1, 0, Number.MAX_SAFE_INTEGER));
+        const id = numericId(item.id, index + 1);
         if (seenIds.has(id)) throw new Error('Projekt zawiera zduplikowane identyfikatory okien.');
         seenIds.add(id);
 
@@ -152,10 +152,10 @@ function sanitizeWindows(value: unknown): Window[] {
             type: enumValue(item.type, ['custom', 'modern', 'standard', 'older_double', 'historic'] as const, 'modern'),
             direction: text(item.direction, '', 8),
             tilt: numberValue(item.tilt, 90, 0, 180),
-            u: numberValue(item.u, 0.9, 0.01, 20),
-            shgc: numberValue(item.shgc, 0.5, 0, 1),
-            width: numberValue(item.width, 1, 0.01, 100),
-            height: numberValue(item.height, 1, 0.01, 100),
+            u: numberValue(item.u, '', 0.01, 20),
+            shgc: numberValue(item.shgc, '', 0, 1),
+            width: numberValue(item.width, '', 0.01, 100),
+            height: numberValue(item.height, '', 0.01, 100),
             shading: sanitizeShading(item.shading, defaultShading),
             overhang: {
                 enabled: booleanValue(overhang.enabled, false),
@@ -172,7 +172,7 @@ function sanitizeWalls(value: unknown): Wall[] {
 
     return source.map((item, index) => {
         if (!isRecord(item)) throw new Error('Nieprawidłowy zapis przegrody.');
-        const id = Math.trunc(numberValue(item.id, index + 1, 0, Number.MAX_SAFE_INTEGER));
+        const id = numericId(item.id, index + 1);
         if (seenIds.has(id)) throw new Error('Projekt zawiera zduplikowane identyfikatory przegród.');
         seenIds.add(id);
 
@@ -193,7 +193,7 @@ function sanitizeWalls(value: unknown): Wall[] {
         );
         const unconditionedPreset = UNCONDITIONED_PARTITION_PRESETS[unconditionedType];
         const requestedTilt = numberValue(item.tilt, preset.defaultTilt, 0, 90);
-        const tilt = preset.allowedTilts.includes(requestedTilt) ? requestedTilt : preset.defaultTilt;
+        const tilt = requestedTilt;
 
         return {
             id,
@@ -201,14 +201,14 @@ function sanitizeWalls(value: unknown): Wall[] {
             type,
             direction: tilt === 0 ? preset.defaultDirection : text(item.direction, preset.defaultDirection, 8),
             tilt,
-            u: numberValue(item.u, preset.defaultU, 0.01, 20),
-            area: numberValue(item.area, 1, 0.01, 10_000),
+            u: numberValue(item.u, '', 0.01, 20),
+            area: numberValue(item.area, '', 0.01, 10_000),
             material: text(item.material, preset.defaultMaterial, 60),
             ...(boundaryType === 'unconditioned' ? {
                 unconditionedType,
                 adjacentTemperature: numberValue(
                     item.adjacentTemperature,
-                    unconditionedPreset.defaultTemperature,
+                    '',
                     -50,
                     100
                 ),
@@ -233,7 +233,7 @@ function sanitizeEquipment(value: unknown): EquipmentGains[] {
     return limitedArray(value, MAX_INTERNAL_ITEMS_PER_ROOM, 'urządzenia').map((item, index) => {
         if (!isRecord(item)) throw new Error('Nieprawidłowy zapis urządzenia.');
         return {
-            id: Math.trunc(numberValue(item.id, index + 1, 0, Number.MAX_SAFE_INTEGER)),
+            id: numericId(item.id, index + 1),
             name: text(item.name, `Urządzenie ${index + 1}`, 120),
             power: numberOrBlank(item.power, '', 0, 1_000_000),
             quantity: numberOrBlank(item.quantity, 1, 0, 10_000),
@@ -344,15 +344,17 @@ function sanitizeSystems(value: unknown, roomIds: Set<string>): HVACSystem[] {
     return limitedArray(value, MAX_SYSTEMS, 'systemy HVAC').map((item, index) => {
         if (!isRecord(item)) throw new Error('Nieprawidłowy zapis systemu HVAC.');
         const indoorUnits = limitedArray(item.indoorUnits, MAX_ROOMS, 'jednostki wewnętrzne')
-            .filter(unit => isRecord(unit) && typeof unit.roomId === 'string' && roomIds.has(unit.roomId))
+
             .map((unit, unitIndex) => {
-                const source = unit as UnknownRecord;
+                if (!isRecord(unit) || typeof unit.roomId !== 'string' || !roomIds.has(unit.roomId)) throw new Error('Układ HVAC odwołuje się do nieistniejącego pomieszczenia.');
+                const source = unit;
                 return {
                     roomId: source.roomId as string,
-                    index: Math.trunc(numberValue(source.index, unitIndex, 0, 10_000)),
+                    index: numericId(source.index, unitIndex),
                 };
             });
 
+        if (new Set(indoorUnits.map(u => u.roomId)).size !== indoorUnits.length) throw new Error('Pomieszczenie przypisano wielokrotnie do jednego układu HVAC.');
         return {
             id: text(item.id, `system-${index + 1}`, 120),
             name: text(item.name, `System ${index + 1}`, 160),
@@ -393,6 +395,10 @@ export function sanitizeProjectData(value: unknown): ProjectData {
     if (roomValues.length === 0) throw new Error('Projekt nie zawiera żadnego pomieszczenia.');
 
     const rooms = roomValues.map(sanitizeRoom);
+    rooms.forEach(room => { uniqueIds(room.internalGains.equipment, 'urządzenia'); uniqueIds(room.internalGains.advancedAppliances, 'urządzenia katalogowe'); });
+    const errors = rooms.flatMap(room => validateRoom(room).filter(e => e.severity === 'error').map(e => ({ ...e, message: room.name + ': ' + e.message })));
+    const malformed = errors.filter(e => !e.missing);
+    if (source.draft !== true && malformed.length) throw new Error(malformed.map(e => e.message).join(' '));
     const roomIds = new Set(rooms.map(room => room.id));
     if (roomIds.size !== rooms.length || roomIds.has('aggregate')) {
         throw new Error('Projekt zawiera nieprawidłowe identyfikatory pomieszczeń.');
@@ -403,11 +409,15 @@ export function sanitizeProjectData(value: unknown): ProjectData {
         ? requestedActiveRoomId
         : rooms[0].id;
 
+    const systems = sanitizeSystems(source.systems, roomIds);
+    uniqueIds(systems, 'układy HVAC');
     return {
-        projectName: text(source.projectName, 'Mój Projekt', 160),
+        draft: errors.length > 0,
+        ...(typeof source.syncRevision === 'string' ? { syncRevision: source.syncRevision } : {}),
+        projectName: text(source.projectName, 'Mój Projekt', 100),
         rooms,
         activeRoomId,
-        systems: sanitizeSystems(source.systems, roomIds),
+        systems,
     };
 }
 
@@ -425,7 +435,12 @@ export function sanitizeSavedProject(value: unknown, source: 'local' | 'cloud'):
     const date = Number.isNaN(Date.parse(rawDate)) ? new Date(0).toISOString() : rawDate;
 
     return {
-        name: text(value.name, rawData.projectName, 160),
+        id: text(value.id, 'legacy-' + encodeURIComponent(text(value.name, rawData.projectName, 100)), 240),
+        ...(typeof value.ownerId === 'string' ? { ownerId: value.ownerId } : {}),
+        revision: text(value.revision, rawData.syncRevision || '', 120),
+        baseRevision: typeof value.baseRevision === 'string' ? value.baseRevision : null,
+        syncStatus: source === 'cloud' ? 'synced' : enumValue(value.syncStatus, ['local', 'pending', 'synced', 'error', 'conflict'] as const, 'local'),
+        name: text(value.name, rawData.projectName, 100),
         date,
         data: rawData,
         isLocal: source === 'local',
@@ -437,7 +452,10 @@ export function createProjectSnapshot(project: ProjectData): ProjectData {
     // Calculated hourly matrices are reproducible and can make a saved project
     // unnecessarily large. Persist only inputs; results are recalculated after load.
     const inputOnlyProject: ProjectData = {
-        ...project,
+        projectName: project.projectName,
+        activeRoomId: project.activeRoomId,
+        systems: project.systems,
+        draft: true, // Preserve incomplete form entries without substituting defaults.
         rooms: project.rooms.map(room => ({
             ...room,
             results: null,
@@ -450,5 +468,7 @@ export function createProjectSnapshot(project: ProjectData): ProjectData {
             solarInstantMatrix: null,
         })),
     };
-    return sanitizeProjectData(inputOnlyProject);
+    const snapshot = sanitizeProjectData(inputOnlyProject);
+    if (JSON.stringify(snapshot).length > MAX_PROJECT_JSON_LENGTH) throw new Error('Projekt przekracza limit wielkości zapisu.');
+    return snapshot;
 }

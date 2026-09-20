@@ -5,6 +5,7 @@ import "driver.js/dist/driver.css";
 export const createTutorial = (onComplete: () => void): Driver => {
   const d = driver({
     showProgress: true,
+    progressText: '{{current}} z {{total}}',
     nextBtnText: 'Dalej',
     prevBtnText: 'Wstecz',
     doneBtnText: 'Zakończ',
@@ -13,12 +14,15 @@ export const createTutorial = (onComplete: () => void): Driver => {
     overlayOpacity: 0.4,
     stagePadding: 4,
     popoverClass: 'hvac-tutorial-popover',
+    onPopoverRender: (popover) => {
+      popover.closeButton.setAttribute('aria-label', 'Zamknij przewodnik');
+    },
     steps: [
       {
         element: '#app-header',
         popover: {
-          title: 'Witaj w Kalkulatorze!',
-          description: 'To zaawansowane narzędzie inżynierskie pomoże Ci precyzyjnie obliczyć zyski ciepła i obciążenie chłodnicze budynków zgodnie z uznaną metodologią ASHRAE (RTS - Radiant Time Series).',
+          title: 'Witaj w programie Kalkulator HVAC RTS!',
+          description: 'Oszacuj projektowe obciążenie chłodnicze pomieszczeń metodą RTS (Radiant Time Series). Zacznij od danych pomieszczenia, dodaj występujące w nim źródła zysków, a następnie przejdź do wyników. Założenia i uproszczenia znajdziesz pod ikoną „i” obok nazwy aplikacji.',
           side: "bottom",
           align: 'start'
         }
@@ -26,8 +30,8 @@ export const createTutorial = (onComplete: () => void): Driver => {
       {
         element: '#room-tabs-container',
         popover: {
-          title: 'Zarządzanie Pomieszczeniami',
-          description: 'Na samej górze możesz dodawać nowe pomieszczenia (maksymalnie 10), powielać je i edytować nazwy. Dla konfiguracji z wieloma pokojami automatycznie odblokowany zostanie moduł "Analiza Zbiorcza" do doboru systemów klimatyzacji typu Multi-Split.',
+          title: 'Pomieszczenia w projekcie',
+          description: 'Dodawaj pomieszczenia przyciskiem „+” (maksymalnie 10), zmieniaj ich nazwy i powielaj podobne konfiguracje. Nowe, puste pomieszczenie otwiera „Dane wejściowe” z miejscem na powierzchnię. Kliknięcie nazwy przełącza bieżące pomieszczenie.',
           side: "bottom",
           align: 'start'
         }
@@ -35,8 +39,8 @@ export const createTutorial = (onComplete: () => void): Driver => {
       {
         element: '#main-tabs',
         popover: {
-          title: 'Ustrukturyzowane Zakładki',
-          description: 'Cały formularz oraz parametry obliczeniowe znajdziesz w ponumerowanych zakładkach w głównym panelu. Konfiguruj poszczególne zyski ciepła krok po kroku.',
+          title: 'Zakładki i aktualność wyników',
+          description: 'Zielone wskaźniki pomagają śledzić uzupełnienie modułów. Dodawaj tylko źródła zysków występujące w pomieszczeniu — nie każda zakładka musi być uzupełniona. Wyniki przeliczają się automatycznie. Gdy dane wymagają poprawy, przycisk statusu w prawym górnym rogu pokaże szczegóły i przejście do odpowiedniej sekcji.',
           side: "bottom",
           align: 'start'
         }
@@ -45,7 +49,7 @@ export const createTutorial = (onComplete: () => void): Driver => {
         element: '#tab-input',
         popover: {
           title: '1. Dane wejściowe',
-          description: 'Na początek określ powierzchnię pomieszczenia, projektowaną temperaturę wewnętrzną oraz wilgotność powietrza. Tu również skonfigurujesz parametry akumulacji ciepła (bezwładności termicznej) dla konstrukcji lekkich, średnich, ciężkich bądź bardzo ciężkich.',
+          description: 'Wpisz powierzchnię pomieszczenia i sprawdź temperaturę oraz wilgotność wewnętrzną. Dobierz preset akumulacji do konstrukcji pomieszczenia, a następnie wykończenie podłogi i udział przeszkleń. Parametry te wybierają charakterystykę RTF; poszczególne okna i przegrody wprowadzasz osobno.',
           side: "bottom",
           align: 'start'
         }
@@ -54,7 +58,7 @@ export const createTutorial = (onComplete: () => void): Driver => {
         element: '#tab-internal',
         popover: {
           title: '2. Zyski wewnętrzne',
-          description: 'Wprowadź ciepło wydzielane przez ludzi, dobrane oświetlenie (np. nowoczesne LED) oraz urządzenia biurowe/domowe (AGD, komputery, urządzenia kuchenne).',
+          description: 'Włącz obecność ludzi i oświetlenie, jeśli występują w pomieszczeniu. Dodaj urządzenia z listy lub katalogu i sprawdź ich moce oraz liczbę sztuk. Dla każdego źródła ustaw godziny pracy — harmonogram wpływa na profil obciążenia i godzinę szczytu.',
           side: "bottom",
           align: 'start'
         }
@@ -63,7 +67,7 @@ export const createTutorial = (onComplete: () => void): Driver => {
         element: '#tab-windows',
         popover: {
           title: '3. Okna i nasłonecznienie',
-          description: 'Skonfiguruj okna w pomieszczeniu. Określ ich wymiary, współczynnik SHGC (przepuszczalność energii słonecznej) oraz ewentualne osłony zewnętrzne (żaluzje, rolety) lub daszki zacieniające nad oknem chroniące przed słońcem w lecie.',
+          description: 'Dodaj okna, podając wymiary, kierunek i pochylenie. Preset uzupełnia U oraz SHGC; możesz wpisać własne wartości. Dobierz dostępne osłony wewnętrzne lub zewnętrzne i ewentualny daszek. Przy podobnych oknach użyj duplikowania, a osłony możesz zmienić zbiorczo.',
           side: "bottom",
           align: 'start'
         }
@@ -72,7 +76,7 @@ export const createTutorial = (onComplete: () => void): Driver => {
         element: '#tab-ventilation',
         popover: {
           title: '4. Wentylacja i infiltracja',
-          description: 'Zdefiniuj system wentylacji: naturalną grawitacyjną lub mechaniczną nawiewno-wywiewną (rekuperację). Wprowadź też stopień szczelności i kubaturę, by kalkulator oszacował niekontrolowane zyski ciepła od infiltracji powietrza.',
+          description: 'Wybierz wentylację grawitacyjną lub mechaniczną z odzyskiem i podaj strumień powietrza. Dla mechanicznej sprawdź odzysk ciepła i wilgoci. Infiltrację włączasz osobno: potrzebne są obwód ścian zewnętrznych, wysokość pomieszczenia oraz parametry szczelności i wiatru. Wykres i podsumowanie po prawej pokazują wpływ ustawień.',
           side: "bottom",
           align: 'start'
         }
@@ -81,7 +85,7 @@ export const createTutorial = (onComplete: () => void): Driver => {
         element: '#tab-walls',
         popover: {
           title: '5. Przegrody nieprzezroczyste',
-          description: 'Wprowadź nieprzezroczyste przegrody zewnętrzne: ściany o zadanej orientacji oraz stropy i stropodachy, definiując ich powierzchnię, współczynnik przenikania U i typ/kolor wykończenia od zewnątrz.',
+          description: 'Dodaj przegrody zewnętrzne lub przegrody do nieklimatyzowanej przestrzeni. Dla ścian podaj powierzchnię netto, po odjęciu okien i drzwi — program nie odejmuje ich automatycznie. Preset zewnętrzny dobiera CTS i reprezentatywne U. Dla sąsiedniej przestrzeni podajesz także jej stałą temperaturę.',
           side: "bottom",
           align: 'start'
         }
@@ -90,7 +94,7 @@ export const createTutorial = (onComplete: () => void): Driver => {
         element: '#tab-summary',
         popover: {
           title: '6. Podsumowanie wyników',
-          description: 'Główny bilans pomieszczenia! Zobacz godzinę szczytową (peak hour), podział na obciążenia jawne i utajone dla wybranych miesięcy oraz pobierz automatycznie wygenerowany raport PDF.',
+          description: 'Sprawdź maksymalne wymagane chłodzenie, godzinę szczytu oraz część jawną i utajoną obciążenia. Wybierz miesiąc analizy lub porównaj wyniki z osłonami i bez nich. Przełącznik osłon dotyczy wyników całego projektu i zachowuje konfigurację okien. Gotowe wyniki możesz pobrać jako raport PDF.',
           side: "bottom",
           align: 'start'
         }
@@ -98,17 +102,26 @@ export const createTutorial = (onComplete: () => void): Driver => {
       {
         element: '#tab-rts',
         popover: {
-          title: '7. Dobór i analiza',
-          description: 'Najbardziej rozbudowana część analityczna wyposażona w interaktywny wykres Sankeya (wizualizacja strumieni ciepła), całoroczną dobową mapę ciepła (heat-map), podział sezonowy oraz zaimplementowany kalkulator doboru mocy klimatyzacji.',
+          title: '7. Analiza pomieszczenia',
+          description: 'Sprawdź wpływ bezwładności cieplnej, przepływ ciepła, udziały źródeł oraz zmienność godzinową i sezonową dla bieżącego pomieszczenia.',
           side: "bottom",
           align: 'start'
         }
       },
       {
+        element: '#aggregate-analysis-tab',
+        popover: {
+          title: 'Dobór i analiza zbiorcza',
+          description: 'Porównaj obciążenia i przypisz pomieszczenia do układów Split lub Multi-Split. Przełącznik „Prezentacja projektu” otwiera dashboard z wynikami i wykresami całego obiektu, także na pełnym ekranie. Widok działa również dla jednego pomieszczenia. Miesiąc wymiarujący jest wybierany z okresu kwiecień–wrzesień.',
+          side: 'bottom',
+          align: 'end'
+        }
+      },
+      {
         element: '#project-management',
         popover: {
-          title: 'Zarządzanie Projektem',
-          description: 'Użyj panelu narzędziowego, aby trwale zapisać swoje obliczenia w bazie danych, wczytywać wcześniejsze wersje, wygenerować unikalny link do udostępnienia projektu innej osobie lub zresetować kalkulator.',
+          title: 'Zapis i udostępnianie projektu',
+          description: 'Nadaj projektowi nazwę i użyj „Zapisz”, aby zachować konfigurację. „Wczytaj” otwiera listę zapisanych projektów. Jeśli pojawia się status synchronizacji, sprawdź, czy zapis do chmury został zakończony. „Udostępnij” tworzy link do konfiguracji, a „Resetuj” rozpoczyna nowy projekt.',
           side: "right",
           align: 'start'
         }
@@ -116,8 +129,8 @@ export const createTutorial = (onComplete: () => void): Driver => {
       {
         element: '#tutorial-toggle-container',
         popover: {
-          title: 'Dynamiczny Tryb Pomocy',
-          description: 'Jeżeli dowolne sformułowanie lub parametr wyda Ci się niejasny, włącz ten przełącznik. W formularzach wyświetlą się od razu wskazówki i wzorce ułatwiające właściwy dobór parametrów.',
+          title: 'Pomoc podczas pracy',
+          description: 'Włącz „Pomoc”, aby zobaczyć dodatkowe wskazówki w formularzach. Krótkie objaśnienia parametrów są też dostępne po najechaniu na ikony „i”. Do tego przewodnika możesz wrócić w dowolnym momencie przyciskiem „Przewodnik”.',
           side: "right",
           align: 'start'
         }

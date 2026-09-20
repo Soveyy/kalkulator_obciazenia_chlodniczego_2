@@ -1,3 +1,5 @@
+import { scheduleLabel } from '../services/resultModel';
+import { inputNumber } from '../services/validationService';
 
 import React from 'react';
 import { useCalculator } from '../contexts/CalculatorContext';
@@ -31,14 +33,7 @@ const InternalGainsPanel: React.FC = () => {
         if (type === 'checkbox') {
             (newPeopleGains as any)[name] = checked;
         } else if (name === 'count') {
-            if (value === '') {
-                newPeopleGains.count = '';
-            } else {
-                const num = parseInt(value, 10);
-                if (!isNaN(num) && num >= 0) {
-                    newPeopleGains.count = Math.floor(num);
-                }
-            }
+            newPeopleGains.count = inputNumber(value);
         } else { 
              const numValue = parseInt(value, 10);
             (newPeopleGains as any)[name] = isNaN(numValue) ? value : numValue;
@@ -65,16 +60,7 @@ const InternalGainsPanel: React.FC = () => {
         if (type === 'checkbox') {
             val = checked;
         } else if (name === 'powerDensity') {
-             if (value === '') {
-                val = '';
-            } else {
-                const num = parseFloat(value);
-                if (!isNaN(num) && num >= 0) {
-                    val = num;
-                } else {
-                    return; 
-                }
-            }
+             val = inputNumber(value);
         } else {
             val = value;
         }
@@ -107,22 +93,7 @@ const InternalGainsPanel: React.FC = () => {
                 return { ...item, name: value };
             }
             
-            if (value === '') {
-                return { ...item, [name]: '' };
-            }
-            
-            if (name === 'quantity') {
-                const num = parseInt(value, 10);
-                if (!isNaN(num) && num >= 0) {
-                    return { ...item, [name]: Math.floor(num) };
-                }
-            } else if (name === 'power') {
-                const num = parseFloat(value);
-                if (!isNaN(num) && num >= 0) {
-                    return { ...item, [name]: num };
-                }
-            }
-            return item;
+            return { ...item, [name]: inputNumber(value) };
         });
         dispatch({ type: 'SET_INTERNAL_GAINS', payload: { ...state.internalGains, equipment: updatedEquipment } });
     };
@@ -180,7 +151,7 @@ const InternalGainsPanel: React.FC = () => {
                                     name="count" 
                                     value={state.internalGains.people.count} 
                                     onChange={handlePeopleChange} 
-                                    min="0" 
+                                    min="0"
                                     step="1" 
                                     className={
                                         state.internalGains.people.count === '' ? 'animate-pulse-border border-blue-400' : 
@@ -253,7 +224,7 @@ const InternalGainsPanel: React.FC = () => {
                                     value={state.internalGains.lighting.powerDensity} 
                                     onChange={handleLightingChange} 
                                     step="any" 
-                                    min="0" 
+                                    min="0"
                                     className={
                                         state.internalGains.lighting.powerDensity === '' ? 'animate-pulse-border border-blue-400' : 
                                         (state.internalGains.lighting.powerDensity < 0) ? 'animate-pulse-error' : ''
@@ -307,10 +278,11 @@ const InternalGainsPanel: React.FC = () => {
                         <p className="text-sm text-slate-500 text-center py-4">Brak dodanych urządzeń.</p>
                     )}
                     {state.internalGains.equipment.map(item => (
-                        <div key={item.id} className="flex flex-col xl:flex-row gap-2 items-start xl:items-center bg-slate-50 dark:bg-slate-700/50 p-2 rounded border border-slate-200 dark:border-slate-700 transition-all hover:-translate-y-[2px] hover:shadow-md hover:bg-slate-100 dark:hover:bg-slate-700">
+                        <div key={item.id} className="flex flex-col xl:flex-row xl:flex-wrap gap-2 items-start xl:items-center bg-slate-50 dark:bg-slate-700/50 p-2 rounded border border-slate-200 dark:border-slate-700 transition-all hover:-translate-y-[2px] hover:shadow-md hover:bg-slate-100 dark:hover:bg-slate-700">
+                            <span className="w-full flex-none text-xs text-slate-600 dark:text-slate-300">{scheduleLabel(item.startHour, item.endHour)}</span>
                             
                             {/* Name Input */}
-                            <div className="w-full xl:flex-1">
+                            <div className="w-full xl:flex-1 min-w-[120px]">
                                  <label className="xl:hidden text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1 block">Nazwa</label>
                                  <Input name="name" value={item.name} onChange={(e) => handleEquipmentChange(item.id, e)} className="text-sm !py-1 !px-2 !h-8" placeholder="Nazwa" />
                             </div>
@@ -329,7 +301,7 @@ const InternalGainsPanel: React.FC = () => {
                                                 item.power === '' ? 'animate-pulse-border border-blue-400' : 
                                                 (item.power < 0) ? 'animate-pulse-error' : ''
                                             }`} 
-                                            min="0" 
+                                            min="0"
                                             step="any" 
                                             placeholder="Moc" 
                                         />
@@ -346,9 +318,9 @@ const InternalGainsPanel: React.FC = () => {
                                             onChange={(e) => handleEquipmentChange(item.id, e)} 
                                             className={`text-sm pr-8 !py-1 !px-2 !h-8 ${
                                                 item.quantity === '' ? 'animate-pulse-border border-blue-400' : 
-                                                (item.quantity < 1) ? 'animate-pulse-error' : ''
+                                                (item.quantity < 0) ? 'animate-pulse-error' : ''
                                             }`} 
-                                            min="1" 
+                                            min="0"
                                             step="1" 
                                             placeholder="Ilość" 
                                         />
@@ -393,10 +365,11 @@ const InternalGainsPanel: React.FC = () => {
                         const catalogItem = ADVANCED_APPLIANCES.find(a => a.id === item.catalogId);
                         if (!catalogItem) return null;
                         return (
-                            <div key={item.id} className="flex flex-col xl:flex-row gap-2 items-start xl:items-center bg-blue-50 dark:bg-blue-900/20 p-2 rounded border border-blue-200 dark:border-blue-800 transition-all hover:-translate-y-[2px] hover:shadow-md hover:bg-blue-100 dark:hover:bg-blue-900/40">
+                            <div key={item.id} className="flex flex-col xl:flex-row xl:flex-wrap gap-2 items-start xl:items-center bg-blue-50 dark:bg-blue-900/20 p-2 rounded border border-blue-200 dark:border-blue-800 transition-all hover:-translate-y-[2px] hover:shadow-md hover:bg-blue-100 dark:hover:bg-blue-900/40">
+                            <span className="w-full flex-none text-xs text-slate-600 dark:text-slate-300">{scheduleLabel(item.startHour, item.endHour)}</span>
                                 
                                 {/* Name Input */}
-                                <div className="w-full xl:flex-1">
+                                <div className="w-full xl:flex-1 min-w-[120px]">
                                     <label className="xl:hidden text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1 block">Nazwa</label>
                                     <div className="text-sm font-medium text-slate-900 dark:text-slate-100 leading-tight">
                                         {catalogItem.name}
@@ -425,14 +398,14 @@ const InternalGainsPanel: React.FC = () => {
                                         <label className="xl:hidden text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1 block">Ilość</label>
                                         <div className="relative">
                                             <Input 
-                                                type="number" 
+                                                type="number" name="quantity"
                                                 value={item.quantity} 
-                                                onChange={(e) => handleAdvancedApplianceChange(item.id, 'quantity', parseInt(e.target.value, 10))} 
+                                                onChange={(e) => handleAdvancedApplianceChange(item.id, 'quantity', inputNumber(e.target.value))}
                                                 className={`text-sm pr-8 !py-1 !px-2 !h-8 ${
                                                     item.quantity === '' as any ? 'animate-pulse-border border-blue-400' : 
-                                                    (item.quantity < 1) ? 'animate-pulse-error' : ''
+                                                    (item.quantity < 0) ? 'animate-pulse-error' : ''
                                                 }`} 
-                                                min="1" 
+                                                min="0"
                                                 step="1" 
                                             />
                                             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">szt.</span>

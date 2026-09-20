@@ -25,6 +25,7 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) => {
           <div className="relative p-8">
             <button
               onClick={() => onClose(false, dontAskAgain)}
+              aria-label="Zamknij powitanie"
               className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
             >
               <X size={20} />
@@ -36,11 +37,11 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) => {
               </div>
 
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
-                Witaj w Kalkulatorze obciążenia chłodniczego!
+                Witaj w programie Kalkulator HVAC RTS!
               </h2>
               
               <p className="text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
-                To narzędzie pomoże Ci precyzyjnie obliczyć zyski ciepła i obciążenie chłodnicze budynku zgodnie ze standardami ASHRAE. Czy chcesz przejść krótki przewodnik po aplikacji?
+                To narzędzie pomaga oszacować projektowe obciążenie chłodnicze pomieszczeń metodą RTS. Przewodnik pokaże, jak wprowadzić dane, odczytać wyniki i przejść do doboru urządzeń.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mb-8">

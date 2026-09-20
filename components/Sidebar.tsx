@@ -1,3 +1,4 @@
+import { SYNC_LABELS } from '../services/projectSyncService';
 
 import React from 'react';
 import { useCalculator } from '../contexts/CalculatorContext';
@@ -13,6 +14,8 @@ const Sidebar: React.FC = () => {
     const { state, dispatch, validation } = useCalculator();
 
     const startTour = () => {
+        if (state.activeRoomId === 'aggregate') dispatch({ type: 'SWITCH_ROOM', payload: state.rooms[0].id });
+        if (state.isSidebarOpen) dispatch({ type: 'TOGGLE_SIDEBAR' });
         const tour = createTutorial(() => {});
         tour.drive();
     };
@@ -28,12 +31,13 @@ const Sidebar: React.FC = () => {
                 aria-hidden="true"
             />
             <aside 
+                id="app-sidebar"
                 className={`
                     bg-slate-50 dark:bg-slate-900 p-3 flex flex-col 
                     transform transition-transform duration-300 ease-in-out
                     
                     fixed inset-y-0 left-0 z-40 h-screen w-[85vw] max-w-sm shadow-2xl
-                    ${state.isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+                    ${state.isSidebarOpen ? 'translate-x-0' : '-translate-x-full invisible lg:visible'}
                     
                     lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:w-60 lg:shadow-none lg:translate-x-0 lg:pb-0 lg:border-r lg:border-slate-200 dark:lg:border-slate-800
                 `}
@@ -67,11 +71,12 @@ const Sidebar: React.FC = () => {
                                 <label className="relative inline-flex items-center cursor-pointer">
                                     <input 
                                         type="checkbox" 
+                                        aria-label="Pokaż dodatkowe wskazówki w formularzach"
                                         className="sr-only peer"
                                         checked={state.tutorialMode}
                                         onChange={(e) => dispatch({ type: 'SET_TUTORIAL_MODE', payload: e.target.checked })}
                                     />
-                                    <div className="w-8 h-4 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                                    <div className="w-8 h-4 bg-slate-200 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500 peer-focus-visible:ring-offset-2 dark:peer-focus-visible:ring-offset-slate-900 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
                                 </label>
                             </div>
                             <Button 
@@ -90,10 +95,11 @@ const Sidebar: React.FC = () => {
                     <Card id="project-management" className="!p-3">
                          <div className="space-y-3">
                             <div>
-                                <label className="label-style flex items-center font-bold text-xs mb-1">
+                                <label htmlFor="project-name" className="label-style flex items-center font-bold text-xs mb-1">
                                     Nazwa Projektu
                                 </label>
                                 <Input 
+                                    id="project-name"
                                     name="projectName" 
                                     type="text" 
                                     value={state.input.projectName} 
@@ -101,6 +107,7 @@ const Sidebar: React.FC = () => {
                                     className={`text-sm py-1.5 px-2 ${!state.input.projectName ? 'animate-pulse-border border-blue-400' : ''}`}
                                 />
                             </div>
+                            {state.savedProjects.find(p => p.id === state.savedProjectId)?.syncStatus && <p role="status" className="text-xs text-slate-600 dark:text-slate-300">{SYNC_LABELS[state.savedProjects.find(p => p.id === state.savedProjectId)!.syncStatus!]}</p>}
                             <div className="space-y-2">
                                 <Button size="md" fullWidth onClick={() => dispatch({ type: 'SAVE_PROJECT_AS', payload: state.input.projectName })}>
                                     <Save size={18} className="shrink-0" /> <span>Zapisz</span>
@@ -119,7 +126,7 @@ const Sidebar: React.FC = () => {
                     </Card>
 
                     {/* KPI Widget placed here */}
-                    <KPIDashboard />
+                    <KPIDashboard key={state.activeRoomId} />
 
                 </div>
             </aside>

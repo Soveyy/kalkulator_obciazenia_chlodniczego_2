@@ -1,3 +1,4 @@
+import { summarizeResult } from '../../services/resultModel';
 
 import React, { useRef, useState, useEffect } from 'react';
 import { useCalculator } from '../../contexts/CalculatorContext';
@@ -9,6 +10,7 @@ import BreakdownCharts from '../BreakdownCharts';
 import MonthlyLoadChart from '../MonthlyLoadChart';
 import SolarHeatMap from '../SolarHeatMap';
 import SystemInfoCard from '../SystemInfoCard';
+import ResultsPlaceholder from '../ResultsPlaceholder';
 
 const RtsAnalysisPage: React.FC = () => {
     const { state } = useCalculator();
@@ -17,56 +19,46 @@ const RtsAnalysisPage: React.FC = () => {
     const segment3Ref = useRef<HTMLDivElement>(null);
     const segment4Ref = useRef<HTMLDivElement>(null);
     const segmentMonthlyRef = useRef<HTMLDivElement>(null);
+    const navigationRef = useRef<HTMLElement>(null);
     const [activeSection, setActiveSection] = useState<string>('rts');
+    const hasResults = Boolean(state.activeResults);
 
     const scrollToSegment = (ref: React.RefObject<HTMLDivElement | null>, sectionId: string) => {
         if (ref.current) {
-            // Offset for the sticky header
-            const y = ref.current.getBoundingClientRect().top + window.scrollY - 100;
-            window.scrollTo({ top: y, behavior: 'smooth' });
+            const navigationHeight = navigationRef.current?.getBoundingClientRect().height ?? 32;
+            const y = ref.current.getBoundingClientRect().top + window.scrollY - navigationHeight - 12;
+            window.scrollTo({ top: y, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
             setActiveSection(sectionId);
         }
     };
 
-    // Intersection Observer to update active nav pill
+    // Track section headings against the actual sticky bar height, including wrapped layouts.
     useEffect(() => {
-        const observerOptions = {
-            root: null,
-            rootMargin: '-120px 0px -40% 0px',
-            threshold: 0
+        if (!hasResults) return;
+        let frame = 0;
+        const updateSection = () => {
+            frame = 0;
+            const limit = (navigationRef.current?.getBoundingClientRect().height ?? 32) + 24;
+            const sections = [segment1Ref, segment2Ref, segment3Ref, segment4Ref, segmentMonthlyRef];
+            const current = sections.filter(ref => ref.current && ref.current.getBoundingClientRect().top <= limit).at(-1);
+            const atBottom = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
+            setActiveSection(atBottom ? 'monthly' : current?.current?.id ?? 'rts');
         };
-
-        const observerCallback = (entries: IntersectionObserverEntry[]) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    setActiveSection(entry.target.id);
-                }
-            });
+        const scheduleUpdate = () => {
+            if (!frame) frame = window.requestAnimationFrame(updateSection);
         };
-
-        const observer = new IntersectionObserver(observerCallback, observerOptions);
-
-        if (segment1Ref.current) observer.observe(segment1Ref.current);
-        if (segment2Ref.current) observer.observe(segment2Ref.current);
-        if (segment3Ref.current) observer.observe(segment3Ref.current);
-        if (segment4Ref.current) observer.observe(segment4Ref.current);
-        if (segmentMonthlyRef.current) observer.observe(segmentMonthlyRef.current);
-
-        return () => observer.disconnect();
-    }, []);
+        updateSection();
+        window.addEventListener('scroll', scheduleUpdate, { passive: true });
+        window.addEventListener('resize', scheduleUpdate);
+        return () => {
+            window.cancelAnimationFrame(frame);
+            window.removeEventListener('scroll', scheduleUpdate);
+            window.removeEventListener('resize', scheduleUpdate);
+        };
+    }, [hasResults]);
 
     if (!state.activeResults) {
-        return (
-            <div className="flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
-                <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-4">
-                    <TrendingDownIcon className="w-8 h-8 text-blue-500" />
-                </div>
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Trwa generowanie wyników...</h2>
-                <p className="text-slate-500 dark:text-slate-400 max-w-md">
-                    Proszę czekać.
-                </p>
-            </div>
-        );
+        return <ResultsPlaceholder />;
     }
 
     const { finalGains, instantaneousGains } = state.activeResults;
@@ -82,7 +74,8 @@ const RtsAnalysisPage: React.FC = () => {
     const maxLoad = totalLoads.length > 0 ? Math.max(...totalLoads) : 0;
     const hourMaxLoad = totalLoads.indexOf(maxLoad);
 
-    const shr = maxLoad > 0 ? sensibleLoads[hourMaxLoad] / maxLoad : 1;
+    const demand = summarizeResult(finalGains.clearSky);
+    const shr = demand.peak > 0 ? demand.sensible / demand.peak : null;
 
     if (hourMaxGain === -1 || hourMaxLoad === -1 || totalLoads.length === 0) {
         return (
@@ -106,49 +99,54 @@ const RtsAnalysisPage: React.FC = () => {
     const localHourMaxLoad = (hourMaxLoad + offset) % 24;
     
     const lagHours = (hourMaxLoad - hourMaxGain + 24) % 24;
-    const peakReduction = ((maxGain - maxLoad) / maxGain) * 100;
+    const peakReduction = maxGain > 0 ? ((maxGain - maxLoad) / maxGain) * 100 : null;
 
     return (
         <div className="space-y-4 pb-16 relative">
             {/* Sticky Navigation Menu */}
-            <div className="sticky top-0 z-20 -mx-4 px-4 py-1 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap gap-2 justify-center">
+            <nav ref={navigationRef} aria-label="Sekcje analizy pomieszczenia" className="sticky top-0 z-30 -mx-4 px-4 py-1 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap gap-2 justify-center">
                 <button 
+                    aria-current={activeSection === 'rts' ? 'location' : undefined}
                     onClick={() => scrollToSegment(segment1Ref, 'rts')}
                     className={`px-8 py-0.5 rounded-full text-sm font-medium transition-colors ${activeSection === 'rts' ? 'bg-blue-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}
                 >
                     Bezwładność Cieplna
                 </button>
                 <button 
+                    aria-current={activeSection === 'sankey' ? 'location' : undefined}
                     onClick={() => scrollToSegment(segment2Ref, 'sankey')}
                     className={`px-8 py-0.5 rounded-full text-sm font-medium transition-colors ${activeSection === 'sankey' ? 'bg-indigo-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}
                 >
                     Przepływ Energii
                 </button>
                 <button 
+                    aria-current={activeSection === 'breakdown' ? 'location' : undefined}
                     onClick={() => scrollToSegment(segment3Ref, 'breakdown')}
                     className={`px-8 py-0.5 rounded-full text-sm font-medium transition-colors ${activeSection === 'breakdown' ? 'bg-orange-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}
                 >
                     Udziały Szczytowe
                 </button>
                 <button 
+                    aria-current={activeSection === 'heatmap' ? 'location' : undefined}
                     onClick={() => scrollToSegment(segment4Ref, 'heatmap')}
                     className={`px-8 py-0.5 rounded-full text-sm font-medium transition-colors ${activeSection === 'heatmap' ? 'bg-amber-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}
                 >
                     Mapa Ciepła
                 </button>
                 <button 
+                    aria-current={activeSection === 'monthly' ? 'location' : undefined}
                     onClick={() => scrollToSegment(segmentMonthlyRef, 'monthly')}
                     className={`px-8 py-0.5 rounded-full text-sm font-medium transition-colors ${activeSection === 'monthly' ? 'bg-emerald-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}
                 >
                     Analiza Sezonowa
                 </button>
-            </div>
+            </nav>
 
             <div id="rts" ref={segment1Ref} className="flex flex-col space-y-6 pt-0">
                 <SystemInfoCard roomId={state.activeRoomId} />
                 <div className="text-center mb-1">
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Analiza Bezwładności Cieplnej</h2>
-                    <p className="text-slate-500 dark:text-slate-400">Wpływ masy termicznej budynku na szczytowe zapotrzebowanie na chłód</p>
+                    <p className="text-slate-500 dark:text-slate-400">Porównanie bilansu netto przed i po RTS. Wymagane chłodzenie: {(demand.peak / 1000).toFixed(2)} kW.</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -159,8 +157,8 @@ const RtsAnalysisPage: React.FC = () => {
                             <ClockIcon className="w-5 h-5 text-blue-500" />
                         </div>
                         <div>
-                            <div className="text-3xl font-bold text-slate-800 dark:text-white">{lagHours} h</div>
-                            <p className="text-xs text-slate-500 mt-1">Przesunięcie fali upału</p>
+                            <div className="text-3xl font-bold text-slate-800 dark:text-white">{maxGain > 0 && maxLoad > 0 ? lagHours + ' h' : '—'}</div>
+                            <p className="text-xs text-slate-500 mt-1">Przesunięcie szczytu bilansu</p>
                         </div>
                     </Card>
 
@@ -170,7 +168,7 @@ const RtsAnalysisPage: React.FC = () => {
                             <TrendingDownIcon className="w-5 h-5 text-emerald-500" />
                         </div>
                         <div>
-                            <div className="text-3xl font-bold text-slate-800 dark:text-white">{peakReduction.toFixed(1)}%</div>
+                            <div className="text-3xl font-bold text-slate-800 dark:text-white">{peakReduction === null ? '—' : peakReduction.toFixed(1) + '%'}</div>
                             <p className="text-xs text-slate-500 mt-1">Tłumienie zysków</p>
                         </div>
                     </Card>
@@ -181,14 +179,14 @@ const RtsAnalysisPage: React.FC = () => {
                             <div className="w-6 h-6 rounded-full border-2 border-indigo-500 flex items-center justify-center text-[9px] font-black text-indigo-500">SHR</div>
                         </div>
                         <div>
-                            <div className="text-3xl font-bold text-slate-800 dark:text-white">{shr.toFixed(2)}</div>
-                            <p className="text-xs text-slate-500 mt-1">Stosunek ciepła jawnego</p>
+                            <div className="text-3xl font-bold text-slate-800 dark:text-white">{shr === null ? '—' : shr.toFixed(2)}</div>
+                            <p className="text-xs text-slate-500 mt-1">Udział jawnego w wymaganym chłodzeniu</p>
                         </div>
                     </Card>
 
                     <Card className="flex flex-col justify-between p-5 border-l-4 border-orange-500 hover:shadow-md transition-shadow">
                         <div className="flex justify-between items-start mb-2">
-                            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Szczyt Zysków</span>
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Szczyt zysków netto</span>
                             <LightningBoltIcon className="w-5 h-5 text-orange-500" />
                         </div>
                         <div>
@@ -199,7 +197,7 @@ const RtsAnalysisPage: React.FC = () => {
 
                     <Card className="flex flex-col justify-between p-5 border-l-4 border-red-500 hover:shadow-md transition-shadow">
                         <div className="flex justify-between items-start mb-2">
-                            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Szczyt Obciążenia</span>
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Szczyt bilansu po RTS</span>
                             <LightningBoltIcon className="w-5 h-5 text-red-500" />
                         </div>
                         <div>
@@ -232,7 +230,7 @@ const RtsAnalysisPage: React.FC = () => {
             <div id="sankey" ref={segment2Ref} className="flex flex-col space-y-6 pt-8">
                 <div className="text-center mb-4">
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Struktura Obciążenia</h2>
-                    <p className="text-slate-500 dark:text-slate-400">Przepływ ciepła od źródeł do całkowitego obciążenia chłodniczego</p>
+                    <p className="text-slate-500 dark:text-slate-400">Dodatnie składniki zysków w godzinie maksymalnego chłodzenia</p>
                 </div>
                 
                 <Card className="p-6 border-t-4 border-indigo-500 hover:shadow-md transition-shadow">

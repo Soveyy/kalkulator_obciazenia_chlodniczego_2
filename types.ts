@@ -157,6 +157,8 @@ export interface RoomState {
     results: { withShading: CalculationResults, withoutShading: CalculationResults } | null;
     activeResults: CalculationResults | null;
     currentMonth: string;
+    calculationError?: string;
+    calculatedInputKey?: string;
     resultMessage: string;
     tExtProfile: number[];
     monthlyPeaks: { month: string; peak: number }[];
@@ -168,7 +170,9 @@ export interface RoomState {
 export interface CalculationResultData {
     sensible: number[];
     latent: number[];
-    total: number[];
+    total: number[]; // signed net balance
+    coolingTotal?: number[]; // room cooling demand
+    equipmentLatent?: number[];
     windows?: number[];
     individualWindows?: { id: number; title: string; sensible: number[] }[];
     walls?: number[];
@@ -238,6 +242,13 @@ export interface Toast {
 }
 
 export interface SavedProject {
+    id: string;
+    ownerId?: string;
+    revision?: string;
+    baseRevision?: string | null;
+    syncStatus?: "local" | "pending" | "synced" | "error" | "conflict";
+    syncError?: string;
+    cloudCopy?: SavedProject;
     name: string;
     date: string;
     data: any;
@@ -257,6 +268,8 @@ export interface SystemConfig {
   id: string;
   type: 'SINGLE_SPLIT' | 'MULTI_SPLIT' | 'VRF';
   requiredOutdoorCapacity: number;
+  analysisMonth?: number;
+  peakHourUTC?: number;
   indoorUnits: RoomCoolingRequirement[];
 }
 
@@ -286,6 +299,7 @@ export interface HVACSystem {
 export interface State {
     // Project level
     projectName: string;
+    savedProjectId?: string;
     rooms: RoomState[];
     activeRoomId: string;
     systems: HVACSystem[];
@@ -298,6 +312,7 @@ export interface State {
     theme: 'light' | 'dark';
     toasts: { id: number; message: string; type: 'info' | 'success' | 'danger' }[];
     activeTab: AppTab;
+    inputFocusRequest?: { roomId: string; field: 'roomArea' | 'tInternal' | 'rhInternal' };
     selectedDirection: string | null;
     hoveredDirection: string | null;
     isSidebarOpen: boolean;
@@ -342,6 +357,7 @@ export type Action =
     | { type: 'SET_MODAL'; payload: { isOpen: boolean; type?: string | null; data?: any } }
     | { type: 'ADD_TOAST'; payload: { message: string; type: 'info' | 'success' | 'danger' } }
     | { type: 'REMOVE_TOAST'; payload: number }
+    | { type: 'RESOLVE_PROJECT_CONFLICT'; payload: { id: string; choice: 'local' | 'cloud' | 'both' } }
     | { type: 'SAVE_PROJECT' } // Legacy single save
     | { type: 'LOAD_PROJECT' } // Legacy single load
     | { type: 'SAVE_PROJECT_AS'; payload: string }
@@ -353,6 +369,8 @@ export type Action =
     | { type: 'RESET_PROJECT' }
     | { type: 'SET_STATE'; payload: Partial<State> }
     | { type: 'SET_ACTIVE_TAB'; payload: AppTab }
+    | { type: 'FOCUS_ROOM_INPUT'; payload: 'roomArea' | 'tInternal' | 'rhInternal' }
+    | { type: 'CLEAR_INPUT_FOCUS' }
     | { type: 'SET_SELECTED_DIRECTION', payload: string | null }
     | { type: 'SET_HOVERED_DIRECTION', payload: string | null }
     | { type: 'TOGGLE_SIDEBAR' }
@@ -363,4 +381,3 @@ export type Action =
     | { type: 'UPDATE_SYSTEM', payload: HVACSystem }
     | { type: 'DELETE_SYSTEM', payload: string }
     | { type: 'REORDER_SYSTEMS', payload: HVACSystem[] };
-

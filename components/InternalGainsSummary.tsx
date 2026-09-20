@@ -5,7 +5,8 @@ import Card from './ui/Card';
 import { ADVANCED_APPLIANCES } from '../data/advancedAppliances';
 
 const InternalGainsSummary: React.FC = () => {
-    const { state } = useCalculator();
+    const { state, validation } = useCalculator();
+    if (validation.issues.some(issue => issue.severity === "error" && (issue.path.startsWith("input.") || issue.path.startsWith("internalGains.")))) return <Card><p>Uzupełnij poprawnie dane wejściowe, aby zobaczyć podsumowanie zysków wewnętrznych.</p></Card>;
     const { people, lighting, equipment, advancedAppliances } = state.internalGains;
     const { tInternal } = state.input;
 

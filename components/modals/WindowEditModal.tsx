@@ -1,3 +1,4 @@
+import { validateWindow, inputNumber } from '../../services/validationService';
 
 import React, { useState, useEffect } from 'react';
 import Modal from '../ui/Modal';
@@ -68,33 +69,10 @@ const WindowEditModal: React.FC = () => {
 
     const handleSave = () => {
         if (window && shading) {
-            const newErrors: string[] = [];
-            
-            // Dimensions validation
-            if (!window.width || window.width === '' || window.width <= 0) newErrors.push('width');
-            if (!window.height || window.height === '' || window.height <= 0) newErrors.push('height');
-            if (!window.direction) newErrors.push('direction');
-
-            // U-value and SHGC validation
-            if (window.u === '' || window.u < 0.05 || window.u > 10) newErrors.push('u');
-            if (window.shgc === '' || window.shgc < 0.05 || window.shgc > 1) newErrors.push('shgc');
-
-            // Overhang validation
-            if (overhang.enabled) {
-                if (overhang.depth === '' || overhang.depth <= 0) newErrors.push('overhang_depth');
-                if (overhang.distanceAbove === '' || overhang.distanceAbove <= 0) newErrors.push('overhang_distanceAbove');
-            }
-
-            if (newErrors.length > 0) {
-                setErrors(newErrors);
-                let message = 'Proszę poprawić błędy w formularzu.';
-                if (newErrors.includes('width') || newErrors.includes('height')) message = 'Szerokość i wysokość muszą być większe od 0.';
-                if (newErrors.includes('u')) message = 'wsp. U musi być w zakresie 0.05 - 10.';
-                if (newErrors.includes('shgc')) message = 'Współczynnik SHGC musi być w zakresie 0.05 - 1.';
-                if (newErrors.includes('overhang_depth') || newErrors.includes('overhang_distanceAbove')) message = 'Parametry daszku muszą być większe od 0.';
-                if (newErrors.includes('direction')) message = 'Proszę wybrać kierunek świata.';
-                
-                dispatch({ type: 'ADD_TOAST', payload: { message, type: 'danger' } });
+            const issues = validateWindow({ ...window, shading, overhang });
+            if (issues.length) {
+                setErrors(issues.map(e => e.path.replace('.', '_')));
+                dispatch({ type: 'ADD_TOAST', payload: { message: issues[0].message, type: 'danger' } });
                 return;
             }
 
@@ -117,39 +95,11 @@ const WindowEditModal: React.FC = () => {
             if (value === '') {
                 val = '';
             } else {
-                val = parseFloat(value);
+                val = inputNumber(value);
             }
         }
 
-        // Real-time validation
-        if (name === 'u') {
-            if (val !== '' && (val < 0.05 || val > 10)) {
-                setErrors(prev => prev.includes('u') ? prev : [...prev, 'u']);
-            } else {
-                setErrors(prev => prev.filter(e => e !== 'u'));
-            }
-        }
-        if (name === 'shgc') {
-            if (val !== '' && (val < 0.05 || val > 1)) {
-                setErrors(prev => prev.includes('shgc') ? prev : [...prev, 'shgc']);
-            } else {
-                setErrors(prev => prev.filter(e => e !== 'shgc'));
-            }
-        }
-        if (name === 'width') {
-            if (val !== '' && val <= 0) {
-                setErrors(prev => prev.includes('width') ? prev : [...prev, 'width']);
-            } else {
-                setErrors(prev => prev.filter(e => e !== 'width'));
-            }
-        }
-        if (name === 'height') {
-            if (val !== '' && val <= 0) {
-                setErrors(prev => prev.includes('height') ? prev : [...prev, 'height']);
-            } else {
-                setErrors(prev => prev.filter(e => e !== 'height'));
-            }
-        }
+        setErrors([]);
 
         if (name === 'direction') {
             // Update global state to reflect selection on compass immediately
@@ -229,7 +179,7 @@ const WindowEditModal: React.FC = () => {
             if (value === '') {
                 val = '';
             } else {
-                val = parseFloat(value);
+                val = inputNumber(value);
             }
         } else if (type === 'checkbox') {
             val = checked;
@@ -237,14 +187,14 @@ const WindowEditModal: React.FC = () => {
 
         // Real-time validation for overhang
         if (name === 'depth') {
-            if (val !== '' && val <= 0) {
+            if (val !== '' && val < 0) {
                 setErrors(prev => prev.includes('overhang_depth') ? prev : [...prev, 'overhang_depth']);
             } else {
                 setErrors(prev => prev.filter(e => e !== 'overhang_depth'));
             }
         }
         if (name === 'distanceAbove') {
-            if (val !== '' && val <= 0) {
+            if (val !== '' && val < 0) {
                 setErrors(prev => prev.includes('overhang_distanceAbove') ? prev : [...prev, 'overhang_distanceAbove']);
             } else {
                 setErrors(prev => prev.filter(e => e !== 'overhang_distanceAbove'));
@@ -305,7 +255,7 @@ const WindowEditModal: React.FC = () => {
                      <div>
                         <label className={`label-style flex items-center ${errors.includes('u') ? 'text-red-500 font-bold' : ''}`}>
                             wsp. U:
-                            <Tooltip text="Współczynnik przenikania ciepła [W/m²K]. Typowe wartości U dla okien: WT2021 = 0.90, WT2017 = 1.10, WT2014 = 1.30. Zakres: 0.05 - 10." />
+                            <Tooltip text="Współczynnik przenikania ciepła [W/m²K]. Typowe wartości U dla okien: WT2021 = 0.90, WT2017 = 1.10, WT2014 = 1.30. Zakres programu: U > 0 i U ≤ 20." />
                         </label>
                         <Input 
                             type="number" 
@@ -313,15 +263,15 @@ const WindowEditModal: React.FC = () => {
                             value={window.u} 
                             onChange={handleChange} 
                             step="any" 
-                            min="0.05" 
-                            max="10"
+                            min="0"
+                            max="20"
                             className={errors.includes('u') ? 'animate-pulse-error' : ''}
                         />
                     </div>
                     <div>
                         <label className={`label-style flex items-center ${errors.includes('shgc') ? 'text-red-500 font-bold' : ''}`}>
                             Współczynnik SHGC:
-                             <Tooltip text="Współczynnik całkowitego zysku energii słonecznej (g). Zakres: 0.05 - 1." />
+                             <Tooltip text="Współczynnik całkowitego zysku energii słonecznej (g). Zakres: 0–1." />
                         </label>
                         <Input 
                             type="number" 
@@ -329,7 +279,7 @@ const WindowEditModal: React.FC = () => {
                             value={window.shgc} 
                             onChange={handleChange} 
                             step="any" 
-                            min="0.05" 
+                            min="0"
                             max="1"
                             className={errors.includes('shgc') ? 'animate-pulse-error' : ''}
                         />
@@ -388,7 +338,7 @@ const WindowEditModal: React.FC = () => {
                                 </option>
                             ))}
                         </select>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 italic">
+                        <p className="hidden 2xl:block text-xs text-slate-500 dark:text-slate-400 mt-1 italic">
                             Możesz również wybrać kierunek klikając na kompas po prawej stronie.
                         </p>
                         {state.tutorialMode && (
