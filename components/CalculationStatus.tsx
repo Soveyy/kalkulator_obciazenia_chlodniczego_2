@@ -31,8 +31,8 @@ const CalculationStatus: React.FC = () => {
         };
     }, [open]);
 
-    if (state.activeRoomId === 'aggregate' || roomFeedback.status === 'empty') return null;
-    const busy = roomFeedback.status === 'loading' || roomFeedback.status === 'updating';
+    if (state.activeRoomId === 'aggregate' || roomFeedback.status === 'empty' || roomFeedback.status === 'updating') return null;
+    const busy = roomFeedback.status === 'loading';
     if (busy) return (
         <span role="status" className="inline-flex items-center gap-2 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
             <Loader2 size={15} className="motion-safe:animate-spin shrink-0" aria-hidden="true" />

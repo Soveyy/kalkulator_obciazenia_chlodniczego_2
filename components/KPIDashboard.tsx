@@ -160,6 +160,8 @@ const KPIDashboard: React.FC = () => {
     const activeRoom = rooms.find(r => r.id === activeRoomId);
     const displayResults = activeResults ?? (state.isShadingViewActive ? activeRoom?.results?.withShading : activeRoom?.results?.withoutShading);
     const resultUnavailable = !activeResults;
+    const displayedArea = useRef(input.roomArea);
+    if (roomFeedback.status === 'ready') displayedArea.current = input.roomArea;
 
     // We must call hooks at the top level. We computes values for BOTH aggregate and single room,
     // then use the correct one based on activeRoomId.
@@ -185,7 +187,7 @@ const KPIDashboard: React.FC = () => {
         }
     } else if (displayResults) {
         currentMaxLoad = Math.max(...coolingProfile(displayResults.finalGains.clearSky));
-        const roomArea = parseFloat(input.roomArea) || 1;
+        const roomArea = parseFloat(displayedArea.current) || 1;
         currentLoadDensity = currentMaxLoad / roomArea;
     }
 

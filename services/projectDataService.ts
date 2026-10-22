@@ -180,6 +180,7 @@ function sanitizeWalls(value: unknown): Wall[] {
             sciana_ocieplona: 'sciana_murowana_ocieplona',
             sciana_nieocieplona: 'sciana_murowana_nieocieplona',
             stropodach_ocieplony: 'stropodach_zelbetowy_ocieplony',
+            stropodach_lekki_ocieplony: 'dach_lekki_pir',
         };
         const rawType = typeof item.type === 'string' ? item.type : '';
         const migratedType = legacyTypeMap[rawType] || rawType;
@@ -192,7 +193,10 @@ function sanitizeWalls(value: unknown): Wall[] {
             'ceiling_hot_attic'
         );
         const unconditionedPreset = UNCONDITIONED_PARTITION_PRESETS[unconditionedType];
-        const requestedTilt = numberValue(item.tilt, preset.defaultTilt, 0, 90);
+        // Treat a legacy flat roof without an explicit slope as horizontal,
+        // rather than applying the new PIR preset's 15° default.
+        const defaultTilt = rawType === 'stropodach_lekki_ocieplony' ? 0 : preset.defaultTilt;
+        const requestedTilt = numberValue(item.tilt, defaultTilt, 0, 90);
         const tilt = requestedTilt;
 
         return {

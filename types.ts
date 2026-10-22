@@ -146,6 +146,13 @@ export interface InputState {
     roomArea: string;
 }
 
+export interface RoomCalculationTicket {
+    roomId: string;
+    inputKey: string;
+    month: string;
+    shading: boolean;
+}
+
 export interface RoomState {
     id: string;
     name: string;
@@ -347,7 +354,8 @@ export type Action =
     | { type: 'ADD_ADVANCED_APPLIANCE'; payload: AdvancedApplianceState }
     | { type: 'UPDATE_ADVANCED_APPLIANCE'; payload: AdvancedApplianceState }
     | { type: 'DELETE_ADVANCED_APPLIANCE'; payload: string }
-    | { type: 'SET_RESULTS'; payload: { results: { withShading: CalculationResults, withoutShading: CalculationResults }; month: string; tExtProfile: number[], message: string, monthlyPeaks: { month: string; peak: number }[], yearlyMatrix?: number[][], solarMatrix?: number[][], solarInstantMatrix?: number[][] } }
+    | { type: 'SET_RESULTS'; payload: { ticket?: RoomCalculationTicket; results: { withShading: CalculationResults, withoutShading: CalculationResults }; month: string; tExtProfile: number[], message: string, monthlyPeaks: { month: string; peak: number }[], yearlyMatrix?: number[][], solarMatrix?: number[][], solarInstantMatrix?: number[][] } }
+    | { type: 'SET_CALCULATION_ERROR'; payload: { ticket: RoomCalculationTicket; error: string } }
     | { type: 'CLEAR_RESULTS' }
     | { type: 'SET_ACTIVE_RESULTS'; payload: CalculationResults }
     | { type: 'SET_SHADING_VIEW'; payload: boolean }

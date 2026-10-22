@@ -21,7 +21,7 @@ const RoomTabs: React.FC = () => {
         if (state.rooms.length < MAX_ROOMS) {
             dispatch({ type: 'ADD_ROOM' });
         } else {
-            dispatch({ type: 'ADD_TOAST', payload: { message: 'Maksymalna liczba pomieszczeń to 10.', type: 'danger' } });
+            dispatch({ type: 'ADD_TOAST', payload: { message: `Maksymalna liczba pomieszczeń to ${MAX_ROOMS}.`, type: 'danger' } });
         }
     };
 
@@ -41,7 +41,7 @@ const RoomTabs: React.FC = () => {
         if (state.rooms.length < MAX_ROOMS) {
             dispatch({ type: 'DUPLICATE_ROOM', payload: id });
         } else {
-            dispatch({ type: 'ADD_TOAST', payload: { message: 'Maksymalna liczba pomieszczeń to 10.', type: 'danger' } });
+            dispatch({ type: 'ADD_TOAST', payload: { message: `Maksymalna liczba pomieszczeń to ${MAX_ROOMS}.`, type: 'danger' } });
         }
     };
 
@@ -134,7 +134,7 @@ const RoomTabs: React.FC = () => {
             ))}
 
             {state.rooms.length < MAX_ROOMS && (
-                <Tooltip text="Dodaj nowe pomieszczenie (max 10)" position="top">
+                <Tooltip text={`Dodaj nowe pomieszczenie (max ${MAX_ROOMS})`} position="top">
                     <button
                         aria-label="Dodaj pomieszczenie"
                         onClick={handleAddRoom}

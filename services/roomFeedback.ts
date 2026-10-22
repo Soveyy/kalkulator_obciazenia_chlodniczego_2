@@ -50,3 +50,13 @@ export function getIssueTab(path: string): AppTab {
     if (path.startsWith('walls.')) return 'walls';
     return 'input';
 }
+
+// Keep charts mounted during a valid edit; stale data remains unavailable for export
+// in RoomState.activeResults until the matching background calculation completes.
+export function getDisplayedRoomResult(room: RoomState, feedback: RoomFeedback, shading: boolean) {
+    if (feedback.status === 'ready') return room.activeResults;
+    if (feedback.status === 'updating' && room.results) {
+        return shading ? room.results.withShading : room.results.withoutShading;
+    }
+    return null;
+}

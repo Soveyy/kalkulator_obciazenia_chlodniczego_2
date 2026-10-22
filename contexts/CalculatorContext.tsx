@@ -1,7 +1,9 @@
 import { decompressProjectLink } from '../services/shareDataService';
 import { MAX_ROOMS, validateRoom, roomInputKey, assertRoomValid } from '../services/validationService';
 import { useProjectStorage } from '../services/useProjectStorage';
-import { getRoomFeedback, getIssueTab, type RoomFeedback } from '../services/roomFeedback';
+import { getRoomFeedback, getIssueTab, getDisplayedRoomResult, type RoomFeedback } from '../services/roomFeedback';
+import { useRoomCalculation } from '../services/useRoomCalculation';
+import { matchesCalculation } from '../services/roomCalculation';
 
 import React, { createContext, useReducer, useContext, useEffect, useCallback, useState, ReactNode } from 'react';
 import { Window, AccumulationSettings, CalculationResults, AllData, Shading, InternalGains, EquipmentGains, InputState, AppTab, VentilationGains, SavedProject, State, Action, RoomState } from '../types';
@@ -62,7 +64,7 @@ function reduceCalculator(state: State, action: Action): State {
 
     switch (action.type) {
         case 'ADD_ROOM': {
-            if (state.rooms.length >= MAX_ROOMS) throw new Error('Projekt może zawierać maksymalnie 10 pomieszczeń.');
+            if (state.rooms.length >= MAX_ROOMS) throw new Error(`Projekt może zawierać maksymalnie ${MAX_ROOMS} pomieszczeń.`);
             const newId = crypto.randomUUID();
             const newRoom = createInitialRoomState(newId, `Pomieszczenie ${state.rooms.length + 1}`);
             return {
@@ -106,7 +108,7 @@ function reduceCalculator(state: State, action: Action): State {
             };
         }
         case 'DUPLICATE_ROOM': {
-            if (state.rooms.length >= MAX_ROOMS) throw new Error('Projekt może zawierać maksymalnie 10 pomieszczeń.');
+            if (state.rooms.length >= MAX_ROOMS) throw new Error(`Projekt może zawierać maksymalnie ${MAX_ROOMS} pomieszczeń.`);
             const roomToDuplicate = state.rooms.find(r => r.id === action.payload);
             if (!roomToDuplicate) return state;
             const newId = crypto.randomUUID();
@@ -281,8 +283,12 @@ function reduceCalculator(state: State, action: Action): State {
                 }
             }));
         }
-        case 'SET_RESULTS':
-            return updateActiveRoom(state, room => ({
+        case 'SET_RESULTS': {
+            const ticket = action.payload.ticket;
+            const targetId = ticket?.roomId ?? state.activeRoomId;
+            const target = state.rooms.find(room => room.id === targetId);
+            if (!target || (ticket && !matchesCalculation(target, ticket, state.isShadingViewActive))) return state;
+            return { ...state, rooms: state.rooms.map(room => room.id !== targetId ? room : ({
                 ...room,
                 calculationError: undefined,
                 calculatedInputKey: roomInputKey(room),
@@ -297,11 +303,24 @@ function reduceCalculator(state: State, action: Action): State {
                 activeResults: state.isShadingViewActive 
                     ? action.payload.results.withShading 
                     : action.payload.results.withoutShading,
-            }));
+            })) };
+        }
+        case 'SET_CALCULATION_ERROR': {
+            const { ticket, error } = action.payload;
+            return { ...state, rooms: state.rooms.map(room => matchesCalculation(room, ticket, state.isShadingViewActive)
+                ? { ...room, activeResults: null, calculationError: error } : room) };
+        }
         case 'CLEAR_RESULTS':
             return updateActiveRoom(state, room => ({ ...room, results: null, activeResults: null, resultMessage: '' }));
         case 'SET_SHADING_VIEW': {
             if (!state.allData) return { ...state, isShadingViewActive: action.payload };
+            if (state.isShadingViewActive === action.payload) return state;
+            if (state.activeRoomId !== 'aggregate') {
+                // The worker updates the active room; entering aggregate analysis recalculates the project.
+                return { ...state, isShadingViewActive: action.payload, rooms: state.rooms.map(room => ({
+                    ...room, activeResults: null, calculatedInputKey: undefined,
+                })) };
+            }
 
             const newRooms = state.rooms.map(room => {
                 if (!room.results) return room;
@@ -332,22 +351,10 @@ function reduceCalculator(state: State, action: Action): State {
             };
         }
         case 'RECALCULATE_VIEW': {
-            if (!state.allData || !activeRoom.results) return state;
-            const newMonth = action.payload;
-            const tExtProfile = generateTemperatureProfile(newMonth, state.allData);
-            const resultsWithShading = calculateGainsForMonth(activeRoom.windows, activeRoom.walls, activeRoom.input, tExtProfile, newMonth, state.allData, activeRoom.accumulation, activeRoom.internalGains, false);
-            const resultsWithoutShading = calculateGainsForMonth(activeRoom.windows, activeRoom.walls, activeRoom.input, tExtProfile, newMonth, state.allData, activeRoom.accumulation, activeRoom.internalGains, true);
-
-            const newResults = { withShading: resultsWithShading, withoutShading: resultsWithoutShading };
-            
+            if (activeRoom.currentMonth === action.payload) return state;
             return updateActiveRoom(state, room => ({
-                ...room,
-                currentMonth: newMonth,
-                calculationError: undefined,
-                calculatedInputKey: roomInputKey(room),
-                tExtProfile: tExtProfile,
-                results: newResults,
-                activeResults: state.isShadingViewActive ? newResults.withShading : newResults.withoutShading,
+                ...room, currentMonth: action.payload, activeResults: null,
+                calculationError: undefined, calculatedInputKey: undefined,
             }));
         }
         case 'RECALCULATE_ALL_ROOMS': {
@@ -556,6 +563,7 @@ const CalculatorContext = createContext<{
 export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const [state, dispatch] = useReducer(calculatorReducer, initialState);
     const [isCalculating, setIsCalculating] = useState(false);
+    useRoomCalculation(state, dispatch);
     const storage = useProjectStorage(state, dispatch);
 
     useEffect(() => {
@@ -684,35 +692,6 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
         }
     };
     
-    const performCalculation = useCallback((month: string, customMessage?: string) => {
-        if (!state.allData) return;
-
-        const tExtProfile = generateTemperatureProfile(month, state.allData);
-            
-        const resultsWithShading = calculateGainsForMonth(activeRoom.windows || [], activeRoom.walls || [], activeRoom.input, tExtProfile, month, state.allData, activeRoom.accumulation, activeRoom.internalGains, false);
-        const resultsWithoutShading = calculateGainsForMonth(activeRoom.windows || [], activeRoom.walls || [], activeRoom.input, tExtProfile, month, state.allData, activeRoom.accumulation, activeRoom.internalGains, true);
-
-        const { monthlyPeaks, yearlyMatrix, solarMatrix, solarInstantMatrix } = calculateWorstMonth(
-            activeRoom.windows || [], 
-            activeRoom.walls || [],
-            state.allData, 
-            activeRoom.input, 
-            activeRoom.accumulation, 
-            activeRoom.internalGains,
-            !state.isShadingViewActive
-        );
-
-        dispatch({ type: 'SET_RESULTS', payload: { 
-            results: { withShading: resultsWithShading, withoutShading: resultsWithoutShading },
-            month: month,
-            tExtProfile,
-            message: customMessage,
-            monthlyPeaks,
-            yearlyMatrix,
-            solarMatrix,
-            solarInstantMatrix
-        }});
-    }, [state.allData, activeRoom.windows, activeRoom.walls, activeRoom.input, activeRoom.accumulation, activeRoom.internalGains, state.isShadingViewActive]);
 
 
     const handleCalculate = useCallback(async () => {
@@ -795,21 +774,6 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
         }
     }, [state.allData, state.rooms, state.projectName, state.isShadingViewActive]);
     
-    // Effect to recalculate automatically on changes and update the message
-    useEffect(() => {
-        if (state.allData && state.activeRoomId !== 'aggregate') {
-            if (validateRoom(activeRoom).some(issue => issue.severity === 'error')) return;
-            const handler = setTimeout(() => {
-                try {
-                    assertRoomValid(activeRoom);
-                    performCalculation(activeRoom.currentMonth || '7', 'Wyniki aktualne.');
-                } catch (error) {
-                    dispatch({ type: 'SET_STATE', payload: { rooms: state.rooms.map(r => r.id !== activeRoom.id ? r : { ...r, activeResults: null, calculationError: error instanceof Error ? error.message : 'Nie udało się obliczyć wyniku.' }) } });
-                }
-            }, 300);
-            return () => clearTimeout(handler);
-        }
-    }, [activeRoom.windows, activeRoom.walls, activeRoom.input, activeRoom.accumulation, activeRoom.internalGains, performCalculation, state.allData, state.isShadingViewActive, state.activeRoomId]);
 
     // Auto calculate ALL rooms when entering Aggregate Analysis.
     // SET_SHADING_VIEW refreshes selected-month results and yearly matrices itself;
@@ -930,10 +894,10 @@ export const CalculatorProvider: React.FC<{children: ReactNode}> = ({ children }
         accumulation: activeRoom.accumulation,
         internalGains: activeRoom.internalGains,
         results: activeRoom.results,
-        activeResults: activeRoom.activeResults,
+        activeResults: getDisplayedRoomResult(activeRoom, roomFeedback, state.isShadingViewActive),
         calculationError: activeRoom.calculationError,
         currentMonth: activeRoom.currentMonth,
-        resultMessage: activeRoom.resultMessage,
+        resultMessage: roomFeedback.status === 'updating' && roomFeedback.hasPreviousResult ? 'Wyniki ostatniego obliczenia.' : activeRoom.resultMessage,
         tExtProfile: activeRoom.tExtProfile,
         monthlyPeaks: activeRoom.monthlyPeaks,
         yearlyMatrix: activeRoom.yearlyMatrix,

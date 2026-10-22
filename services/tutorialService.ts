@@ -1,6 +1,7 @@
 
 import { driver, Driver } from "driver.js";
 import "driver.js/dist/driver.css";
+import { MAX_ROOMS } from './validationService';
 
 export const createTutorial = (onComplete: () => void): Driver => {
   const d = driver({
@@ -31,7 +32,7 @@ export const createTutorial = (onComplete: () => void): Driver => {
         element: '#room-tabs-container',
         popover: {
           title: 'Pomieszczenia w projekcie',
-          description: 'Dodawaj pomieszczenia przyciskiem „+” (maksymalnie 10), zmieniaj ich nazwy i powielaj podobne konfiguracje. Nowe, puste pomieszczenie otwiera „Dane wejściowe” z miejscem na powierzchnię. Kliknięcie nazwy przełącza bieżące pomieszczenie.',
+          description: `Dodawaj pomieszczenia przyciskiem „+” (maksymalnie ${MAX_ROOMS}), zmieniaj ich nazwy i powielaj podobne konfiguracje. Nowe, puste pomieszczenie otwiera „Dane wejściowe” z miejscem na powierzchnię. Kliknięcie nazwy przełącza bieżące pomieszczenie.`,
           side: "bottom",
           align: 'start'
         }

@@ -1,4 +1,3 @@
-import { scheduleLabel } from '../services/resultModel';
 import { inputNumber } from '../services/validationService';
 
 import React from 'react';
@@ -279,7 +278,6 @@ const InternalGainsPanel: React.FC = () => {
                     )}
                     {state.internalGains.equipment.map(item => (
                         <div key={item.id} className="flex flex-col xl:flex-row xl:flex-wrap gap-2 items-start xl:items-center bg-slate-50 dark:bg-slate-700/50 p-2 rounded border border-slate-200 dark:border-slate-700 transition-all hover:-translate-y-[2px] hover:shadow-md hover:bg-slate-100 dark:hover:bg-slate-700">
-                            <span className="w-full flex-none text-xs text-slate-600 dark:text-slate-300">{scheduleLabel(item.startHour, item.endHour)}</span>
                             
                             {/* Name Input */}
                             <div className="w-full xl:flex-1 min-w-[120px]">
@@ -366,7 +364,6 @@ const InternalGainsPanel: React.FC = () => {
                         if (!catalogItem) return null;
                         return (
                             <div key={item.id} className="flex flex-col xl:flex-row xl:flex-wrap gap-2 items-start xl:items-center bg-blue-50 dark:bg-blue-900/20 p-2 rounded border border-blue-200 dark:border-blue-800 transition-all hover:-translate-y-[2px] hover:shadow-md hover:bg-blue-100 dark:hover:bg-blue-900/40">
-                            <span className="w-full flex-none text-xs text-slate-600 dark:text-slate-300">{scheduleLabel(item.startHour, item.endHour)}</span>
                                 
                                 {/* Name Input */}
                                 <div className="w-full xl:flex-1 min-w-[120px]">

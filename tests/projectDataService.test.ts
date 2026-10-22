@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createInitialRoomState } from '../data/defaults';
+import { parseCloudProjects } from '../services/projectSyncService';
 import {
     createProjectSnapshot,
     parseProjectDataJson,
@@ -104,6 +105,44 @@ describe('bezpieczne wczytywanie projektu', () => {
         expect(project.rooms[0].walls.map(wall => wall.tilt)).toEqual([90, 90, 0]);
         expect(project.rooms[0].walls[0]).toMatchObject({ direction: 'E', u: 0.2, material: 'paint_white' });
         expect(project.rooms[0].walls[2].direction).toBe('S');
+    });
+
+    it.each([undefined, 0, 30])('odczytuje stary stropodach lekki z chmury i zachowuje geometrię (%s°)', tilt => {
+        const room = createInitialRoomState();
+        room.input.roomArea = '45';
+        const wall = {
+            id: 7, type: 'stropodach_lekki_ocieplony', direction: 'W',
+            u: 0.23, area: 42.5, material: 'roof_membrane_dark',
+            ...(tilt === undefined ? {} : { tilt }),
+        };
+        const legacyData = {
+            projectName: 'Stary projekt z dachem', rooms: [{ ...room, walls: [wall] }],
+            activeRoomId: room.id, systems: [],
+        };
+        const json = JSON.stringify(legacyData);
+        const { projects, rejected } = parseCloudProjects([{
+            id: 'legacy-roof',
+            data: () => ({ name: legacyData.projectName, date: '2026-08-03', data: json, userId: 'test-user' }),
+        }]);
+
+        expect(rejected).toEqual([]);
+        expect(projects).toHaveLength(1);
+        const migrated = projects[0].data.rooms[0].walls[0];
+        expect(migrated).toMatchObject({
+            id: 7, type: 'dach_lekki_pir', tilt: tilt ?? 0, boundaryType: 'external',
+            u: 0.23, area: 42.5, material: 'roof_membrane_dark',
+            direction: tilt ? 'W' : 'S',
+        });
+        const reloaded = parseProjectDataJson(JSON.stringify(createProjectSnapshot(projects[0].data)));
+        expect(reloaded.rooms[0].walls[0]).toEqual(migrated);
+        expect(legacyData.rooms[0].walls[0].type).toBe('stropodach_lekki_ocieplony');
+    });
+
+    it('nadal odrzuca nieznany typ przegrody zamiast zastępować go przypadkowym presetem', () => {
+        expect(() => sanitizeProjectData({
+            input: { roomArea: '20' },
+            walls: [{ id: 1, type: 'nieznany_dach', area: 20, u: 0.2 }],
+        })).toThrow(/Nieznana wartość presetu/);
     });
 
     it('odrzuca niedozwolone klucze i projekt bez pomieszczeń', () => {

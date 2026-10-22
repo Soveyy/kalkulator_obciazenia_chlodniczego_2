@@ -1,5 +1,3 @@
-import React from 'react';
-
 export const MONTH_NAMES = [
     'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
     'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'
@@ -35,15 +33,6 @@ export const WINDOW_AZIMUTHS: { [key: string]: number } = {
     'N': 0, 'NNE': 22.5, 'NE': 45, 'ENE': 67.5, 'E': 90, 'ESE': 112.5, 'SE': 135, 'SSE': 157.5,
     'S': 180, 'SSW': 202.5, 'SW': 225, 'WSW': 247.5, 'W': 270, 'WNW': 292.5, 'NW': 315, 'NNW': 337.5
 };
-
-export const CompassArrow: React.FC<{ rotation: number }> = ({ rotation }) => (
-    <div style={{ transform: `rotate(${rotation}deg)` }} className="absolute top-1 right-1 w-12 h-12 transition-transform duration-500 origin-center">
-        <svg viewBox="0 0 24 24" fill="currentColor" className="text-red-500">
-            <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 2.99.71-.71z" />
-        </svg>
-    </div>
-);
-
 
 // Shading constants
 export const SHADING_TYPE_LABELS: { [key: string]: string } = {
