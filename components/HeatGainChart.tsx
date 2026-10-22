@@ -114,7 +114,16 @@ const HeatGainChart: React.FC = () => {
             ];
         }
 
-        datasets.push({ type: 'line', label: 'Bilans netto', data: reorderDataForLocalTime(finalGains.clearSky.total, offset), borderColor: '#64748b', borderDash: [4, 4], fill: false, yAxisID: 'yLoad', pointRadius: 0 });
+        datasets.push({
+            type: 'line', label: 'Bilans netto',
+            data: reorderDataForLocalTime(finalGains.clearSky.total, offset),
+            borderColor: isDarkMode ? '#a78bfa' : '#7c3aed',
+            backgroundColor: 'transparent',
+            borderWidth: 2.5,
+            borderDash: [12, 4, 2, 4],
+            fill: false, yAxisID: 'yLoad', pointRadius: 0,
+            order: -2,
+        });
 
         if (hasTempData) {
             datasets.push({

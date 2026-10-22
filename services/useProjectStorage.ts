@@ -63,6 +63,7 @@ export function useProjectStorage(state: State, dispatch: Dispatch<Action>) {
 
     useEffect(() => {
         let unsubscribeCloud: (() => void) | undefined;
+        const reportedCloudErrors = new Set<string>();
         const load = (uid?: string) => {
             unsubscribeCloud?.();
             const previousOwner = owner.current;
@@ -90,11 +91,17 @@ export function useProjectStorage(state: State, dispatch: Dispatch<Action>) {
                     const { projects: cloud, rejected } = parseCloudProjects(snapshot.docs);
                     const merged = mergeProjects(projects.current.filter(p => p.isLocal), cloud);
                     try { publish(merged); } catch { publish(merged, false); toast('Brak miejsca na aktualizację kopii lokalnej.', 'danger'); }
-                    if (rejected.length) {
-                        console.warn('Pominięte niezgodne projekty chmurowe:', rejected);
-                        const message = rejected.length === 1
-                            ? `Nie udało się odczytać projektu „${rejected[0].name}”: ${rejected[0].reason} Pozostałe projekty wczytano.`
-                            : `Nie udało się odczytać ${rejected.length} projektów chmurowych (${rejected.slice(0, 3).map(item => item.name).join(', ')}${rejected.length > 3 ? ', …' : ''}). Pozostałe projekty wczytano.`;
+                    const unreported = rejected.filter(item => {
+                        const key = JSON.stringify([uid, item.id, item.reason]);
+                        if (reportedCloudErrors.has(key)) return false;
+                        reportedCloudErrors.add(key);
+                        return true;
+                    });
+                    if (unreported.length) {
+                        console.warn('Pominięte niezgodne projekty chmurowe:', unreported);
+                        const message = unreported.length === 1
+                            ? `Nie udało się odczytać projektu „${unreported[0].name}”: ${unreported[0].reason} Pozostałe projekty wczytano.`
+                            : `Nie udało się odczytać ${unreported.length} projektów chmurowych (${unreported.slice(0, 3).map(item => item.name).join(', ')}${unreported.length > 3 ? ', …' : ''}). Pozostałe projekty wczytano.`;
                         toast(message, 'danger');
                     }
                     if (!snapshot.metadata.fromCache) merged.filter(p => p.syncStatus === 'pending').forEach(p => void syncRef.current(p.id));

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { CompassArrow } from './CompassArrow';
 import { Window, Shading } from '../types';
 import { useCalculator } from '../contexts/CalculatorContext';
 import { 
     WINDOW_DIRECTIONS, 
     WINDOW_AZIMUTHS, 
-    CompassArrow, 
     SHADING_TYPE_LABELS, 
     LOUVERS_SETTING_LABELS,
     DRAPERY_MATERIAL_LABELS,

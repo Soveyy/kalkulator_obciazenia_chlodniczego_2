@@ -5,7 +5,7 @@ import { RTS_PRESET_IDS } from '../data/rtsPresets';
 import { UNCONDITIONED_PARTITION_PRESETS } from '../data/unconditionedPresets';
 import { ADVANCED_APPLIANCES } from '../data/advancedAppliances';
 
-export const MAX_ROOMS = 10;
+export const MAX_ROOMS = 15;
 export type ValidationIssue = { path: string; message: string; severity: 'error' | 'warning'; missing?: boolean };
 type Rule = { min: number; max: number; positive?: boolean; integer?: boolean };
 export const NUMBER_RULES = {

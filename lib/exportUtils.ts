@@ -72,7 +72,7 @@ export function exportRoomsToExcel(rooms: RoomState[], projectName: string) {
 
         return `
             <tr>
-                <td style="text-align: left; border: 1px solid #cbd5e1; padding: 10px 14px;">${escapeHtml(room.name)}</td>
+                <td x:str style="mso-number-format:'\\@'; text-align: left; border: 1px solid #cbd5e1; padding: 10px 14px;">${escapeHtml(room.name)}</td>
                 <td style="mso-number-format:'0.00'; text-align: right; border: 1px solid #cbd5e1; padding: 10px 14px;">${areaVal.toFixed(1)}</td>
                 ${cellsHtml}
                 <td style="mso-number-format:\'0.00\'; font-weight: bold; background-color: #fef3c7; color: #92400e; text-align: right; border: 1px solid #cbd5e1; padding: 10px 14px;">${maxPeakKw.toFixed(2)}</td>

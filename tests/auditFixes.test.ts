@@ -91,9 +91,9 @@ describe('wspólne zasady danych', () => {
     });
     it('szybkie duplikowanie nadaje unikalne ID, a widok zbiorczy nadal jest dostępny', () => {
         let current = state();
-        for (let i = 0; i < 9; i++) current = calculatorReducer(current, { type: 'DUPLICATE_ROOM', payload: 'room-1' });
-        expect(current.rooms).toHaveLength(10);
-        expect(new Set(current.rooms.map(r => r.id)).size).toBe(10);
+        for (let i = 0; i < 14; i++) current = calculatorReducer(current, { type: 'DUPLICATE_ROOM', payload: 'room-1' });
+        expect(current.rooms).toHaveLength(15);
+        expect(new Set(current.rooms.map(r => r.id)).size).toBe(15);
         expect(calculatorReducer(current, { type: 'SWITCH_ROOM', payload: 'aggregate' }).activeRoomId).toBe('aggregate');
     });
     it('usunięcie pomieszczenia usuwa jego przypisanie w układzie', () => {
@@ -175,11 +175,17 @@ describe('wspólne zasady danych', () => {
         const w = { ...window, shading: { ...window.shading, enabled: true, setting: 'bad' } };
         expect(() => calculateGainsForMonth([w], [], r.input, Array(24).fill(32), '7', data, r.accumulation, r.internalGains, false)).toThrow(/osłony/);
     });
-    it('egzekwuje limit 10 w imporcie i bezpośrednich akcjach dodawania/duplikowania', () => {
-        const ten = Array.from({ length: 10 }, (_, i) => room(String(i)));
-        expect(() => sanitizeProjectData(project([...ten, room('11')]))).toThrow();
+    it('przyjmuje 15 pomieszczeń, a blokuje szesnaste w imporcie, dodawaniu i duplikowaniu', () => {
+        const fifteen = Array.from({ length: 15 }, (_, i) => room(String(i)));
+        expect(sanitizeProjectData(project(fifteen)).rooms).toHaveLength(15);
+        expect(sanitizeProjectData(JSON.parse(JSON.stringify(createProjectSnapshot(project(fifteen))))).rooms).toHaveLength(15);
+        expect(() => sanitizeProjectData(project([...fifteen, room('16')]))).toThrow(/15/);
+        const fourteen = fifteen.slice(0, 14);
         for (const action of [{ type: 'ADD_ROOM' }, { type: 'DUPLICATE_ROOM', payload: '0' }] as const) {
-            expect(calculatorReducer(state(ten), action).rooms).toHaveLength(10);
+            expect(calculatorReducer(state(fourteen), action).rooms).toHaveLength(15);
+            const blocked = calculatorReducer(state(fifteen), action);
+            expect(blocked.rooms).toHaveLength(15);
+            expect(blocked.toasts.at(-1)?.message).toContain('15');
         }
     });
     it('odrzuca duplikaty urządzeń i wielokrotne/niewłaściwe powiązania układów', () => {

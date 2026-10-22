@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Wall } from '../types';
 import { useCalculator } from '../contexts/CalculatorContext';
-import { WINDOW_DIRECTIONS, WINDOW_AZIMUTHS, CompassArrow, WALL_MATERIALS } from '../constants';
+import { WINDOW_DIRECTIONS, WINDOW_AZIMUTHS, WALL_MATERIALS } from '../constants';
+import { CompassArrow } from './CompassArrow';
 import Button from './ui/Button';
 import { PencilIcon, DocumentDuplicateIcon, TrashIcon } from './Icons';
 import { CTS_PRESETS, isRoofPreset } from '../data/ctsPresets';
